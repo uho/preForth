@@ -73,7 +73,14 @@ If successful issue
 
     Forth 1.2.0
 
-    last * warm cold empty patch minor major banner quit restart REPEAT WHILE AGAIN UNTIL BEGIN THEN ELSE IF ; : constant variable header cmove compile, , allot here dp +! clearstack interpret parse-name \ .( ( parse (interpreters ?word (compilers ,word immediate !flags @flags or and #immediate ] [ interpreters compilers handlers ,'x' ?'x' ,# ?# scan skip source /string >in query #tib tib accept min words .name l>interp l>name l>flags type count cell+ cells find-name .s prefix? compare 2dup 2drop rot off on ?dup + space bl cr . u. negate > 1- nip = 0= pick 1+ < over depth execute c! ! c@ @ ?branch branch lit exit unnest - r> >r ?exit 0< drop swap dup key emit bye 
+    last * warm cold empty patch minor major banner quit restart REPEAT WHILE AGAIN 
+    UNTIL BEGIN THEN ELSE IF ; : constant variable header cmove compile, , allot here 
+    dp +! clearstack interpret parse-name \ .( ( parse (interpreters ?word (compilers ,word 
+    immediate !flags @flags or and #immediate ] [ interpreters compilers handlers ,'x' ?'x' 
+    ,# ?# scan skip source /string >in query #tib tib accept min words .name l>interp l>name 
+    l>flags type count cell+ cells find-name .s prefix? compare 2dup 2drop rot off on ?dup + 
+    space bl cr . u. negate > 1- nip = 0= pick 1+ < over depth execute c! ! c@ @ ?branch 
+    branch lit exit unnest - r> >r ?exit 0< drop swap dup key emit bye 
 
 Inspect sources and generated files.
 
