@@ -1,0 +1,181 @@
+\ preForth C backend
+
+\ alter substitutes non-letter characters by upper case letters (to aid assemblers to deal with labels).
+: replace ( c -- c d )
+    'A' swap ''' case? ?exit nip
+    'B' swap '\' case? ?exit nip
+    'C' swap ':' case? ?exit nip
+    'D' swap '.' case? ?exit nip
+    'E' swap '=' case? ?exit nip
+\   'F' swap '@' case? ?exit nip
+    'G' swap '>' case? ?exit nip
+    'H' swap ']' case? ?exit nip
+    'I' swap '1' case? ?exit nip
+    'J' swap '2' case? ?exit nip
+    'K' swap '/' case? ?exit nip
+    'L' swap '<' case? ?exit nip
+    'M' swap '-' case? ?exit nip
+    'N' swap '#' case? ?exit nip
+    'O' swap '0' case? ?exit nip
+    'P' swap '+' case? ?exit nip
+    'Q' swap '?' case? ?exit nip
+    'R' swap '"' case? ?exit nip
+    'S' swap ';' case? ?exit nip
+    'T' swap '*' case? ?exit nip   
+    'U' swap '(' case? ?exit nip
+    'V' swap '|' case? ?exit nip
+    \ also 'X' for machine code
+    'W' swap ',' case? ?exit nip
+    'Y' swap ')' case? ?exit nip
+    'Z' swap '!' case? ?exit nip
+;
+
+\ alter substitutes all non-letter characters by upper case letters.
+: alter ( c1 ... cn n -- d1 ... dn n )
+    dup 0= ?exit
+    swap >r 1- alter  r> replace  swap 1+ ;
+
+\ ------------
+\ output words
+\ ------------
+\ Output is done by emit.
+\ We define convenience words of the form ."xxx" to output xxx and >"xxx" to output xxx on a new line indented by a tab.
+
+: ."int" ( -- )
+    'i' emit 'n' emit 't' emit ;
+
+: ."return" ( -- )
+    'r' emit  'e' emit  't' emit  'u' emit  'r' emit  'n' emit ;
+
+: ."#define" ( -- )
+    '#' emit  'd' emit  'e' emit  'f' emit  'i' emit  'n' emit  'e' emit ;  
+
+: ."lit" ( -- )
+    'l' emit 'i' emit 't' emit ;
+
+: >\word ( c1 ... c2 n -- )
+   cr '/' emit '*' emit space show  space '*' emit '/' emit ;
+
+\ ------------
+\ Compiling words
+\ ------------
+
+\ reproduce a verbatim line
+: ,line ( x1 ...cn n -- )
+    show ;
+
+\ indent a verbatim line
+: ,>line ( c1 ... cn b -- )
+    cr tab ,line ;
+
+\ compile a reference to an invoked word 
+: ,word ( c1 ... cn n -- )
+   tab alter show '(' emit  ')' emit ';' emit ;
+
+\ compile a reference to an invoked word on a new line
+: ,>word ( c1 ... cn n -- )
+    cr ,word ;
+
+\ compile reference to nest primitive
+: ,nest ( -- )
+    space '{' emit ;
+
+\ compile reference to unnest primitive
+: ,unnest ( -- )
+    cr tab ."return" space 0 . ';' emit
+    cr '}' emit  cr cr ;
+
+\ compile signed number
+: ,n ( n -- )
+    . ; 
+
+\ compile unsigned number
+: ,u ( u -- )
+    u. ;
+
+\ compile literal
+: ,_lit ( c1 ... cn n -- )
+    cr tab ."lit" space  ,word ';' emit ;
+
+: ,lit ( x -- )
+    cr tab ."lit" '(' emit ')' emit space ,n ';' emit ;
+
+\ output string as comment
+: ,comment ( c1 ... cn n -- )
+    cr '/' emit '*' emit  space show  space '*' emit '/' emit ;
+
+\ create a new symbolic label
+: label ( c1 ... cn n -- )
+    cr ."int" space alter show '(' emit ')' emit ;
+
+\ body calculates the name of the body from a token
+: body ( c1 ... cn n -- c1 ... cm m )
+   'X' swap 1+ ;
+
+: ,code ( c1 ... nn n -- )
+   cr ."#define" space alter show '(' emit ')' emit ;
+
+: ,end-code ( -- )
+  cr ;
+
+\ -----------------------------------------
+
+\ tail calls
+\ C compilei is assumed to optimize tail calls
+\ so no optimization is done here.
+
+: bodylabel ( c1 ... cn n --  )
+   _drop ;
+
+\ ,tail compiles an unoptimized call     
+: ,tail  ( c1 ... cn n -- )
+   ,>word ; 
+
+\ --------------
+\ Create headers
+\ --------------
+\ preForth can optionally also create word headers with a very simple layout.
+\ 
+\ Word creation is split into parts
+\    - header     creates a dictionary header from a string on the stack.
+\    - label      creates the assembler label (with symbol substitution)
+\    - body       defined later by code (assembly code) or : (threaded code)
+\
+\ Headers are linked in a single linked list ending in 0.
+\ The link-label name of the latest definition is always as a string on top of stack.
+\ Creating a new header puts this in the link field of the new definition and
+\ replaces the link-label with the current one.
+
+
+\ link to previous header c. d is new header.
+: ,link ( c1 ... cn n d1 ... dm m -- d1 ... dm _ m+1 d1 ... dm m )
+    '_' swap 1+ _dup label  \  d_:
+    _swap  ,word  _dup
+    1- nip ;
+
+\ create a new header with given name c and flags
+\ :  header ( d1 ... dm m  c1 ... c2 n flags -- d1 ... dm m c1 ... cn n )
+\     >r
+\     ,link        \ link
+\     r>  ,u       \ flags
+\     dup ,u       \ len
+\     _dup ,string \ name
+\ ;
+
+\ dummy definition to not create a new header with given name c and flags
+:  header ( d1 ... dm m  c1 ... c2 n flags -- d1 ... dm m c1 ... cn n )
+    drop ;
+
+: ."done" ( -- )
+    'd' emit 'o' emit 'n' emit 'e' emit ; 
+
+: ."last:" ( -- )
+    'l' emit 'a' emit 's' emit 't' emit ':' emit ; 
+
+: ,end ( c1 ... cn n -- )
+    cr '/' emit '*' emit  space  ."last:" space alter show  space '*' emit '/' emit
+    cr '/' emit '*' emit  space  ."done" space '*' emit '/' emit 
+    cr ;
+
+
+\ ==== End of platform dependent part - all below should be platform independent ===

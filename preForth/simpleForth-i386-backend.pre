@@ -1,0 +1,255 @@
+\ simpleForth i386 backend
+
+\ alter substitutes non-letter characters by upper case letters (to aid assemblers to deal with labels).
+: replace ( c -- c d )
+    'A' swap ''' case? ?exit nip
+    'B' swap '\' case? ?exit nip
+    'C' swap ':' case? ?exit nip
+    'D' swap '.' case? ?exit nip
+    'E' swap '=' case? ?exit nip
+    'F' swap '[' case? ?exit nip
+    'G' swap '>' case? ?exit nip
+    'H' swap ']' case? ?exit nip
+    'I' swap '1' case? ?exit nip
+    'J' swap '2' case? ?exit nip
+    'K' swap '/' case? ?exit nip
+    'L' swap '<' case? ?exit nip
+    'M' swap '-' case? ?exit nip
+    'N' swap '#' case? ?exit nip
+    'O' swap '0' case? ?exit nip
+    'P' swap '+' case? ?exit nip
+    'Q' swap '?' case? ?exit nip
+    'R' swap '"' case? ?exit nip
+    'S' swap '!' case? ?exit nip
+    'T' swap '*' case? ?exit nip   
+    'U' swap '(' case? ?exit nip
+    'V' swap '|' case? ?exit nip
+    'W' swap ',' case? ?exit nip
+    \ also 'X' for machine code
+    'Y' swap ')' case? ?exit nip
+    'Z' swap ';' case? ?exit nip
+;
+
+\ alter substitutes all non-letter characters by upper case letters.
+: alter ( S1 -- S2 )
+    '_' 1 rot ?dup 0= ?exit nip nip
+    \ dup 0= ?exit
+    swap >r 1- alter  r> replace  swap 1+ ;
+
+\ ------------
+\ output words
+\ ------------
+\ Output is done by emit.
+\ We define convenience words of the form ."xxx" to output xxx and >"xxx" to output xxx on a new line indented by a tab.
+
+: ."dd" ( -- )
+    'D' emit 'D' emit space ;
+
+: >"dd" ( -- )
+    cr tab ."dd" ;
+
+: ."db" ( -- )
+    'D' emit 'B' emit space ;
+
+: >"db" ( -- )
+    cr tab ."db" ;
+
+: ."dup" ( -- )
+    'd' emit 'u' emit 'p' emit ;
+
+: ."nest" ( -- )
+    'n' 'e' 's' 't' 4 alter show ;
+
+: ."unnest" ( -- )
+    'u' 'n' 'n' 'e' 's' 't' 6 alter show ;
+
+: ."lit" ( -- )
+    'l' 'i' 't' 3 alter show ;
+
+\ ------------
+\ Compiling words
+\ ------------
+
+: escaped ( S1 -- S2 )
+    dup 0= ?exit
+    swap >r 1- escaped  r> swap 1+ over '"' - ?exit  '"' swap 1+ ; 
+    
+\ ,string compiles the topmost string as a sequence of numeric DB values.
+: ,string ( S -- )
+    >"db"  '"' emit  escaped show  '"' emit ;
+    \ ?dup 0= ?exit
+    \ dup roll >"db" u.  \ 1st char
+    \ 1- ,string ;
+
+\ reproduce a verbatim line
+: ,line ( S -- )
+    show ;
+
+\ compile a reference to an invoked word 
+: ,word ( S -- )
+   ."dd" alter show ;
+
+\ compile a reference to an invoked word on a new line
+: ,>word ( S -- )
+    >"dd" alter show ;
+
+\ compile reference to nest primitive
+: ,nest ( -- )
+    ."dd" ."nest" ;
+
+
+\ compile reference to unnest primitive
+: ,unnest ( -- )
+    >"dd" ."unnest"
+    cr ;
+
+\ reserve space 
+: ,allot ( u -- )
+    >"db" u. space ."dup" '(' emit '0' emit ')' emit ;
+
+\ compile byte
+: ,byte ( u -- )
+   >"db" space u. ;
+
+\ compile signed number
+: ,n ( n -- )
+    >"dd" . ; 
+
+\ compile unsigned number
+: ,u ( u -- )
+    >"dd" u. ;
+
+\ compile literal
+: ,_lit ( S -- )
+    >"dd" ."lit"  ,>word ;
+
+\ compile literal
+: ,lit ( x -- )
+    >"dd" ."lit"  ,n ;
+
+\ output string as comment
+: ,comment ( S -- )
+    cr tab ';' emit  space show ;
+
+: ,label ( L -- )
+    cr show ':' emit tab ;
+
+\ create a new symbolic label
+: label ( S -- )
+    alter ,label ;
+
+\ body calculates the name of the body from a token
+: body ( S1 -- S2 )
+   'X' swap 1+ ;
+
+\ ,codefield compiles the code field of primitive
+: ,codefield ( S -- )
+   body _dup ,word label ;
+
+: ,code ( S -- )
+    _dup label
+    ,codefield ;
+
+: ,end-code ( -- )
+  cr ;
+ 
+\ -----------------------------------
+\ tail call optimization    tail word ;  ->  [ ' word >body ] literal >r ;
+
+: bodylabel ( S --  )
+   body label ;
+
+\ ,tail compiles a tail call
+: ,tail  ( S -- )
+   body ,_lit
+   '>' 'r' 2 ,>word ;
+
+\ Handle conditionals
+
+\ initialize local labels
+: (label ( S1 -- S1 S2 0 ) 
+    alter '_' swap 1+  '_' swap 1+  0 ;
+
+\ deinitialize local labels
+: label) ( S m -- )
+    drop _drop ;
+
+: +label ( L1 i -- L1 L2 i+1 )
+    >r _dup   nip r> dup >r '0' + swap r> 1+ ;
+
+: ."branch" ( -- )
+    'b' 'r' 'a' 'n' 'c' 'h' 6 alter show ;
+
+: ."?branch" ( -- )
+    '?' 'b' 'r' 'a' 'n' 'c' 'h' 7 alter show ;
+
+: ,branch ( L -- )
+    >"dd" ."branch"   >"dd" show ;
+
+: ,?branch ( L -- )
+    >"dd" ."?branch"  >"dd" show ;
+
+\ codefields
+
+: ."dovar" ( -- )
+    'd' 'o' 'v' 'a' 'r' 5 alter show ;
+
+: ."doconst" ( -- )
+    'd' 'o' 'c' 'o' 'n' 's' 't' 7 alter show ;
+
+: ,dovar ( -- )
+    ."dd" ."dovar" ;
+
+: ,doconst ( -- )
+    ."dd" ."doconst" ;
+
+
+\ prologue and epilogue
+
+: ,opening  ( -- )
+;
+
+: ."done" ( -- )
+    ';' emit space 'd' emit 'o' emit 'n' emit 'e' emit ;
+
+: ."last:" ( -- )
+    ';' emit space 'l' emit 'a' emit 's' emit 't' emit ':' emit space ;
+
+: ,ending ( S -- )
+    'l' 'a' 's' 't' 4  0 header cr tab _dup label ,dovar bodylabel _dup ."dd" alter show  
+    100000 ,allot 
+    'm' 'e' 'm' 't' 'o' 'p' 6 ,label  0 ,u
+    cr ."last:" alter show
+    cr ."done" cr ;
+
+\ --------------
+\ Create headers
+\ --------------
+\ preForth can optionally also create word headers with a very simple layout.
+\ 
+\ Word creation is split into parts
+\    - header     creates a dictionary header from a string on the stack.
+\    - label      creates the assembler label (with symbol substitution)
+\    - body       defined later by code (assembly code) or : (threaded code)
+\
+\ Headers are linked in a single linked list ending in 0.
+\ The link-label name of the latest definition is always as a string on top of stack.
+\ Creating a new header puts this in the link field of the new definition and
+\ replaces the link-label with the current one.
+
+
+\ link to previous header c. d is new header.
+: ,link ( S1 S2 -- S3 S2 )
+    '_' swap 1+ _dup label  \  d_:
+    _swap  ,word  _dup
+    1- nip ;
+
+\ create a new header with given name S2 and flags, S1 is the last link label
+: header ( S1 S2 flags -- S3 S2 )
+    >r
+    ,link        \ link
+    r>  ,u       \ flags
+    dup ,u       \ len
+    _dup ,string \ name
+;
+

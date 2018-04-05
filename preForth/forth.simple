@@ -1,0 +1,487 @@
+\ simpleForth test program
+
+\ The simpleForth runtimesystem has only the words
+\
+\  bye emit key dup swap drop 0< ?exit >r r> - unnest lit
+\  branch ?branch @ c@ ! c!
+
+: over ( x1 x2 -- x1 x2 x1 )
+   >r dup r> swap ;
+
+: < ( n1 n2 -- flag )
+   - 0< ;
+
+: 1+ ( n1 -- n2 )
+   1 + ;
+
+: pick ( xn-1 ... x0 i -- xn-1 ... x0 xi )
+    over swap ?dup 0= ?exit nip swap >r 1- pick r> swap ;  
+
+: 0= ( x -- flag )
+   0 swap ?exit drop -1 ;
+
+: = ( x1 x2 -- f )
+   - 0= ;
+
+: nip ( x1 x2 -- x2 )
+   swap drop ;
+
+: 1- ( n1 -- n2 )
+   1 - ;
+
+: > ( n1 n2 -- flag )
+   swap < ;
+
+: negate ( n1 -- n2 )
+    0 swap - ;
+
+
+
+
+\ number output
+\ -------------
+
+|: (/mod  ( n d q0 -- r d q )
+   >r 2dup <  r> swap ?exit
+   >r swap over -  swap  r> 1+  (/mod ;
+
+|: 10* ( x1 -- x2 )
+    dup + dup dup + dup + + ;
+
+|: (10u/mod ( n q d -- r q d )
+   2 pick over > 0= ?exit     \ ( n q d )
+   dup >r 10*                 \ ( n q 10*d ) ( R: d )
+   (10u/mod                   \ ( r q d )
+   swap >r   0 (/mod nip   r> 10* + r> ;
+     
+|: 10u/mod ( n -- r q )
+   0 1 (10u/mod drop  ;
+
+|: (u. ( u1 -- )
+   ?dup 0= ?exit 10u/mod (u. '0' + emit ;
+
+\ display unsigned number
+: u. ( u -- )
+   dup (u. ?exit '0' emit ;
+
+
+|: (. ( n -- n' )
+   dup 0< 0= ?exit '-' emit negate ;
+
+\ display signed number
+: . ( n -- )
+   (. u. ;
+
+
+
+: cr ( -- )
+   10 emit ;
+
+32 constant bl
+
+: space ( -- )
+   bl emit ;
+
+: + ( n1 n2 -- n3 )
+    0 swap - - ;
+
+: ?dup ( x -- x x | 0 )
+   dup IF dup THEN ;
+
+: on ( addr -- )
+    -1 swap ! ;
+
+: off ( addr -- )
+     0 swap ! ;
+
+: rot ( x y z -- y z x )
+    >r swap r> swap ;
+
+: 2drop ( x1 x2 -- )
+    drop drop ;
+
+: 2dup ( x1 x2 -- x1 x2 )
+    over over ;
+
+: compare ( c-addr1 u1 c-addr2 u2 -- n )
+    rot 
+    BEGIN \ ( c-addr1 c-addr2 u1 u2 )
+      over 
+    WHILE
+      dup
+    WHILE
+      >r >r  over c@ over c@ - ?dup IF 0< dup + 1 + nip nip r> drop r> drop unnest THEN
+      1+ swap 1+ swap
+      r> 1- r> 1-
+    REPEAT
+      -1
+    ELSE
+      dup 0= IF 0 ELSE 1 THEN
+    THEN >r 2drop 2drop r> ;
+
+\ prefix? tests if c-addr1 u1 is a prefix of c-addr2 u2
+: prefix? ( c-addr1 u1 c-addr2 u2 -- f )
+    rot
+    2dup < IF 2drop 2drop 0 exit THEN
+    nip
+    BEGIN \ ( c-addr1 c-addr2 u2 )
+      ?dup
+    WHILE
+      >r  over c@ over c@ - IF 2drop r> drop 0 exit THEN
+      1+ swap 1+ swap
+      r> 1- 
+    REPEAT
+    2drop -1 ; 
+
+: .s ( i*x -- i*x )
+    depth 0= ?exit  >r .s r> dup . space ;
+
+\ TODO prefix handling
+
+: find-name ( c-addr u link -- header )
+    BEGIN
+      dup
+    WHILE 
+      >r  2dup  r> dup >r
+      l>name  dup cell+ swap @  compare  0= IF 2drop r> exit THEN
+      r> @
+    REPEAT
+    nip nip ;
+
+: cells ( n -- m )
+    dup + dup +  ;
+
+: cell+ ( addr1 -- addr2 )
+    1 cells + ;
+
+: count ( addr1 -- addr2 u )
+    dup 1+ swap c@ ;
+
+: type ( c-addr u -- )
+    BEGIN ?dup WHILE >r  count emit  r> 1- REPEAT drop ;
+
+: l>flags ( link -- flags )
+    cell+ ;
+
+: l>name ( link -- name )
+    2 cells + ;
+
+: l>interp ( link -- xt )
+    l>name  dup cell+ swap @ + ;
+
+: .name ( addr -- )
+    dup cell+ swap @ type ;
+
+: words ( -- )
+  last @
+  BEGIN
+     ?dup
+  WHILE
+     dup l>name .name space
+     @
+  REPEAT ;
+
+: min ( n1 n2 -- n3 )
+   2dup > IF swap THEN drop ;
+
+: accept ( c-addr +n1 -- +n2 )
+   dup 0= IF nip exit THEN
+   swap >r 0
+   BEGIN \ ( +n1 +n3 ) ( R: c-addr ) 
+     key dup 10 -
+   WHILE
+     over r> dup >r  + c!
+     1+ over 1- min
+   REPEAT
+   drop nip r> drop ;
+
+create tib ( -- addr )
+   80 allot 
+
+variable #tib
+
+: query ( -- )
+   tib 80 accept #tib ! ;   
+
+variable >in ( -- addr )
+
+: /string ( c-addr1 u1 n -- c-addr2 u2 )
+   swap over - >r + r> ;
+
+: source ( -- c-addr u )
+   tib   #tib @ ;
+
+: skip ( c-addr1 u1 c -- c-addr2 u2 )
+   BEGIN
+     over
+   WHILE
+     >r over c@ r> swap over =
+   WHILE
+     >r  1 /string  r> 
+   REPEAT THEN drop ;
+
+: scan ( c-addr u1 c -- c-addr2 u2 )
+   BEGIN
+     over
+   WHILE
+     >r over c@ r> swap over -
+   WHILE
+     >r  1 /string  r>
+   REPEAT THEN drop ;
+
+|: digit? ( c -- f )
+    dup '0' < IF drop 0 exit THEN '9' > 0= ;
+
+: ?# ( c-addr u -- x 0 0 | c-addr u )
+    dup 0= ?exit
+    2dup 0 >r
+    BEGIN
+      dup
+    WHILE
+      over c@ dup digit? 0= IF drop r> drop 2drop exit THEN
+      '0' - r> 10*  + >r
+      1 /string
+    REPEAT
+    2drop 2drop r> 0 0 ;
+
+: ,# ( c-addr u -- 0 0 | c-addr u )
+    dup 0= ?exit
+    ?# dup ?exit
+    ['] lit compile, rot , ;
+
+:  ?'x' ( c-addr u -- x 0 0 | c-addr u )
+    dup 0= ?exit
+    dup 3 =
+    IF over c@     ''' - ?exit
+       over 2 + c@ ''' - ?exit
+       drop 1+ c@ 0 0 THEN ;
+
+: ,'x' ( c-addr u -- 0 0 | c-addr u )
+    dup 0= ?exit
+    ?'x' dup ?exit
+    ['] lit compile, rot , ;
+    
+
+
+variable handlers
+
+variable compilers
+
+variable interpreters
+
+
+: [ ( -- )
+    interpreters @ handlers ! ;
+
+: ] ( -- )
+    compilers @ handlers ! ;
+
+1 constant #immediate
+
+code and ( x1 x2 -- x3 )
+   pop eax
+   pop edx
+   and eax, edx
+   push eax
+   next
+;
+
+code or ( x1 x2 -- x3 )
+   pop eax
+   pop edx
+   or eax, edx
+   push eax
+   next
+;
+
+: @flags ( -- x )
+    last @ l>flags @ ;
+
+: !flags ( x -- )
+    last @ l>flags ! ;
+
+: immediate ( x -- )
+    @flags #immediate or !flags ;
+
+: ,word ( c-addr1 u1 | i*x c-addr2 u2 )
+   dup 0= ?exit
+   2dup last @ find-name ?dup
+   IF nip nip dup l>flags @ #immediate and
+      IF l>interp execute ELSE l>interp compile, THEN 0 0 THEN
+;
+
+
+
+: (compilers ( c-addr u1 | i*x c-addr2 u2 )
+    ,word
+    ,#
+    ,'x'
+    over IF space type '?' emit   tail restart THEN 
+;
+
+: ?word ( c-addr1 u1 | i*x c-addr2 u2 )
+   dup 0= ?exit
+   2dup last @ find-name ?dup IF nip nip l>interp execute 0 0 THEN
+;
+
+: (interpreters ( c-addr1 u1 | i*x c-addr2 u2 )
+   ?word
+   ?#
+   ?'x'
+   over IF space type '?' emit   tail restart THEN 
+;
+
+: parse ( c -- c-addr u )
+   >r source >in @ /string
+   2dup r> dup >r  scan
+   2dup r> skip  nip source nip swap - >in !
+   nip - ;
+
+immediate: ( ( -- )
+   ')' parse 2drop ;
+
+immediate: .( ( --  )
+   ')' parse type ;
+
+immediate: \ ( -- )
+   source >in ! drop ;
+
+: parse-name ( -- c-addr u )
+   source >in @ /string
+   bl skip  2dup bl scan  source nip over - >in !    nip - ;
+
+: interpret ( -- )
+   0 0 BEGIN handlers @ execute 2drop  parse-name dup 0= UNTIL 2drop ;
+
+|: prompt ( -- )
+    cr .s
+    handlers @ compilers @ = IF ']' ELSE '>' THEN emit space ;
+
+|: .ok ( -- )
+    space 'o' emit 'k' emit ;
+
+: clearstack ( -- )
+   BEGIN depth 0< WHILE 0 REPEAT
+   BEGIN depth WHILE drop REPEAT ;
+
+\ : t{ ;
+\ : --> ;
+\ : t} ;
+
+: +! ( n addr -- )
+   dup >r @ + r> ! ;
+
+variable dp
+
+: here ( -- addr )
+   dp @ ;
+
+: allot ( n -- )
+   dp +! ;
+
+: , ( x -- )
+   here  1 cells allot  ! ;
+
+: compile, ( xt -- )
+   , ;
+
+: cmove ( c-addr1 c-addr2 u -- )
+   BEGIN
+     ?dup
+   WHILE
+     >r
+     over c@ over c!
+     1+ swap 1+ swap
+     r> 1-
+   REPEAT
+   2drop ;
+
+: header ( c-addr u -- )
+   here last @ , last !
+   0 ,   \ flags
+   dup , \ len
+   here swap dup allot
+   cmove ;
+
+: variable ( <name> -- )
+   parse-name header ['] dp @ , 0 , ;
+
+: constant ( <name> -- )
+   parse-name header ['] bl @ , , ;
+
+: : ( <name> -- )
+   parse-name header ['] ; @ , ] ;
+
+immediate: ; ( -- )
+   ['] unnest compile, [ ;
+
+immediate: IF ( -- addr )
+   ['] ?branch compile, here 0 , ;
+
+immediate: ELSE ( addr1 -- addr2 )
+   ['] branch compile, here 0 , here rot ! ;
+
+immediate: THEN ( addr -- )
+   here swap ! ;
+
+immediate: BEGIN ( -- addr )
+   here ;
+
+immediate: UNTIL ( addr -- )
+   ['] ?branch compile, , ;
+
+immediate: AGAIN ( addr -- )
+   ['] branch compile, , ;
+
+immediate: WHILE ( addr1 -- addr2 addr1 )
+   ['] ?branch compile, here 0 , swap ;
+
+immediate: REPEAT ( addr1 addr2 -- )
+   ['] branch compile, ,  here swap ! ;
+
+: restart ( -- )
+   BEGIN
+     prompt query  0 >in !  interpret  .ok
+   0 UNTIL ;
+
+: quit ( -- )
+   [ clearstack restart ;
+
+create banner ( -- addr )
+  5 c,  'F' c, 'o' c, 'r' c, 't' c, 'h' c,
+
+1 constant major ( -- x )
+2 constant minor ( -- x )
+0 constant patch ( -- x )
+
+|: .version ( -- )
+    major '0' + emit '.' emit
+    minor '0' + emit '.' emit
+    patch '0' + emit ;
+
+|: .banner ( -- )
+    cr banner count type space .version cr ;
+
+: empty ( -- )
+  last cell+ dp !  last 20 - last ! ; \ reset dictionary
+
+: cold ( -- )
+  empty warm ;
+
+: warm ( -- )
+  .banner
+  ['] (interpreters interpreters !
+  ['] (compilers compilers !
+  cr words cr
+  quit
+;
+
+
+code * ( n1 n2 -- n3 )
+   pop eax
+   pop edx
+   mul edx
+   push eax
+   next
+;
+

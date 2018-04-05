@@ -1,0 +1,201 @@
+\ preForth Symbolic Backend
+
+\ ------------
+\ output words
+\ ------------
+\ Output is done by emit.
+\ We define convenience words of the form ."xxx" to output xxx and >"xxx" to output xxx on a new line indented by a tab.
+
+: ."dw" ( -- )
+    'D' emit 'W' emit space ;
+
+: >"dw" ( -- )
+    cr tab ."dw" ;
+
+: ."db" ( -- )
+    'D' emit 'B' emit space ;
+
+: >"db" ( -- )
+    cr tab ."db" ;
+
+: >"ds" ( -- )
+    cr tab 'D' emit 'S' emit space ;
+
+: ."nest" ( -- )
+    'n' emit 'e' emit 's' emit 't' emit ;
+
+: ."unnest" ( -- )
+    'u' emit 'n' emit ."nest" ;
+
+: ."lit" ( -- )
+    'l' emit 'i' emit 't' emit ;
+
+
+\ alter substitutes non-letter characters by upper case letters (to aid assemblers to deal with labels).
+: replace ( c -- c d )
+    'A' swap  39 case? ?exit nip
+    'B' swap '\' case? ?exit nip
+    'C' swap ':' case? ?exit nip
+    'D' swap '.' case? ?exit nip
+    'E' swap '=' case? ?exit nip
+\   'F' swap '@' case? ?exit nip
+    'G' swap '>' case? ?exit nip
+    'H' swap ']' case? ?exit nip
+    'I' swap '1' case? ?exit nip
+    'J' swap '2' case? ?exit nip
+    'K' swap '/' case? ?exit nip
+    'L' swap '<' case? ?exit nip
+    'M' swap '-' case? ?exit nip
+    'N' swap '#' case? ?exit nip
+    'O' swap '0' case? ?exit nip
+    'P' swap '+' case? ?exit nip
+    'Q' swap '?' case? ?exit nip
+    'R' swap '"' case? ?exit nip
+\   'S' swap '!' case? ?exit nip
+    'T' swap '*' case? ?exit nip   
+    'U' swap '(' case? ?exit nip
+    'V' swap '|' case? ?exit nip
+    'W' swap ',' case? ?exit nip
+    \ also 'X' for machine code
+    'Y' swap ')' case? ?exit nip
+    'Z' swap ';' case? ?exit nip
+;
+
+\ alter substitutes all non-letter characters by upper case letters.
+: alter ( c1 ... cn n -- d1 ... dn n )
+    dup 0= ?exit
+    swap >r 1- alter  r> replace  swap 1+ ;
+
+\ ------------
+\ Compiling words
+\ ------------
+
+\ ,string compiles the topmost string as a sequence of numeric DB values.
+: ,string ( c1 ... cn n -- )
+    \ ."ds" show ;
+    ?dup 0= ?exit
+    dup roll >"db" u.  \ 1st char
+    1- ,string ;
+
+\ reproduce a verbatim line
+: ,line ( x1 ...cn n -- )
+    show ;
+
+\ indent a verbatim line
+: ,>line ( c1 ... cn b -- )
+    cr tab ,line ;
+
+\ compile a reference to an invoked word 
+: ,word ( c1 ... cn n -- )
+   ."dw" alter show ;
+
+\ compile a reference to an invoked word on a new line
+: ,>word ( c1 ... cn n -- )
+    >"dw" alter show ;
+
+\ compile reference to nest primitive
+: ,nest ( -- )
+    ."dw" ."nest" ;
+
+\ compile reference to unnest primitive
+: ,unnest ( -- )
+    >"dw" ."unnest" cr ;
+
+\ compile signed number
+: ,n ( n -- )
+    >"dw" . ; 
+
+\ compile unsigned number
+: ,u ( u -- )
+    >"dw" u. ;
+
+\ compile literal
+: ,_lit ( c1 ... cn n -- )
+    >"dw" ."lit"  ,>word ;
+
+: ,lit ( x -- )
+    >"dw" ."lit"  ,n ;
+
+\ output string as comment
+: ,comment ( c1 ... cn n -- )
+    cr tab '\' emit  space show ;
+
+\ create a new symbolic label
+: label ( c1 ... cn n -- )
+    cr alter show ':' emit tab ;
+
+\ body calculates the name of the body from a token
+: body ( c1 ... cn n -- c1 ... cm m )
+   'X' swap 1+ ;
+
+\ ,codefield compiles the code field of primitive
+: ,codefield ( c1 ... cn n -- )
+   body _dup ,word label ;
+
+: ,code ( c1 ... cn n -- )
+   _dup label
+   ,codefield ;
+
+: ,end-code ( -- )
+   cr ;
+
+\ -------------------------------------------------
+\ Tail call optimization   tail word ;   ->  [ ' word >body ] literal >r ;
+: bodylabel ( c1 ... cn n -- )
+   body label ;
+
+\ ,tail compiles a tail call     
+: ,tail  ( c1 ... cn n -- )
+   body ,_lit 
+   '>' 'r' 2 ,>word ; 
+
+\ --------------
+\ Create headers
+\ --------------
+\ preForth can optionally also create word headers with a very simple layout.
+\ 
+\ Word creation is split into parts
+\    - header     creates a dictionary header from a string on the stack.
+\    - label      creates the assembler label (with symbol substitution)
+\    - body       defined later by code (assembly code) or : (threaded code)
+\
+\ Headers are linked in a single linked list ending in 0.
+\ The link-label name of the latest definition is always as a string on top of stack.
+\ Creating a new header puts this in the link field of the new definition and
+\ replaces the link-label with the current one.
+
+
+\ link to previous header c. d is new header.
+: ,link ( c1 ... cn n d1 ... dm m -- d1 ... dm _ m+1 d1 ... dm m )
+    '_' swap 1+ _dup label  \  d_:
+    _swap  ,word  _dup
+    1- nip ;
+
+\ create a new header with given name c and flags
+\ :  header ( d1 ... dm m  c1 ... c2 n flags -- d1 ... dm m c1 ... cn n )
+\     >r
+\     ,link        \ link
+\     r>  ,u       \ flags
+\     dup ,u       \ len
+\     _dup ,string \ name
+\ ;
+
+\ dummy definition to not create a new header with given name c and flags
+:  header ( d1 ... dm m  c1 ... c2 n flags -- d1 ... dm m c1 ... cn n )
+    drop ;
+
+: ."done" ( -- )
+    '\' emit space 'd' emit 'o' emit 'n' emit 'e' emit ;
+
+: ."last:" ( -- )
+    '\' emit space 'l' emit 'a' emit 's' emit 't' emit ':' emit space ;
+
+: ,end ( c1 ... cn n -- )
+    cr ."last:" alter show
+    cr ."done" cr ;
+
+
+
+
+\ ==== End of platform dependent part - all below should be platform independent ===
+
