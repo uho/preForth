@@ -1,0 +1,116 @@
+\ simpleForth test program
+
+\ The simpleForth runtimesystem has only the words
+\
+\  bye emit key dup swap drop 0< ?exit >r r> - unnest lit
+\  branch ?branch @ c@ ! c!
+
+: over ( x1 x2 -- x1 x2 x1 )
+   >r dup r> swap ;
+
+: < ( n1 n2 -- flag )
+   - 0< ;
+
+: 1+ ( n1 -- n2 )
+   1 + ;
+
+: pick ( xn-1 ... x0 i -- xn-1 ... x0 xi )
+    over swap ?dup 0= ?exit nip swap >r 1- pick r> swap ;  
+
+: 0= ( x -- flag )
+   0 swap ?exit drop -1 ;
+
+: nip ( x1 x2 -- x2 )
+   swap drop ;
+
+: 1- ( n1 -- n2 )
+   1 - ;
+
+: > ( n1 n2 -- flag )
+   swap < ;
+
+: negate ( n1 -- n2 )
+    0 swap - ;
+
+: cr ( -- )
+   10 emit ;
+
+32 constant bl
+
+: space ( -- )
+   bl emit ;
+
+: + ( n1 n2 -- n3 )
+    0 swap - - ;
+
+: ?dup ( x -- x x | 0 )
+   dup IF dup THEN ;
+
+: on ( addr -- )
+    -1 swap ! ;
+
+: off ( addr -- )
+     0 swap ! ;
+
+: countdown ( n -- )
+   BEGIN  ?dup WHILE  1 - cr dup '0' + emit  REPEAT ;
+
+: dashes ( n -- )
+   BEGIN  ?dup WHILE  '-' emit  1 -  REPEAT ;
+
+: ."yes" ( -- )
+    'y' emit 'e' emit 's' emit ;
+
+: ."no" ( -- )
+    'n' emit 'o' emit ;
+
+: yes? ( f -- )
+    IF ."yes" ELSE ."no" THEN ;
+
+: ."Hello,_world!" ( -- )
+    'H' emit 'e' emit 'l' emit 'l' emit 'o' emit ',' emit space
+    'w' emit 'o' emit 'r' emit 'l' emit 'd' emit '!' emit ; 
+
+create squares ( -- addr )
+  0 , 1 , 4 , 9 , 16 , 25 , 36 , 49 , 64 , 81 , 100 ,
+
+create text ( -- addr )
+   2 c,  'a' c,  'b' c,   10 allot
+
+variable v1
+
+: v1? ( -- )
+   v1 @ IF ."yes" ELSE ."no" THEN ;
+
+: cells ( n -- m )
+    dup + dup +  ;
+
+: cell+ ( addr1 -- addr2 )
+    1 cells + ;
+
+: count ( addr1 -- addr2 u )
+    dup 1+ swap c@ ;
+
+: type ( c-addr u -- )
+    BEGIN ?dup WHILE >r  count emit  r> 1- REPEAT drop ;
+
+: ======= ( -- )
+  cr 10 dashes ;
+
+: cold ( -- )
+  =======
+  cr ."Hello,_world!"
+  10 countdown
+  =======
+  cr 1 yes?
+  cr 0 yes?
+  =======
+  cr v1?
+  v1 on cr v1?
+  v1 off cr v1?
+  =======
+  cr 5 cells squares + @ 25 - 0= yes?
+  3 text c!
+  'c' text 3 + c!
+  cr text count type
+  ======= cr ;

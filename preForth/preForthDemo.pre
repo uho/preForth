@@ -1,0 +1,21 @@
+\ preForth test program
+
+: countdown ( n -- )
+   cr dup .
+   ?dup 0= ?exit
+   1- countdown ;
+
+: dashes ( n -- )
+  ?dup 0= ?exit
+    '-' emit 1- dashes ;
+
+: ."Hello,_world!" ( -- )
+    'H' 'e' 'l' 'l' 'o' ',' bl 'w' 'o' 'r' 'l' 'd' '!' 13 show ; 
+
+: cold ( -- )
+  cr 10 dashes
+  cr ."Hello,_world!"
+  10 countdown
+  cr 10 dashes cr ;
+
+
