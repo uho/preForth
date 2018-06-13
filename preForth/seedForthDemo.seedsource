@@ -239,11 +239,55 @@ cr d1 d1 d1 \ now display dashes
 
 cr 80 # stars
 
+\ Tester 
 
-?ok
-cr
+': empty-stack ( i*x -- )
+    BEGIN depth 0< WHILE    0 #, REPEAT
+    BEGIN depth    WHILE    drop REPEAT ;'
 
-2drop
+variable actual-depth
+( actual-results )
+20 # cells allot
 
+': nth-result ( n -- addr )
+   cells actual-depth + ;'
+
+': error ( i*x c-addr u -- )
+   cr  type empty-stack ;'
+
+': t{ ( i*x -- )
+   empty-stack ;'
+
+': -> ( -- )
+   depth actual-depth !
+   BEGIN depth WHILE  depth nth-result !  REPEAT ;'
+
+fun: wrong create  ( -- addr )
+    23 # c,
+    'w' # c, 'r' # c, 'o' # c, 'n' # c, 'g' # c,  32 # c,
+    'n' # c, 'u' # c, 'm' # c, 'b' # c, 'e' # c, 'r' # c,  32 # c,
+    'o' # c, 'f' # c,  32 # c,
+    'r' # c, 'e' # c, 's' # c, 'u' # c, 'l' # c, 't' # c, 's' # c,
+
+fun: incorrect create ( -- addr )
+    16 # c,
+    'i' # c, 'n' # c, 'c' # c, 'o' # c, 'r' # c, 'r' # c, 'e' # c, 'c' # c, 't' # c, 32 # c,
+    'r' # c, 'e' # c, 's' # c, 'u' # c, 'l' # c, 't' # c,
+
+
+': }t ( i*x -- )
+   depth actual-depth @ - IF  wrong count  error  unnest THEN
+   BEGIN depth WHILE  depth nth-result @ - IF  incorrect count error  unnest THEN  REPEAT ;'
+
+?ok 2drop
+
+cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit 
+
+t{ 3 # 4 # + -> 7 # }t
+t{ 3 # 4 # + -> 8 # }t
+t{ 3 # 4 # + -> 1 # 2 # }t
+
+
+cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
 
 end

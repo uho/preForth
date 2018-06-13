@@ -75,7 +75,7 @@ preForth: preForth.$(UNIXFLAVOUR)
 	   /usr/lib/i386-linux-gnu/crt1.o /usr/lib/i386-linux-gnu/crti.o \
 	   $@.o \
 	   -lc /usr/lib/i386-linux-gnu/crtn.o
-	rm $@.o
+	# rm $@.o
 
 # assemble and link executable on MacOS
 %.Darwin: %.asm

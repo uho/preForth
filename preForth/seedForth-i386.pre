@@ -272,6 +272,15 @@ code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
         next
 ;
 
+code depth ( -- n )
+        mov eax, stck
+        sub eax, esp
+        sar eax,2
+        push eax
+        next
+;
+
+
 : negate ( n1 -- n2 )
    0 swap - ;
 
@@ -375,6 +384,7 @@ code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
    lit create      h, \ 35  23
    lit does>       h, \ 36  24
    lit cold        h, \ 37  25
+   lit depth       h, \ 38  26
    tail interpreter ;
 
 pre
