@@ -19,7 +19,11 @@ HOSTFORTH=gforth
 # ------------------------------------------------------------------------
 
 .PHONY=all
-all: preForth simpleForth forth
+all: preForth simpleForth forth runforth
+
+.PHONY=runforth
+runforth: ./forth hi.forth
+	cat hi.forth - | ./forth
 
 .PHONY=test
 test: preForth.pre preForth-$(PLATFORM)-backend.pre load-$(PLATFORM)-preForth.fs 
@@ -109,7 +113,7 @@ docker-image: Dockerfile
 
 # run the docker image
 .PHONY=run
-run: docker-image
+rundocker: docker-image
 	docker run -i -t --rm preforth	
 # ------------------------------------------------------------------------
 

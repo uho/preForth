@@ -1,40 +1,44 @@
 \ simpleForth i386 backend
 
 \ alter substitutes non-letter characters by upper case letters (to aid assemblers to deal with labels).
-: replace ( c -- c d )
-    'A' swap ''' case? ?exit nip
-    'B' swap '\' case? ?exit nip
-    'C' swap ':' case? ?exit nip
-    'D' swap '.' case? ?exit nip
-    'E' swap '=' case? ?exit nip
-    'F' swap '[' case? ?exit nip
-    'G' swap '>' case? ?exit nip
-    'H' swap ']' case? ?exit nip
-    'I' swap '1' case? ?exit nip
-    'J' swap '2' case? ?exit nip
-    'K' swap '/' case? ?exit nip
-    'L' swap '<' case? ?exit nip
-    'M' swap '-' case? ?exit nip
-    'N' swap '#' case? ?exit nip
-    'O' swap '0' case? ?exit nip
-    'P' swap '+' case? ?exit nip
-    'Q' swap '?' case? ?exit nip
-    'R' swap '"' case? ?exit nip
-    'S' swap '!' case? ?exit nip
-    'T' swap '*' case? ?exit nip   
-    'U' swap '(' case? ?exit nip
-    'V' swap '|' case? ?exit nip
-    'W' swap ',' case? ?exit nip
+: replace ( c1 -- c2 c3 2 | c2 1 )
+    >r
+    'A' 1 r> ''' case? ?exit >r 2drop
+    'B' 1 r> '\' case? ?exit >r 2drop
+    'C' 1 r> ':' case? ?exit >r 2drop
+    'D' 1 r> '.' case? ?exit >r 2drop
+    'E' 1 r> '=' case? ?exit >r 2drop
+    'F' 1 r> '[' case? ?exit >r 2drop
+    'G' 1 r> '>' case? ?exit >r 2drop
+    'H' 1 r> ']' case? ?exit >r 2drop
+    'I' 1 r> '1' case? ?exit >r 2drop
+    'J' 1 r> '2' case? ?exit >r 2drop
+    'K' 1 r> '/' case? ?exit >r 2drop
+    'L' 1 r> '<' case? ?exit >r 2drop
+    'M' 1 r> '-' case? ?exit >r 2drop
+    'N' 1 r> '#' case? ?exit >r 2drop
+    'O' 1 r> '0' case? ?exit >r 2drop
+    'P' 1 r> '+' case? ?exit >r 2drop
+    'Q' 1 r> '?' case? ?exit >r 2drop
+    'R' 1 r> '"' case? ?exit >r 2drop
+    'S' 1 r> '!' case? ?exit >r 2drop
+    'T' 1 r> '*' case? ?exit >r 2drop
+    'U' 1 r> '(' case? ?exit >r 2drop
+    'V' 1 r> '|' case? ?exit >r 2drop
+    'W' 1 r> ',' case? ?exit >r 2drop
     \ also 'X' for machine code
-    'Y' swap ')' case? ?exit nip
-    'Z' swap ';' case? ?exit nip
+    'Y' 1 r> ')' case? ?exit >r 2drop
+    'Z' 1 r> ';' case? ?exit >r 2drop
+    'U' 'T' 2 r> '{' case? ?exit >r drop 2drop
+    'T' 'Y' 2 r> '}' case? ?exit >r drop 2drop
+    r> 1
 ;
 
 \ alter substitutes all non-letter characters by upper case letters.
 : alter ( S1 -- S2 )
     '_' 1 rot ?dup 0= ?exit nip nip
     \ dup 0= ?exit
-    swap >r 1- alter  r> replace  swap 1+ ;
+    swap >r 1- alter  r> swap >r replace r> + ;
 
 \ ------------
 \ output words

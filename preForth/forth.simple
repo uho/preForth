@@ -35,8 +35,11 @@
 : negate ( n1 -- n2 )
     0 swap - ;
 
+: 2@ ( addr -- x1 x2 )
+   dup cell+ @ swap @ ;
 
-
+: 2! ( x1 x2 -- addr )
+   swap over cell+ ! ! ;
 
 \ number output
 \ -------------
@@ -57,13 +60,15 @@
 |: 10u/mod ( n -- r q )
    0 1 (10u/mod drop  ;
 
-|: (u. ( u1 -- )
-   ?dup 0= ?exit 10u/mod (u. '0' + emit ;
+|: ((u. ( u1 -- )
+   ?dup 0= ?exit 10u/mod ((u. '0' + emit ;
 
 \ display unsigned number
-: u. ( u -- )
-   dup (u. ?exit '0' emit ;
+|: (u. ( u -- )
+   dup ((u. ?exit '0' emit ;
 
+: u. ( u -- )
+   (u. space ;
 
 |: (. ( n -- n' )
    dup 0< 0= ?exit '-' emit negate ;
@@ -100,8 +105,14 @@
 : 2drop ( x1 x2 -- )
     drop drop ;
 
-: 2dup ( x1 x2 -- x1 x2 )
+: 2dup ( x1 x2 -- x1 x2 x1 x2 )
     over over ;
+
+: 2swap ( x1 x2 x3 x4 -- x3 x4 x1 x2 )
+    >r rot rot r> rot rot ;
+
+: 2over ( x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2 )
+    >r >r 2dup r> r> 2swap ; 
 
 : compare ( c-addr1 u1 c-addr2 u2 -- n )
     rot 
@@ -134,7 +145,7 @@
     2drop -1 ; 
 
 : .s ( i*x -- i*x )
-    depth 0= ?exit  >r .s r> dup . space ;
+    depth 0= ?exit  >r .s r> dup . ;
 
 \ TODO prefix handling
 
@@ -147,6 +158,13 @@
       r> @
     REPEAT
     nip nip ;
+
+: ' ( <name> -- xt )
+   parse-name  last @ find-name dup 0= ?exit l>interp ;
+
+immediate: ['] ( <name> -- )
+   ' dup 0= IF '?' emit tail restart exit THEN ['] lit , , ;
+
 
 : cells ( n -- m )
     dup + dup +  ;
@@ -169,6 +187,9 @@
 : l>interp ( link -- xt )
     l>name  dup cell+ swap @ + ;
 
+: >body ( xt -- body )
+    cell+ ;
+
 : .name ( addr -- )
     dup cell+ swap @ type ;
 
@@ -183,6 +204,9 @@
 
 : min ( n1 n2 -- n3 )
    2dup > IF swap THEN drop ;
+
+: max ( n1 n2 -- n3 )
+   2dup < IF swap THEN drop ;
 
 : accept ( c-addr +n1 -- +n2 )
    dup 0= IF nip exit THEN
@@ -348,7 +372,7 @@ immediate: \ ( -- )
 
 : parse-name ( -- c-addr u )
    source >in @ /string
-   bl skip  2dup bl scan  source nip over - >in !    nip - ;
+   bl skip  2dup bl scan  source nip  2dup swap - 1+ min >in !    nip - ;
 
 : interpret ( -- )
    0 0 BEGIN handlers @ execute 2drop  parse-name dup 0= UNTIL 2drop ;
@@ -360,13 +384,9 @@ immediate: \ ( -- )
 |: .ok ( -- )
     space 'o' emit 'k' emit ;
 
-: clearstack ( -- )
-   BEGIN depth 0< WHILE 0 REPEAT
-   BEGIN depth WHILE drop REPEAT ;
-
-\ : t{ ;
-\ : --> ;
-\ : t} ;
+: empty-stack ( i*x -- )
+    BEGIN depth 0< WHILE    0 REPEAT
+    BEGIN depth    WHILE drop REPEAT ;
 
 : +! ( n addr -- )
    dup >r @ + r> ! ;
@@ -378,6 +398,9 @@ variable dp
 
 : allot ( n -- )
    dp +! ;
+
+: c, ( c -- )
+   here  1       allot  c! ;
 
 : , ( x -- )
    here  1 cells allot  ! ;
@@ -396,12 +419,18 @@ variable dp
    REPEAT
    2drop ;
 
+: place ( c-addr1 u c-addr2 -- )
+   2dup >r >r 1+ swap cmove  r> r> c! ;
+
 : header ( c-addr u -- )
    here last @ , last !
    0 ,   \ flags
    dup , \ len
    here swap dup allot
    cmove ;
+
+: create ( <name> -- )
+   parse-name header ['] dp @ , ;
 
 : variable ( <name> -- )
    parse-name header ['] dp @ , 0 , ;
@@ -445,13 +474,13 @@ immediate: REPEAT ( addr1 addr2 -- )
    0 UNTIL ;
 
 : quit ( -- )
-   [ clearstack restart ;
+   [ empty-stack restart ;
 
 create banner ( -- addr )
   5 c,  'F' c, 'o' c, 'r' c, 't' c, 'h' c,
 
 1 constant major ( -- x )
-2 constant minor ( -- x )
+3 constant minor ( -- x )
 0 constant patch ( -- x )
 
 |: .version ( -- )
@@ -476,6 +505,8 @@ create banner ( -- addr )
   quit
 ;
 
+: spaces ( n -- )
+   BEGIN ?dup WHILE space 1- REPEAT ;
 
 code * ( n1 n2 -- n3 )
    pop eax
@@ -484,4 +515,177 @@ code * ( n1 n2 -- n3 )
    push eax
    next
 ;
+
+: fac ( n -- n! )
+   cr dup spaces dup .  
+   dup 1 = ?exit dup >r dup 1- fac *  
+   cr  r> spaces dup . ;
+
+: ", ( c-addr len -- )
+    dup c, BEGIN dup WHILE >r count c, r> 1- REPEAT 2drop ;
+
+|: (." ( -- )
+    r> count 2dup + >r type ;
+
+immediate: ." ( -- )
+   ['] (." ,
+   '"' parse ", ; 
+
+: 0=exit ( -- )
+   ['] 0=  ['] ?exit ;
+
+immediate: FOR ( n -- )
+   ['] BEGIN execute  
+   ['] >r compile,  ;
+
+immediate: NEXT ( -- )
+   ['] r> compile,
+   ['] 1- compile,
+   ['] dup compile,
+   ['] 0< compile,
+   ['] UNTIL execute 
+   ['] drop compile, ; 
+
+
+\ immediate: r@ ( -- )
+\   ['] r> compile,
+\   ['] dup compile,
+\   ['] >r compile, ;
+
+: r@ ( -- x )
+    r> r> dup >r swap >r ;
+
+|: "lit ( -- c-addr len )
+    r> count 2dup + >r ; 
+
+immediate: s" ( -- )
+    ['] "lit compile,   '"' parse ",  ;
+
+: ," ( ccc" -- )
+    '"' parse  here over 1+ allot place ;
+
+code / ( n1 n2 -- n3 )
+        pop ecx
+        pop eax
+        xor edx,edx
+        and eax,eax
+        jns div1
+        dec edx
+div1:   idiv ecx
+        push eax
+        next
+;
+ 
+code 2/ ( n1 -- n2 )
+   pop eax
+   sar eax,1
+   push eax
+   next
+;
+
+
+\ Some arithmetic
+
+: sqrt ( x² -- x )
+    1 BEGIN  2dup /  over - 2 / 
+         dup
+      WHILE
+         +
+      REPEAT drop nip ;
+
+: sqr ( x -- x² ) 
+    dup * ;
+
+: pyt ( a b -- c )  
+    sqr swap sqr +  sqrt ;
+
+
+\ Dump utility
+
+|: .hexdigit ( x -- )
+     dup 10 < IF '0' + ELSE  10 - 'A' + THEN emit ;  
+
+|: .hex ( x -- )
+   dup 240 and  2/ 2/ 2/ 2/ .hexdigit   15 and .hexdigit ; 
+
+|: .addr ( x -- )
+   ?dup 0= ?exit dup 2/ 2/ 2/ 2/ 2/ 2/ 2/ 2/  .addr  .hex ;
+
+|: b/line ( -- x )
+   16 ;
+
+|: .h ( addr len -- )
+   b/line min dup >r
+   BEGIN \ ( addr len )
+     dup
+   WHILE \ ( addr len )
+     over c@ .hex space  1 /string
+   REPEAT 2drop
+   b/line r> - 3 * spaces ; 
+
+|: .a ( addr1 len1 -- )
+   b/line min
+   BEGIN \ ( addr len )
+     dup
+   WHILE 
+     over c@ dup 32 < IF drop '.' THEN emit
+     1 /string
+   REPEAT 2drop ;
+
+: d ( addr len1 -- addr len2 )
+   over .addr ':' emit space   2dup .h space space  2dup .a dup  b/line  min /string 
+;
+
+
+: dump ( addr len -- )
+   BEGIN
+     dup
+   WHILE \ ( addr len )
+     cr d 
+   REPEAT 2drop ;  
+
+: :smile: ( -- )
+   226 emit 152 emit 186 emit ;
+
+\ Tester
+
+\ : t{ ;
+\ : --> ;
+\ : t} ;
+
+variable actual-depth
+( actual-results ) 
+   80 allot   \ 20 cells allot
+
+: nth-result ( n -- addr )
+   cells actual-depth + ;
+
+: error ( i*x c-addr u -- )
+   cr   source type space   type empty-stack ;
+
+: t{ ( i*x -- )
+   empty-stack ;
+
+: -> ( -- )
+   depth actual-depth !  
+   BEGIN depth WHILE  depth nth-result !  REPEAT ;
+
+create wrong ( -- addr )
+    23 c,
+    'w' c, 'r' c, 'o' c, 'n' c, 'g' c,  32 c, 
+    'n' c, 'u' c, 'm' c, 'b' c, 'e' c, 'r' c,  32 c, 
+    'o' c, 'f' c,  32 c,
+    'r' c, 'e' c, 's' c, 'u' c, 'l' c, 't' c, 's' c, 
+
+create incorrect ( -- addr ) 
+    16 c,
+    'i' c, 'n' c, 'c' c, 'o' c, 'r' c, 'r' c, 'e' c, 'c' c, 't' c, 32 c,
+    'r' c, 'e' c, 's' c, 'u' c, 'l' c, 't' c,  
+ 
+
+: }t ( i*x -- )
+   depth actual-depth @ - IF  wrong count  error  exit THEN
+   BEGIN depth WHILE  depth nth-result @ - IF  incorrect count error  exit THEN  REPEAT ;
+
+
 
