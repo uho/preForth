@@ -1,0 +1,4 @@
+*.o
+*.Darwin
+*.linux
+*.seed
