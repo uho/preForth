@@ -1,0 +1,384 @@
+\ seedForth - seed it, feed it, grow it - i386 (32 bit) ITC flavour   uho 2018-04-13
+\ ----------------------------------------------------------------------------------
+\
+\  - registers:
+\      EAX, EDX  general purpose
+\      ESI  instruction pointer
+\      EBP  return stack pointer
+\      ESP  data stack pointer
+
+prelude
+;;; This is seedForth - a small, potentially interactive Forth, that dynamically
+;;; bootstraps from a minimal kernel.
+;;;
+;;;    cat seedForth.seed - | ./seedForth
+;;;
+;;; .seed-files are in byte-tokenized source code format.
+;;;
+;;; Use the seedForth tokenizer to convert human readable source code to byte-token form.
+;
+
+prefix
+format ELF 
+
+section '.bss' executable writable
+
+       DD 10000 dup(0)
+stck:  DD 16 dup(0)
+  
+       DD 10000 dup(0)
+rstck: DD 16 dup(0)
+
+_dp:    DD _start  ; dictionary pointer: points to next free location in memory
+	; free memory starts at _start
+
+_hp:    DD 0       ; head pointer: points to first unused head
+_head:  DD 10000 dup (0)
+
+
+section '.text' executable writable align 4096
+
+public main 
+extrn putchar
+extrn getchar
+extrn fflush
+extrn exit
+extrn mprotect
+  
+macro next  {
+       lodsd
+       jmp dword [eax]
+}
+
+origin:
+
+main:  cld
+       mov esp, dword stck
+       mov ebp, dword rstck
+
+       ; make section writable
+       push ebp
+       mov ebp, esp
+       sub esp, 16
+       and esp, 0xfffffff0
+       mov dword [esp+8], 7  ; rwx
+       mov eax, memtop
+       sub eax, origin
+       mov dword [esp+4], eax
+       mov dword [esp], origin
+       call mprotect
+       mov esp, ebp
+       pop ebp
+       or eax, eax     ; error?   
+       jz main0
+       push ebp  
+       mov ebp, esp
+       push eax
+       and esp, 0xfffffff0
+       ; call __error    ; get error code on Mac OS
+       ; mov eax, [eax]
+       ; call __errno_location ; get error on Linux
+       ; mov eax, [eax]
+       mov [esp], eax
+       call exit
+
+main0: mov esi, main1
+       next
+
+main1: DD _cold
+       DD _bye  
+  
+_nest:  lea ebp, [ebp-4]
+        mov [ebp], esi
+        lea esi, [eax+4]
+        next
+
+_dodoes: ; ( -- addr ) \ call me
+        lea ebp, [ebp-4]  ; push IP
+        mov [ebp], esi
+        pop esi           ; set IP to caller
+_dovar: ; ( -- addr )
+        lea eax,[eax+4] ; to parameter field
+	push eax
+        next
+
+_O = 0
+  
+;
+
+
+code bye ( -- )
+    push ebp  
+    mov ebp, esp  
+    and esp, 0xfffffff0
+    mov eax, 0
+    mov [esp], eax
+    call exit
+;
+    
+code emit ( c -- )
+    pop eax
+
+    push ebp  
+    mov  ebp, esp
+    push eax 
+    and  esp, 0xfffffff0
+
+    mov dword [esp], eax
+    call putchar
+
+    mov eax, 0
+    mov [esp], eax
+    call fflush   ; flush all output streams
+
+    mov esp, ebp  
+    pop ebp  
+    next
+;
+
+code key ( -- c )
+        push ebp  
+        mov  ebp, esp
+        and  esp, 0xfffffff0
+        
+        call getchar
+        mov esp, ebp
+        pop ebp
+        cmp eax,-1
+        jnz key1
+        mov eax,4
+key1:   push eax
+        next
+;
+
+code dup ( x -- x x )
+        pop eax
+        push eax
+        push eax
+        next
+;
+
+code swap ( x y -- y x )
+        pop edx
+        pop eax
+        push edx
+        push eax
+        next
+;
+
+code drop ( x -- )
+        pop eax
+        next
+;
+
+code 0< ( x -- flag )
+        pop eax
+        or eax, eax
+        mov eax, 0
+        jns zless1
+        dec eax
+zless1: push eax
+        next
+;
+
+code ?exit ( f -- )
+        pop eax
+        or eax, eax
+        jz qexit1
+        mov esi, [ebp]
+        lea ebp,[ebp+4]
+qexit1: next
+;
+
+code >r ( x -- ) ( R -- x )
+        pop ebx
+        lea ebp,[ebp-4]
+        mov [ebp], ebx
+        next
+;
+
+code r> ( R x -- ) ( -- x )
+        mov eax,[ebp]
+        lea ebp, [ebp+4]
+        push eax
+        next
+;
+
+code - ( x1 x2 -- x3 )
+        pop edx
+        pop eax
+        sub eax, edx
+        push eax
+        next
+;
+
+code unnest ( -- )
+        mov esi,[ebp]
+        lea ebp,[ebp+4]
+        next
+;
+
+code lit ( -- )
+        lodsd
+        push eax
+        next
+;
+
+code @ ( addr -- x )
+        pop eax
+        mov eax,[eax]
+	push eax
+        next
+;
+
+code c@ ( c-addr -- c )
+        pop edx
+	xor eax, eax
+        mov al,byte [edx]
+	push eax
+        next
+;
+
+code ! ( x addr -- )
+        pop edx
+        pop eax
+        mov dword [edx],eax
+        next    
+;
+
+code c! ( c c-addr -- )
+        pop edx
+        pop eax
+        mov byte [edx], al
+        next
+;
+
+code execute ( xt -- ) \ native code: >r :
+        pop eax
+        jmp dword [eax]
+;
+
+code branch ( -- )  \ threaded code: r>  @ >r ;
+        lodsd
+        mov esi,eax
+        next
+;
+
+code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
+        pop eax
+        or eax,eax
+        jz _branchX
+	lea esi,[esi+4]
+        next
+;
+
+: negate ( n1 -- n2 )
+   0 swap - ;
+
+: + ( x1 x2 -- x3 )
+   negate - ;
+
+: 0= ( x -- flag )
+   0 swap ?exit drop -1 ;
+
+: ?dup ( x -- x x | 0 )
+   dup 0= ?exit dup ;
+
+: cells ( x1 -- x2 )
+   dup + dup + ;
+
+: +! ( x addr -- )
+   swap >r  dup @ r> +  swap ! ;
+
+: h@ ( i -- addr )
+   cells lit head + @ ;
+
+: h! ( x i -- )
+   cells lit head + ! ;
+
+: h, ( x -- )
+   lit hp @  h!   1 lit hp +! ;
+
+: here ( -- addr )
+   lit dp @ ;
+
+: allot ( n -- )
+   lit dp +! ;
+
+: , ( x -- )
+   here   1 cells allot  ! ;
+
+: c, ( c -- )
+   here   1 allot c! ;
+
+: interpreter ( -- )
+   key h@ execute   tail interpreter ;
+
+: compiler ( -- )
+   key ?dup 0= ?exit h@ ,   tail compiler ;
+
+: fun ( -- )
+   here h,  lit nest ,  compiler ;
+
+
+: create ( -- )
+   here h, lit dovar , ;
+
+: ,call ( x -- )
+   232 c, here >r  0 ,   here -   r> ! ;  \ call near 32bit
+
+: does ( -- )
+   r>   lit hp @ 1 - h@  ! ; \ set code field of last defined word
+
+: does> ( -- )
+   lit does ,
+   lit dodoes ,call ;
+
+
+: cold ( -- )
+   's' emit 'e' dup emit emit  'd' emit 10 emit
+   lit bye         h, \ 0   00
+   lit emit        h, \ 1   01
+   lit key         h, \ 2   02
+   lit dup         h, \ 3   03
+   lit swap        h, \ 4   04
+   lit drop        h, \ 5   05
+   lit 0<          h, \ 6   06
+   lit ?exit       h, \ 7   07
+   lit >r          h, \ 8   08
+   lit r>          h, \ 9   09
+   lit -           h, \ 10  0A
+   lit unnest      h, \ 11  0B
+   lit lit         h, \ 12  0C
+   lit @           h, \ 13  0D
+   lit c@          h, \ 14  0E
+   lit !           h, \ 15  0F
+   lit c!          h, \ 16  10
+   lit execute     h, \ 17  11
+   lit branch      h, \ 18  12
+   lit ?branch     h, \ 19  13
+   lit negate      h, \ 20  14
+   lit +           h, \ 21  15
+   lit 0=          h, \ 22  16
+   lit ?dup        h, \ 23  17
+   lit cells       h, \ 24  18
+   lit +!          h, \ 25  19
+   lit h@          h, \ 26  1A
+   lit h,          h, \ 27  1B
+   lit here        h, \ 28  1C
+   lit allot       h, \ 29  1D
+   lit ,           h, \ 30  1E
+   lit c,          h, \ 31  1F
+   lit fun         h, \ 32  20
+   lit interpreter h, \ 33  21
+   lit compiler    h, \ 34  22
+   lit create      h, \ 35  23
+   lit does>       h, \ 36  24
+   lit cold        h, \ 37  25
+   tail interpreter ;
+
+pre
+ _start: DB 43
+	 DD 10000 dup (0)
+ memtop: DD 0
+;

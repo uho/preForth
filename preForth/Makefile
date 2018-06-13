@@ -25,6 +25,11 @@ all: preForth simpleForth forth runforth
 runforth: ./forth hi.forth
 	cat hi.forth - | ./forth
 
+.PHONY=runseedforth
+runseedforth: seedForth seedForthDemo.seed
+	cat seedForthDemo.seed | ./seedForth
+
+
 .PHONY=test
 test: preForth.pre preForth-$(PLATFORM)-backend.pre load-$(PLATFORM)-preForth.fs 
 	cat preForth-$(PLATFORM)-backend.pre simpleForth.pre | $(HOSTFORTH) load-$(PLATFORM)-preForth.fs 
@@ -44,6 +49,9 @@ else
   UNIXFLAVOUR=$(shell uname -s)
   EXT=asm
 endif
+
+seedForth-i386.asm: seedForth-i386.pre preForth
+	cat seedForth-i386.pre | ./preForth >seedForth-i386.asm
 
 # preForth connected to stdin - output to preForth.asm
 preForth.asm: preForth.pre preForth-$(PLATFORM)-backend.pre load-$(PLATFORM)-preForth.fs
@@ -130,7 +138,19 @@ simpleForth: simpleForth.$(UNIXFLAVOUR)
 %.asm: %.simple simpleForth simpleForth-$(PLATFORM)-rts.simple simpleForth-rts.simple
 	cat simpleForth-$(PLATFORM)-rts.simple simpleForth-rts.simple $< | ./simpleForth >$@
 
+# ------------------------------------------------------------------------
+# seedForth
+# ------------------------------------------------------------------------
+seedForth.$(EXT): seedForth-$(PLATFORM).pre preForth
+	cat seedForth-$(PLATFORM).pre | ./preForth >seedForth.$(EXT)
+
+seedForth: seedForth.$(UNIXFLAVOUR)
+	cp seedForth.$(UNIXFLAVOUR) seedForth
+
+%.seed: %.seedsource seedForth-tokenizer.fs
+	gforth seedForth-tokenizer.fs $<
+
 
 .PHONY=clean
 clean:
-	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo simpleForthDemo simpleForth preForth forth
+	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo simpleForthDemo simpleForth preForth forth seedForth seedForthDemo.seed

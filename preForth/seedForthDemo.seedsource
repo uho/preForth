@@ -1,0 +1,249 @@
+\ seedForth demo program source
+\
+\ tokenize with
+\
+\ gforth seedForth-tokinzer.fs seedForthDemo.seedsource
+\
+\ then pipe into seedForth:
+\
+\ cat seedForthDemo.seed | ./seedForth
+\
+
+program seedForthDemo.seed
+
+'o' # 'k' # \ push stack marker. Used eventually below.
+
+': ?ok ( o k -- o k )  10 #, emit  >r dup emit r> dup  emit ;'
+
+?ok
+
+10 # emit  '*' # dup emit emit             \ interpret numbers and words
+
+': 3*  dup dup + + ;'           \ defintions
+': 1-  1 #, - ;'                \ compile number and words
+
+\ output utilities
+': cr    ( -- ) 10 #,  emit ;'
+': space ( -- ) 32 #,  emit ;'
+': .digit ( n -- )  '0' #, + emit ;'
+
+': star ( -- ) '*' #, emit ;'
+
+': stars ( n -- )
+    ?dup IF BEGIN star 1- ?dup 0= UNTIL THEN ;'  \ standard Forth control structures
+
+': dash ( -- ) '-' #, emit ;'
+
+': dashes ( n -- )  BEGIN ?dup WHILE dash 1- REPEAT ;'
+
+': --- ( -- ) cr 80 #, dashes ;'
+
+': space ( -- ) 32 #, emit ;'
+
+': spaces ( n -- )
+    BEGIN ?dup 0= ?exit space 1- AGAIN ;' \ another loop variation
+
+---
+
+': countdown ( n -- )
+    ?dup 0= ?exit  dup cr .digit  1- countdown ;'  \ recursion
+
+cr  '2' # emit  '*' # emit  '3' # emit  '=' # emit 2 #  3*  .digit      \ interpret new definitions
+
+9 # countdown
+
+---
+
+': another-count-down ( n -- )
+     BEGIN dup WHILE dup cr .digit 1- REPEAT drop ;' \ standard Forth control structures
+
+5 # another-count-down
+
+---
+
+': yes? ( f -- )
+    IF 'Y' #, ELSE 'N' #, THEN emit ;'  \ standard Forth conditionals
+
+cr 0 # yes?  -1 # yes?   1 # yes?
+
+?ok  \ display ok again (for error analysis)
+
+---
+
+\ utility words
+
+': 1+ ( x1 -- x2 )  1 #, + ;'
+
+': over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;'
+
+': 2drop ( x1 x2 -- )  drop drop ;'
+
+': nip ( x1 x2 -- x2 ) swap drop ;'
+
+\ ': c, ( c -- )  here  1 #, allot  c! ;'
+
+': /string ( x1 x2 x3 -- x4 x5 )   swap over - >r + r> ;'
+
+': count ( addr -- c-addr u )  dup 1+ swap c@ ;'
+
+': type ( c-addr u -- )
+    BEGIN dup WHILE  over c@ emit  1 #, /string  REPEAT  2drop ;'
+
+here  5 # c,   'H' # c,  'e' # c,  'l' # dup c, c,   'o' # c,
+
+cr count type
+
+\ more utility words
+
+': < ( n1 n2 -- f )  - 0< ;'
+': > ( n1 n2 -- f )  swap < ;'
+': = ( x1 x2 -- f )  - 0= ;'
+
+\ hex number output
+
+': .hexdigit ( n -- )  dup 9 #, > IF lit [ 'A' # 10 # - , ] ELSE '0' #, THEN + emit ;'
+
+': 2* ( x1 -- x2 )  dup + ;'
+
+
+\ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
+': u2/ ( x1 -- x2 )
+   0 #, 8 #, CELLS 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;'
+
+': odd? ( x1 -- f )  dup u2/ 2* = 0= ;'
+
+': 2/mod ( x1 -- x2 r )  \ swapped results
+   dup u2/ swap odd? negate ;'
+
+': 16/mod ( x -- x r )  \ swapped results
+   2/mod >r  2/mod >r  2/mod >r  2/mod  2* r> + 2* r> + 2* r> + ;'
+
+': #### ( x -- )
+   16/mod >r 16/mod >r 16/mod >r  16/mod >r  16/mod >r  16/mod >r 16/mod >r
+      .hexdigit  r> .hexdigit   r> .hexdigit  r> .hexdigit  r> .hexdigit
+   r> .hexdigit  r> .hexdigit   r> .hexdigit  space ;'
+
+': (.) ( x -- )
+   ?dup IF  16/mod >r (.) r> .hexdigit THEN ;'
+
+': u. ( x -- )
+   ?dup IF (.) ELSE '0' #, emit THEN space ;'
+
+': . ( n -- )  dup 0< IF '-' #, emit negate THEN u. ;'
+
+cr 100 # negate .  \ display negative number
+
+cr here u.         \ display larger number
+cr
+
+?ok
+
+---
+
+\ create and defining words
+
+fun: V create 4 # ,   \ new token for tokenizer and new variable like definition
+
+cr V @ u.  \  get value:  4
+
+?ok
+
+---
+
+\ We must split defining words into two parts.
+\  1) Build up the new word with function index in seedForth
+\  2) Let the tokenizer create its symbol table entry (then invoke 1)
+
+': _value ( x -- ) create , [ does> ] @ ;'  \ a seedForth defining word 1)  \ execute does> as it is a compiling word
+: Value ( <name> x -- )  fun: _value ; \ macro 2)
+
+
+': _variable ( x -- )  create 0 #, , [ does> ]    ;'  \ a seedForth defining word
+: Variable  ( <name> -- ) fun: _variable ; \ macro
+
+fun: V1  5 # _value
+cr V1 u.  \ use value: 5
+6 # Value v4   v4 u.  \ values are initialized from stack: 6
+
+
+fun: V2  _variable
+7 # V2 +!  V2 @ u.   8 # V2 !  V2 @ u.  \ fetch and store value: 7 8
+
+
+': doconst ( x -- ) [ does> ] @ ;'  \ a does>  w/o creat path sets behavour
+: Constant  ( <name> x -- ) fun: create , doconst ; \ macro
+
+fun: nine create
+  9 # ,   \ parameter field
+  doconst \ set behaviour of last word
+
+nine . \ display constant: 9
+
+0 # Constant zero  zero .  \ constants are similar to values here: 0
+
+?ok
+---
+
+
+\ structured data
+
+': _field ( addr -- addr' ) create over , + [ does> ] @ + ;'
+: Field ( <name> offset size -- offset' ) fun: _field ;
+
+\ define structure
+0 #
+
+1 # cells Field >name
+2 # cells Field >date
+
+Value #person
+
+fun: p1 create #person allot
+
+
+
+cr p1 u.       \ start of structure
+
+p1 >name u.    \ address calculation
+
+p1 >date u.    \ address calculation
+
+cr #person u.  \ size of structure
+
+?ok
+---
+
+\ Defered words
+
+': dodefer ( -- )  [ does> ] @ execute ;'
+: Defer  ( <name> -- ) fun: create ] star [  dodefer ;    \ macro, star is default behaviour
+
+': >body ( xt -- body )  1 #, cells + ;'
+
+': ' ( --  x )  key h@ ;'
+
+': is ( xt -- )  ' >body ! ;'
+
+
+Defer d1
+
+cr d1 d1 d1 \ display stars
+
+cr ' dash dup .  execute            \ get execution token of definition
+
+' dash is d1 \ set behaviour of deferred word
+
+cr d1 d1 d1 \ now display dashes
+
+?ok
+
+cr 80 # stars
+
+
+?ok
+cr
+
+2drop
+
+
+end
