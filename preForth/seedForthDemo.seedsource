@@ -9,7 +9,15 @@
 \ cat seedForthDemo.seed | ./seedForth
 \
 
+
 program seedForthDemo.seed
+
+
+
+\ : compiler ( -- )
+\    key ?dup 0= ?exit compile, tail compiler ;
+
+
 
 'o' # 'k' # \ push stack marker. Used eventually below.
 
@@ -215,21 +223,26 @@ cr #person u.  \ size of structure
 
 \ Defered words
 
+': ' ( --  x )  key ;'
+
+' star constant 'star  cr 'star .
+
 ': dodefer ( -- )  [ does> ] @ execute ;'
-: Defer  ( <name> -- ) fun: create ] star [  dodefer ;    \ macro, star is default behaviour
+: Defer  ( <name> -- ) fun: create 'star , dodefer ;    \ macro, star is default behaviour
 
-': >body ( xt -- body )  1 #, cells + ;'
-
-': ' ( --  x )  key h@ ;'
+': >body ( xt -- body )  h@  1 #, cells + ;'
 
 ': is ( xt -- )  ' >body ! ;'
 
+cr ' dash dup .  execute            \ get execution token of definition
+cr
 
 Defer d1
 
+\ ' star is d1
+
 cr d1 d1 d1 \ display stars
 
-cr ' dash dup .  execute            \ get execution token of definition
 
 ' dash is d1 \ set behaviour of deferred word
 
@@ -286,6 +299,13 @@ cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emi
 t{ 3 # 4 # + -> 7 # }t
 t{ 3 # 4 # + -> 8 # }t
 t{ 3 # 4 # + -> 1 # 2 # }t
+
+fun: twice
+new  key dup compile,  key + compile,  key unnest compile,
+
+t{ 2 # twice -> 4 # }t
+
+cr 2 # twice .
 
 
 cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr

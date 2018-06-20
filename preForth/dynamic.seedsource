@@ -1,0 +1,176 @@
+\ Klaus Schleisiek's dynamic memory allocation (FORML'88) seedForth-version uh 2018-06-20
+
+program dynamic.seed
+
+\ extend seedForth core with words required by dynamic memory
+\ -------------------------------------
+
+': _variable ( x -- )  create 0 #, , [ does> ]    ;'  \ a seedForth defining word
+: Variable  ( <name> -- ) fun: _variable ; \ macro
+
+': doconst ( x -- ) [ does> ] @ ;'  \ a does>  w/o creat path sets behavour
+: Constant  ( <name> x -- ) fun: create , doconst ; \ macro
+
+': over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;'
+
+': 2dup ( x1 x2 -- x1 x2 x1 x2 ) over over ;'
+': 2drop ( x1 x2 --  ) drop drop ;'
+
+
+': < ( u1 u2 -- f )  - 0<  ;'
+': > ( u1 u2 -- f )  swap < ;'
+': u< < ;'
+': = ( x1 x2 -- f ) - 0=  ;'
+': max ( x1 x2 -- x3 )  2dup < IF swap THEN drop ;'
+': rot ( x1 x2 x3 -- x2 x3 x1 ) >r swap r> swap ;'
+
+': move ( c-addr1 c-addr2 u -- )
+    BEGIN dup WHILE >r over c@ over c!  1 #, + swap 1 #, + swap r> 1 #, - REPEAT drop 2drop ;'
+
+: r@ ( -- x )  r> dup >r ;
+
+': cell+ ( addr1 -- addr2 )  1 #, cells + ;'
+
+': 2* ( x1 -- x2 ) dup + ;'
+': 256* ( x1 -- x2 ) 2* 2* 2* 2* 2* 2* 2* 2* ;'
+    
+
+\ dynamic memory
+\ -------------------------------------
+
+Variable anchor
+
+50 # Constant waste
+
+128 # 256* 256* 256* ( 32bit ) Constant #free  \ sign bit
+#free 1 # - ( 31bit ) Constant #max
+
+
+': size ( mem -- size ) 1 #, cells - @ #max and ;'
+
+': addr&size ( mem -- mem size ) dup size ;'
+
+': above ( mem -- >mem )   addr&size + 2 #, cells + ;'
+
+': use ( mem size -- )
+    dup >r swap  2dup 1 #, cells - !  r> #max and + ! ;'
+
+': release ( mem size -- )   #free or use ;'
+
+': fits? ( size -- mem | false ) >r anchor @
+    BEGIN addr&size  r@ u< 0=
+         IF r> drop unnest THEN
+         @ dup anchor @ =
+    UNTIL 0= r> drop ;'
+
+': link ( mem >mem <mem -- )
+    >r 2dup cell+ !  over !  r> 2dup !  swap cell+ ! ;'
+
+': @links ( mem -- <mem mem> )  dup @  swap cell+ @ ;'
+
+': setanchor ( mem -- mem ) 
+    dup anchor @ = IF  dup @ anchor ! THEN ;'
+
+': unlink ( mem -- ) setanchor  @links 2dup !  swap cell+ ! ;'
+
+
+': allocate ( size -- mem ior )
+    3 #, cells max dup >r  fits? ?dup 0= IF r> -8 #, unnest THEN ( "dictionary overflow" )
+    addr&size r@ -  dup waste u<
+    IF  drop  dup @ over unlink  over addr&size use
+    ELSE 2 #, cells -   over r@ use
+         over above   dup rot release
+         2dup swap @links link THEN
+    r> drop  anchor ! 0 #, ;'
+
+': free ( mem -- ior )
+    addr&size  over 2 #, cells -  @ dup 0<
+    IF #max and 2 #, cells +  rot over - rot rot +
+    ELSE  drop  over anchor @  dup cell+ @  link THEN
+    2dup + cell+ dup @ dup 0<
+    IF  #max and swap cell+ unlink  +  2 #, cells +  release 0 #, unnest THEN
+    2drop release 0 #, ;'
+
+': resize ( mem newsize -- mem' ior )
+    over swap  over size  2dup >
+    IF ( mem mem size newsize )  swap allocate ?dup IF >r drop 2drop r>  unnest THEN 
+        dup >r swap move free r> swap unnest THEN
+    2drop drop ;'
+
+': empty-memory ( addr size -- )
+    >r  cell+ dup anchor !   dup 2 #, cells use  dup 2dup link
+    dup above  swap over  dup link
+    dup r> 7 #, cells -  release  above 1 #, cells -  0 #, swap ! ;'
+
+\ : ?memory ( -- ) anchor @ 
+\   cr ." ->: "  BEGIN cr dup u. ." : " addr&size u.        @ dup anchor @ = UNTIL
+\   cr ." <-: "  BEGIN cr dup u. ." : " addr&size u.  cell+ @ dup anchor @ = UNTIL
+\   drop ;
+
+200 # dup  dup + dup + + Constant 1000  \ seedForth stunt to get a large number
+
+': init ( -- )
+    here 1000 ( ! )  ( chars ) dup allot empty-memory ;'
+
+\ Utility words for debugging
+\ ----------------------------
+\ hex number output
+
+': 1-  1 #, - ;'
+': 1+  1 #, + ;'
+': nip  swap drop ;'
+
+': .hexdigit ( n -- )  dup 9 #, > IF lit [ 'A' # 10 # - , ] ELSE '0' #, THEN + emit ;'
+
+': 2* ( x1 -- x2 )  dup + ;'
+
+': space  32 #, emit ;'
+
+
+\ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
+': u2/ ( x1 -- x2 )
+   0 #, 8 #, CELLS 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;'
+
+': odd? ( x1 -- f )  dup u2/ 2* = 0= ;'
+
+': 2/mod ( x1 -- x2 r )  \ swapped results
+   dup u2/ swap odd? negate ;'
+
+': 16/mod ( x -- x r )  \ swapped results
+   2/mod >r  2/mod >r  2/mod >r  2/mod  2* r> + 2* r> + 2* r> + ;'
+
+': #### ( x -- )
+   16/mod >r 16/mod >r 16/mod >r  16/mod >r  16/mod >r  16/mod >r 16/mod >r
+      .hexdigit  r> .hexdigit   r> .hexdigit  r> .hexdigit  r> .hexdigit
+   r> .hexdigit  r> .hexdigit   r> .hexdigit  space ;'
+
+': (.) ( x -- )
+   ?dup IF  16/mod >r (.) r> .hexdigit THEN ;'
+
+': u. ( x -- )
+   ?dup IF (.) ELSE '0' #, emit THEN space ;'
+
+': . ( n -- )  dup 0< IF '-' #, emit negate THEN u. ;'
+
+
+\ Dynamic Memory smoke test
+\ -------------------------------------
+
+#max u.  \ 7FFFFFFF
+#free u. \ 80000000
+
+here .  \ base address
+
+init
+
+here .  \ end address  roughly 1000 abover
+
+100 # allocate . dup . free .  \ ior 0, allocate at address1, ior 0
+100 # allocate . dup .         \ ior 0, allocated at same address1
+100 # allocate . dup . free .  \ ior 0, allocated at new address2 roughly 100 above, ior 0
+100 # allocate . dup .         \ ior 0, allocated at again at address2
+free .   \ free address2 -> ior 0
+free .   \ free address1 -> ior 0
+100 # allocate . dup . free .  \ ior 0, allocated at address1, ior 0
+
+end

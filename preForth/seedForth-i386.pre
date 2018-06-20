@@ -87,8 +87,9 @@ main0: mov esi, main1
 
 main1: DD _cold
        DD _bye  
-  
-_nest:  lea ebp, [ebp-4]
+
+_nest:
+_enter:  lea ebp, [ebp-4]
         mov [ebp], esi
         lea esi, [eax+4]
         next
@@ -181,7 +182,7 @@ zless1: push eax
         next
 ;
 
-code ?exit ( f -- )
+code ?exit ( f -- ) \  high level:  IF exit THEN
         pop eax
         or eax, eax
         jz qexit1
@@ -208,6 +209,22 @@ code - ( x1 x2 -- x3 )
         pop edx
         pop eax
         sub eax, edx
+        push eax
+        next
+;
+
+code or ( x1 x2 -- x3 )
+        pop edx
+        pop eax
+        or eax, edx
+        push eax
+        next
+;
+
+code and ( x1 x2 -- x3 )
+        pop edx
+        pop eax
+        and eax, edx
         push eax
         next
 ;
@@ -253,7 +270,7 @@ code c! ( c c-addr -- )
         next
 ;
 
-code execute ( xt -- ) \ native code: >r :
+code invoke ( addr -- ) \ native code: >r ;
         pop eax
         jmp dword [eax]
 ;
@@ -320,14 +337,23 @@ code depth ( -- n )
 : c, ( c -- )
    here   1 allot c! ;
 
+: compile, ( x -- )
+   h@ , ;
+
+: execute ( x -- )
+   h@ invoke ;
+
 : interpreter ( -- )
-   key h@ execute   tail interpreter ;
+   key execute   tail interpreter ;
 
 : compiler ( -- )
-   key ?dup 0= ?exit h@ ,   tail compiler ;
+   key ?dup 0= ?exit compile, tail compiler ;
+
+: new ( -- )
+   here h,  lit enter , ;
 
 : fun ( -- )
-   here h,  lit nest ,  compiler ;
+   new compiler ;
 
 
 : create ( -- )
@@ -385,6 +411,10 @@ code depth ( -- n )
    lit does>       h, \ 36  24
    lit cold        h, \ 37  25
    lit depth       h, \ 38  26
+   lit compile,    h, \ 39  27
+   lit new         h, \ 40  28
+   lit and         h, \ 41  29
+   lit or          h, \ 42  2A
    tail interpreter ;
 
 pre

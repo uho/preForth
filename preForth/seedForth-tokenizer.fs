@@ -32,7 +32,8 @@ FUN: negate    FUN: +           FUN: 0=        FUN: ?dup		\ 14 15 16 17
 FUN: cells     FUN: +!          FUN: h@        FUN: h,			\ 18 19 1A 1B
 FUN: here      FUN: allot       FUN: ,         FUN: c,			\ 1C 1D 1E 1F
 FUN: fun       FUN: interpreter FUN: compiler  FUN: create		\ 20 21 22 23
-FUN: does>     FUN: cold        FUN: depth				\ 24 25 26
+FUN: does>     FUN: cold        FUN: depth     FUN: compile,	\ 24 25 26 27
+FUN: new       FUN: and         FUN: or
 
 : [ ( -- )  0 SUBMIT ;
 : ] ( -- )  compiler ;
