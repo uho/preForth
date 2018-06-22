@@ -94,13 +94,13 @@ _enter:  lea ebp, [ebp-4]
         lea esi, [eax+4]
         next
 
-_dodoes: ; ( -- addr ) \ call me
+_dodoes: ; ( -- addr )
         lea ebp, [ebp-4]  ; push IP
         mov [ebp], esi
-        pop esi           ; set IP to caller
+        mov esi,[eax-4]   ; set IP
 _dovar: ; ( -- addr )
         lea eax,[eax+4] ; to parameter field
-	push eax
+        push eax
         next
 
 _O = 0
@@ -355,20 +355,17 @@ code depth ( -- n )
 : fun ( -- )
    new compiler ;
 
+: +lit ( hi lo -- hilo )
+    >r  dup + dup + dup + dup + 
+        dup + dup + dup + dup +  r> + ;
 
 : create ( -- )
+   0 , \ dummy does> field
    here h, lit dovar , ;
 
-: ,call ( x -- )
-   232 c, here >r  0 ,   here -   r> ! ;  \ call near 32bit
-
-: does ( -- )
-   r>   lit hp @ 1 - h@  ! ; \ set code field of last defined word
-
-: does> ( -- )
-   lit does ,
-   lit dodoes ,call ;
-
+: does> ( -- ) \ set code field of last defined word
+    r>   lit hp @ 1 - h@  dup >r 1 cells - !   lit dodoes r> !
+; 
 
 : cold ( -- )
    's' emit 'e' dup emit emit  'd' emit 10 emit
@@ -413,8 +410,9 @@ code depth ( -- n )
    lit depth       h, \ 38  26
    lit compile,    h, \ 39  27
    lit new         h, \ 40  28
-   lit and         h, \ 41  29
-   lit or          h, \ 42  2A
+   lit +lit        h, \ 41  29
+   lit and         h, \ 42  2A
+   lit or          h, \ 43  2B
    tail interpreter ;
 
 pre

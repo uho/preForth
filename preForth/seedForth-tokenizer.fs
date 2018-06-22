@@ -17,23 +17,38 @@ VARIABLE OUT
 : END ( -- )
    .S CR 0 SUBMIT OUT @ CLOSE-FILE THROW BYE ;
 
+Variable #FUNS  29 #FUNS !
 
-Variable #FUNS  0 #FUNS !
+: #FUN: ( <name> n -- )
+    CREATE dup , 1+ #FUNS ! DOES> @ SUBMIT ;
+    
 : FUN: ( <name> -- )
-    CREATE #FUNS @ ,  1 #FUNS +!
-  DOES> @ SUBMIT ;
+    #FUNS @ #FUN: ;
 
-FUN: bye       FUN: emit        FUN: key       FUN: dup			\ 00 01 02 03
-FUN: swap      FUN: drop        FUN: 0<        FUN: ?exit		\ 04 05 06 07
-FUN: >r        FUN: r>          FUN: -         FUN: unnest		\ 08 09 0A 0B
-FUN: lit       FUN: @           FUN: c@        FUN: !			\ 0C 0D 0E 0F
-FUN: c!        FUN: execute     FUN: branch    FUN: ?branch		\ 10 11 12 13
-FUN: negate    FUN: +           FUN: 0=        FUN: ?dup		\ 14 15 16 17
-FUN: cells     FUN: +!          FUN: h@        FUN: h,			\ 18 19 1A 1B
-FUN: here      FUN: allot       FUN: ,         FUN: c,			\ 1C 1D 1E 1F
-FUN: fun       FUN: interpreter FUN: compiler  FUN: create		\ 20 21 22 23
-FUN: does>     FUN: cold        FUN: depth     FUN: compile,	\ 24 25 26 27
-FUN: new       FUN: and         FUN: or
+$02 #FUN: key
+$0A #FUN: -
+$29 #FUN: +lit
+
+: byte# ( c -- )
+    ( seedForth) key    
+    SUBMIT ;
+
+: # ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
+     dup 0<    IF  0 byte#   negate recurse  ( seedForth) -  EXIT THEN
+     dup $FF > IF  dup 8 rshift  recurse  $FF and  byte#  ( seedForth ) +lit EXIT THEN
+     byte# ;    
+
+$00 #FUN: bye       $01 #FUN: emit      ( $02 #FUN: key )     $03 #FUN: dup
+$04 #FUN: swap      $05 #FUN: drop        $06 #FUN: 0<        $07 #FUN: ?exit
+$08 #FUN: >r        $09 #FUN: r>       (  $0A #FUN: - )       $0B #FUN: unnest
+$0C #FUN: lit       $0D #FUN: @           $0E #FUN: c@        $0F #FUN: !
+$10 #FUN: c!        $11 #FUN: execute     $12 #FUN: branch    $13 #FUN: ?branch
+$14 #FUN: negate    $15 #FUN: +           $16 #FUN: 0=        $17 #FUN: ?dup
+$18 #FUN: cells     $19 #FUN: +!          $1A #FUN: h@        $1B #FUN: h,
+$1C #FUN: here      $1D #FUN: allot       $1E #FUN: ,         $1F #FUN: c,
+$20 #FUN: fun       $21 #FUN: interpreter $22 #FUN: compiler  $23 #FUN: create
+$24 #FUN: does>     $25 #FUN: cold        $26 #FUN: depth     $27 #FUN: compile,
+$28 #FUN: new     ( $29 #FUN: +lit  )     $2A #FUN: and       $2B #FUN: or      
 
 : [ ( -- )  0 SUBMIT ;
 : ] ( -- )  compiler ;
@@ -41,7 +56,6 @@ FUN: new       FUN: and         FUN: or
 : ': ( <name> -- ) FUN: fun ;
 : ;' ( -- ) unnest [ ;
 
-: # ( x -- )  key  SUBMIT ;    \ x is placed in the token file as a single byte, as defined by key/SUBMIT
 : #, ( x -- ) lit [ # , ] ;    \ x is placed in memory as a cell-sized quantity (32/64 bit), as defined by comma
 
 \ Control structure macros

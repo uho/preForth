@@ -12,12 +12,8 @@
 
 program seedForthDemo.seed
 
-
-
 \ : compiler ( -- )
 \    key ?dup 0= ?exit compile, tail compiler ;
-
-
 
 'o' # 'k' # \ push stack marker. Used eventually below.
 
@@ -162,11 +158,11 @@ cr V @ u.  \  get value:  4
 \  1) Build up the new word with function index in seedForth
 \  2) Let the tokenizer create its symbol table entry (then invoke 1)
 
-': _value ( x -- ) create , [ does> ] @ ;'  \ a seedForth defining word 1)  \ execute does> as it is a compiling word
+': _value ( x -- ) create , does> @ ;'  \ a seedForth defining word 1)
 : Value ( <name> x -- )  fun: _value ; \ macro 2)
 
 
-': _variable ( x -- )  create 0 #, , [ does> ]    ;'  \ a seedForth defining word
+': _variable ( x -- )  create 0 #, , does>  ;'  \ a seedForth defining word
 : Variable  ( <name> -- ) fun: _variable ; \ macro
 
 fun: V1  5 # _value
@@ -178,7 +174,7 @@ fun: V2  _variable
 7 # V2 +!  V2 @ u.   8 # V2 !  V2 @ u.  \ fetch and store value: 7 8
 
 
-': doconst ( x -- ) [ does> ] @ ;'  \ a does>  w/o creat path sets behavour
+': doconst ( x -- ) does> @ ;'  \ a does>  w/o creat path sets behavour
 : Constant  ( <name> x -- ) fun: create , doconst ; \ macro
 
 fun: nine create
@@ -195,7 +191,7 @@ nine . \ display constant: 9
 
 \ structured data
 
-': _field ( addr -- addr' ) create over , + [ does> ] @ + ;'
+': _field ( addr -- addr' ) create over , + does> @ + ;'
 : Field ( <name> offset size -- offset' ) fun: _field ;
 
 \ define structure
@@ -227,7 +223,7 @@ cr #person u.  \ size of structure
 
 ' star constant 'star  cr 'star .
 
-': dodefer ( -- )  [ does> ] @ execute ;'
+': dodefer ( -- )  does> @ execute ;'
 : Defer  ( <name> -- ) fun: create 'star , dodefer ;    \ macro, star is default behaviour
 
 ': >body ( xt -- body )  h@  1 #, cells + ;'
@@ -296,17 +292,31 @@ fun: incorrect create ( -- addr )
 
 cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit 
 
-t{ 3 # 4 # + -> 7 # }t
-t{ 3 # 4 # + -> 8 # }t
-t{ 3 # 4 # + -> 1 # 2 # }t
+\ t{ 3 # 4 # + -> 7 # }t
+\ t{ 3 # 4 # + -> 8 # }t
+\ t{ 3 # 4 # + -> 1 # 2 # }t
 
 fun: twice
 new  key dup compile,  key + compile,  key unnest compile,
 
 t{ 2 # twice -> 4 # }t
 
-cr 2 # twice .
+\ cr 2 # twice .
 
+fun: area create 1 # , 
+
+t{ area @ -> 1 # }t
+t{ area 2 # cells - @ -> 0 # }t  \ extract the dummy Does> field.
+
+t{ 1 # 2 # +lit -> 129 # dup + }t
+t{ 258 # -> 129 # dup + }t
+t{ -1 # 2 # + -> 1 # }t
+
+': large  12345 #, ;'
+t{ large -> 12340 # 5 # + }t
+
+': negative -12345 #, ;'
+t{ negative -> -12340 # 5 # - }t
 
 cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
 
