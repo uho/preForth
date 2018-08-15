@@ -5,10 +5,10 @@ program dynamic.seed
 \ extend seedForth core with words required by dynamic memory
 \ -------------------------------------
 
-': _variable ( x -- )  create 0 #, , [ does> ]    ;'  \ a seedForth defining word
+': _variable ( -- )  create 0 #, , does> ;'  \ a seedForth defining word
 : Variable  ( <name> -- ) fun: _variable ; \ macro
 
-': doconst ( x -- ) [ does> ] @ ;'  \ a does>  w/o creat path sets behavour
+': doconst ( -- ) does> @ ;'  \ a does>  w/o create path sets behaviour
 : Constant  ( <name> x -- ) fun: create , doconst ; \ macro
 
 ': over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;'
@@ -107,10 +107,8 @@ Variable anchor
 \   cr ." <-: "  BEGIN cr dup u. ." : " addr&size u.  cell+ @ dup anchor @ = UNTIL
 \   drop ;
 
-200 # dup  dup + dup + + Constant 1000  \ seedForth stunt to get a large number
-
 ': init ( -- )
-    here 1000 ( ! )  ( chars ) dup allot empty-memory ;'
+    here 1000 #,  ( chars ) dup allot empty-memory ;'
 
 \ Utility words for debugging
 \ ----------------------------
@@ -122,9 +120,11 @@ Variable anchor
 
 ': .hexdigit ( n -- )  dup 9 #, > IF lit [ 'A' # 10 # - , ] ELSE '0' #, THEN + emit ;'
 
-': 2* ( x1 -- x2 )  dup + ;'
+\ ': 2* ( x1 -- x2 )  dup + ;'
 
 ': space  32 #, emit ;'
+
+': cr  10 #, emit 13 #, emit ;'
 
 
 \ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
@@ -159,18 +159,18 @@ Variable anchor
 #max u.  \ 7FFFFFFF
 #free u. \ 80000000
 
-here .  \ base address
+cr here .  \ base address
 
 init
 
-here .  \ end address  roughly 1000 abover
+cr here .  \ end address  roughly 1000 abover
 
-100 # allocate . dup . free .  \ ior 0, allocate at address1, ior 0
-100 # allocate . dup .         \ ior 0, allocated at same address1
-100 # allocate . dup . free .  \ ior 0, allocated at new address2 roughly 100 above, ior 0
-100 # allocate . dup .         \ ior 0, allocated at again at address2
-free .   \ free address2 -> ior 0
-free .   \ free address1 -> ior 0
-100 # allocate . dup . free .  \ ior 0, allocated at address1, ior 0
+cr 100 # allocate . dup . free .  \ ior 0, allocate at address1, ior 0
+cr 100 # allocate . dup .         \ ior 0, allocated at same address1
+cr 100 # allocate . dup . free .  \ ior 0, allocated at new address2 roughly 100 above, ior 0
+cr 100 # allocate . dup .         \ ior 0, allocated at again at address2
+cr free .   \ free address2 -> ior 0
+cr free .   \ free address1 -> ior 0
+cr 100 # allocate . dup . free .  \ ior 0, allocated at address1, ior 0
 
 end
