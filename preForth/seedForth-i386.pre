@@ -374,9 +374,14 @@ code rp! ( x -- )
 : fun ( -- )
    new compiler ;
 
-: +lit ( hi lo -- hilo )
-    >r  dup + dup + dup + dup + 
-        dup + dup + dup + dup +  r> + ;
+: 2* ( x1 -- x2 )
+   dup + ;
+
+: couple ( hi lo -- hilo )
+    >r  2* 2* 2* 2*   2* 2* 2* 2*   r> + ;
+
+: $lit ( -- addr u )
+    r>  dup   1 +   dup >r  swap c@  dup r> + >r ;
 
 : create ( -- )
    0 , \ dummy does> field
@@ -436,7 +441,7 @@ code rp! ( x -- )
    lit depth       h, \ 38  26
    lit compile,    h, \ 39  27
    lit new         h, \ 40  28
-   lit +lit        h, \ 41  29
+   lit couple      h, \ 41  29
    lit and         h, \ 42  2A
    lit or          h, \ 43  2B
    lit catch       h, \ 44  2C
@@ -445,6 +450,7 @@ code rp! ( x -- )
    lit sp!         h, \ 47  2F
    lit rp@         h, \ 48  30
    lit rp!         h, \ 49  31
+   lit $lit        h, \ 50  32
    tail interpreter ;
 
 pre

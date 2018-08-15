@@ -272,17 +272,10 @@ variable actual-depth
    BEGIN depth WHILE  depth nth-result !  REPEAT ;'
 
 fun: wrong create  ( -- addr )
-    23 # c,
-    'w' # c, 'r' # c, 'o' # c, 'n' # c, 'g' # c,  32 # c,
-    'n' # c, 'u' # c, 'm' # c, 'b' # c, 'e' # c, 'r' # c,  32 # c,
-    'o' # c, 'f' # c,  32 # c,
-    'r' # c, 'e' # c, 's' # c, 'u' # c, 'l' # c, 't' # c, 's' # c,
+    ," wrong number of results"
 
 fun: incorrect create ( -- addr )
-    16 # c,
-    'i' # c, 'n' # c, 'c' # c, 'o' # c, 'r' # c, 'r' # c, 'e' # c, 'c' # c, 't' # c, 32 # c,
-    'r' # c, 'e' # c, 's' # c, 'u' # c, 'l' # c, 't' # c,
-
+    ," incorrect result"
 
 ': }t ( i*x -- )
    depth actual-depth @ - IF  wrong count  error  unnest THEN
@@ -290,7 +283,12 @@ fun: incorrect create ( -- addr )
 
 ?ok 2drop
 
-cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit cr
+fun: testing create ( -- addr )
+  ," testing"
+
+cr testing count type cr
+
+\ cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit cr
 
 \ t{ 3 # 4 # + -> 7 # }t
 \ t{ 3 # 4 # + -> 8 # }t
@@ -308,7 +306,7 @@ fun: area create 1 # ,
 t{ area @ -> 1 # }t
 t{ area 2 # cells - @ -> 0 # }t  \ extract the dummy Does> field.
 
-t{ 1 # 2 # +lit -> 129 # dup + }t
+t{ 1 # 2 # couple -> 129 # dup + }t
 t{ 258 # -> 129 # dup + }t
 t{ -1 # 2 # + -> 1 # }t
 
@@ -338,6 +336,13 @@ t{ 1 # 0< -> 0 # }t
 t{ 2 # 0< -> 0 # }t
 t{ 1 # negate 0< -> -1 # }t
 t{ 2 # negate 0< -> -1 # }t
+
+
+': greet ( -- )
+    cr s" a string literal"  ;' 
+
+t{ greet nip -> 16 # }t
+
 
 cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
 
