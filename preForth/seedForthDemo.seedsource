@@ -265,7 +265,7 @@ variable actual-depth
    cr  type empty-stack ;'
 
 ': t{ ( i*x -- )
-   empty-stack ;'
+   '.' #, emit empty-stack ;'
 
 ': -> ( -- )
    depth actual-depth !
@@ -290,7 +290,7 @@ fun: incorrect create ( -- addr )
 
 ?ok 2drop
 
-cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit 
+cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit cr
 
 \ t{ 3 # 4 # + -> 7 # }t
 \ t{ 3 # 4 # + -> 8 # }t
@@ -317,6 +317,27 @@ t{ large -> 12340 # 5 # + }t
 
 ': negative -12345 #, ;'
 t{ negative -> -12340 # 5 # - }t
+
+t{ 10 #  ' dup catch  -> 10 # 10 # 0 # }t
+
+': err99 ( x -- )  dup 9 #, = IF 99 #, throw THEN 1 #, + ;'
+
+t{ 1 #  ' err99 catch ->  2 #  0 # }t
+t{ 5 # 9 #  ' err99 catch nip ->  5 # 99 # }t
+
+': rot ( a b c -- b c a )  >r swap r> swap ;'
+t{ 10 #  sp@ 20 # 30 # rot sp!  -> 10 # }t
+
+
+': rp!-test  ( -- )  rp@  10 #, >r  20 #, >r  30 #, >r  rp!  ;'
+
+t{ 99 # rp!-test -> 99 # }t
+
+t{ 0 # 0< -> 0 # }t
+t{ 1 # 0< -> 0 # }t
+t{ 2 # 0< -> 0 # }t
+t{ 1 # negate 0< -> -1 # }t
+t{ 2 # negate 0< -> -1 # }t
 
 cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
 

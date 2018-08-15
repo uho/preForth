@@ -48,7 +48,9 @@ $18 #FUN: cells     $19 #FUN: +!          $1A #FUN: h@        $1B #FUN: h,
 $1C #FUN: here      $1D #FUN: allot       $1E #FUN: ,         $1F #FUN: c,
 $20 #FUN: fun       $21 #FUN: interpreter $22 #FUN: compiler  $23 #FUN: create
 $24 #FUN: does>     $25 #FUN: cold        $26 #FUN: depth     $27 #FUN: compile,
-$28 #FUN: new     ( $29 #FUN: +lit  )     $2A #FUN: and       $2B #FUN: or      
+$28 #FUN: new     ( $29 #FUN: +lit  )     $2A #FUN: and       $2B #FUN: or
+$2C #FUN: catch     $2D #FUN: throw       $2E #FUN: sp@       $2F #FUN: sp!
+$30 #FUN: rp@       $31 #FUN: rp!
 
 : [ ( -- )  0 SUBMIT ;
 : ] ( -- )  compiler ;

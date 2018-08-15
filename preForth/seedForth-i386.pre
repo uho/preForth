@@ -29,11 +29,14 @@ stck:  DD 16 dup(0)
        DD 10000 dup(0)
 rstck: DD 16 dup(0)
 
+_frame: DD 0 ; frame pointer for catch/throw
+
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
-	; free memory starts at _start
+        ; free memory starts at _start
 
 _hp:    DD 0       ; head pointer: points to first unused head
 _head:  DD 10000 dup (0)
+
 
 
 section '.text' executable writable align 4096
@@ -174,11 +177,8 @@ code drop ( x -- )
 
 code 0< ( x -- flag )
         pop eax
-        or eax, eax
-        mov eax, 0
-        jns zless1
-        dec eax
-zless1: push eax
+        sar eax,31
+        push eax
         next
 ;
 
@@ -250,9 +250,9 @@ code @ ( addr -- x )
 
 code c@ ( c-addr -- c )
         pop edx
-	xor eax, eax
+        xor eax, eax
         mov al,byte [edx]
-	push eax
+        push eax
         next
 ;
 
@@ -297,6 +297,25 @@ code depth ( -- n )
         next
 ;
 
+code sp@ ( -- x )
+        push esp
+        next
+;
+
+code sp! ( x -- )
+        pop esp
+        next
+;
+
+code rp@ ( -- x )
+        push ebp
+        next
+;
+
+code rp! ( x -- )
+        pop ebp
+        next
+;
 
 : negate ( n1 -- n2 )
    0 swap - ;
@@ -365,7 +384,14 @@ code depth ( -- n )
 
 : does> ( -- ) \ set code field of last defined word
     r>   lit hp @ 1 - h@  dup >r 1 cells - !   lit dodoes r> !
-; 
+;
+
+: catch ( i*x xt -- j*x 0 | i*x err )
+    lit frame @ >r  sp@ >r  rp@  lit frame !  execute    r> drop r> lit frame ! 0 ;
+
+: throw ( i*x 0 | i*x err -- j*x err )
+    ?dup 0= ?exit  lit frame @ rp!  r> swap >r  sp! drop  r> r> lit frame ! ;
+
 
 : cold ( -- )
    's' emit 'e' dup emit emit  'd' emit 10 emit
@@ -413,6 +439,12 @@ code depth ( -- n )
    lit +lit        h, \ 41  29
    lit and         h, \ 42  2A
    lit or          h, \ 43  2B
+   lit catch       h, \ 44  2C
+   lit throw       h, \ 45  2D
+   lit sp@         h, \ 46  2E
+   lit sp!         h, \ 47  2F
+   lit rp@         h, \ 48  30
+   lit rp!         h, \ 49  31
    tail interpreter ;
 
 pre
