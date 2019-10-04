@@ -350,17 +350,17 @@ t{ greeting nip -> 16 # }t
     WHILE
       dup
     WHILE
-      >r >r  over c@ over c@ - ?dup IF 0< dup + 1 + nip nip r> drop r> drop unnest THEN
+      >r >r  over c@ over c@ - ?dup IF 0< dup + 1 #, + nip nip r> drop r> drop unnest THEN
       1+ swap 1+ swap
       r> 1- r> 1-
     REPEAT
-      -1
+      -1 #,
     ELSE
-      dup 0= IF 0 ELSE 1 THEN
+      dup 0= IF 0 #, ELSE 1 #, THEN
     THEN >r 2drop 2drop r> ;'
 
-t{ wrong count  wrong count compare     ->  0 }t
-t{ wrong count  incorrect count compare -> -1 }t  
+t{ wrong count  wrong     count compare -> 0 # }t
+t{ wrong count  incorrect count compare -> 1 # }t  
 
 ': .s ( i*x -- i*x )  
     depth 0= ?exit  >r .s r> dup . ;'
