@@ -110,6 +110,13 @@ Variable anchor
 ': init ( -- )
     here 1000 #,  ( chars ) dup allot empty-memory ;'
 
+': alloc ( u -- addr )
+     allocate throw ;'
+
+': dispose ( addr -- )
+     free throw ;'
+
+
 \ Utility words for debugging
 \ ----------------------------
 \ hex number output

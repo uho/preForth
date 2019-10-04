@@ -162,7 +162,7 @@ cr V @ u.  \  get value:  4
 : Value ( <name> x -- )  fun: _value ; \ macro 2)
 
 
-': _variable ( x -- )  create 0 #, , does>  ;'  \ a seedForth defining word
+': _variable ( -- )  create  0 #, ,  does>  ;'  \ a seedForth defining word
 : Variable  ( <name> -- ) fun: _variable ; \ macro
 
 fun: V1  5 # _value
@@ -174,7 +174,7 @@ fun: V2  _variable
 7 # V2 +!  V2 @ u.   8 # V2 !  V2 @ u.  \ fetch and store value: 7 8
 
 
-': doconst ( x -- ) does> @ ;'  \ a does>  w/o creat path sets behavour
+': doconst ( -- ) does> @ ;'  \ a does>  w/o creat path sets behavour
 : Constant  ( <name> x -- ) fun: create , doconst ; \ macro
 
 fun: nine create
@@ -338,12 +338,45 @@ t{ 1 # negate 0< -> -1 # }t
 t{ 2 # negate 0< -> -1 # }t
 
 
-': greet ( -- )
-    cr s" a string literal"  ;' 
+': greeting ( -- )  s" a string literal"  ;' 
 
-t{ greet nip -> 16 # }t
+t{ greeting nip -> 16 # }t
 
 
-cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
+': compare ( c-addr1 u1 c-addr2 u2 -- n )
+    rot 
+    BEGIN \ ( c-addr1 c-addr2 u1 u2 )
+      over 
+    WHILE
+      dup
+    WHILE
+      >r >r  over c@ over c@ - ?dup IF 0< dup + 1 + nip nip r> drop r> drop unnest THEN
+      1+ swap 1+ swap
+      r> 1- r> 1-
+    REPEAT
+      -1
+    ELSE
+      dup 0= IF 0 ELSE 1 THEN
+    THEN >r 2drop 2drop r> ;'
+
+t{ wrong count  wrong count compare     ->  0 }t
+t{ wrong count  incorrect count compare -> -1 }t  
+
+': .s ( i*x -- i*x )  
+    depth 0= ?exit  >r .s r> dup . ;'
+
+
+': alloc ( u -- addr )
+    here swap allot ;'
+
+': dispose ( addr -- )
+    drop ;'
+
+
+
+\ -----------------------------------------------
+
+': done ( -- )  cr s" done" type cr ;' done
+\ cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
 
 end
