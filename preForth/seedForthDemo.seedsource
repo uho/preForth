@@ -80,6 +80,8 @@ cr 0 # yes?  -1 # yes?   1 # yes?
 
 ': over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;'
 
+': 2dup ( x1 x2 -- x1 x2 x1 x2 ) over over ;'
+
 ': 2drop ( x1 x2 -- )  drop drop ;'
 
 ': nip ( x1 x2 -- x2 ) swap drop ;'
@@ -92,6 +94,9 @@ cr 0 # yes?  -1 # yes?   1 # yes?
 
 ': type ( c-addr u -- )
     BEGIN dup WHILE  over c@ emit  1 #, /string  REPEAT  2drop ;'
+
+': r@ ( R: x -- x ) ( -- x )
+    r> r> swap over >r >r ;'    
 
 here  5 # c,   'H' # c,  'e' # c,  'l' # dup c, c,   'o' # c,
 
@@ -361,6 +366,7 @@ t{ greeting nip -> 16 # }t
 
 t{ wrong count  wrong     count compare -> 0 # }t
 t{ wrong count  incorrect count compare -> 1 # }t  
+t{ incorrect count  wrong count compare -> -1 # }t  
 
 ': .s ( i*x -- i*x )  
     depth 0= ?exit  >r .s r> dup . ;'
@@ -373,6 +379,103 @@ t{ wrong count  incorrect count compare -> 1 # }t
     drop ;'
 
 
+variable context
+
+': ,string ( c-addr u -- )
+     dup c,
+     BEGIN dup WHILE  over c@ c,  1- swap 1+ swap REPEAT drop drop ;'
+
+': header ( c-addr u -- ) \ create header without code field
+     here   context @ , context ! 
+     -1 #, , ( flags )
+     ,string
+;'
+
+
+\ as field words?
+': l>flags ( lfa -- ffa )  1 #, cells + ;'
+': l>name ( lfa -- nfa )   2 #, cells + ;'
+': l>xt ( lfa -- xt )  l>name count + ;'
+
+': immediate ( -- )
+     1 #, context @ l>flags !
+;'
+
+
+': .name ( nfa -- )  count type ;'
+
+': words ( -- )
+    context @
+    BEGIN ?dup WHILE dup l>name .name space @ REPEAT 
+;'
+
+': find ( c-addr u -- 0 | xt 1 | xt -1)
+     context @
+     BEGIN ?dup WHILE ( c-addr u link )
+         >r 2dup r@ l>name count compare 0= IF 2drop r@ l>xt r> l>flags @ unnest THEN
+         r> @
+     REPEAT
+     2drop 0 #,
+;'
+
+testing   count header
+incorrect count header immediate
+testing   count header
+
+.s
+testing   count find cr .s drop drop 
+incorrect count find cr .s drop drop 
+wrong     count find cr .s
+
+\ ------ locals ------
+---
+': testing-locals  cr s" Testing locals" type cr ;' testing-locals
+
+': locals? ( -- ) cr s" locals=" type  0 #, +l . ;'
+
+locals? cr
+
+t{ 42 # >l   0 # +l @ -> 42 #  -1 # cells lallot }t
+t{ 11 # >l   22 # >l   0 # +l @   1 # +l @  ->  22 # 11 #    -2 # cells lallot }t
+t{ 11 # >l   22 # >l   33 # >l  0 # +l @   1 # +l @   2 # +l @ ->  33 # 22 # 11 #    -3 # cells lallot }t
+
+': expanded-locals-1    >l     0 #, +l @      -1 #, cells lallot ;'
+t{ 17 # expanded-locals-1 -> 17 # }t
+
+': expanded-locals-2    >l  >l   0 #, +l @   1 #, +l @    -2 #, cells lallot ;'
+t{ 7 # 11 # expanded-locals-2 ->  7 # 11 # }t
+
+': expanded-locals-3    >l >l  >l   0 #, +l @   1 #, +l @   2 #, +l @  -3 #, cells lallot ;'
+t{ 5 # 7 # 11 # expanded-locals-3 ->  5 # 7 # 11 # }t
+
+': locals-parsing-test-1 {: a -- c :} 0 #, +l @  ;'
+
+t{ 2 # 99 # locals-parsing-test-1 -> 2 # 99 # }t
+
+'l' # c, 'o' # c, 'c' # c, 'a' # c, 'l' # c, 's' # c,
+
+': locals-test {: x y -- x y y x :} 
+      x y y x ;'
+
+t{ 3 # 4 # locals-test -> 3 # 4 # 4 # 3 # }t
+
+': to-test {: x | y -- x 2x 2x x :}
+     x 2* to y   x y y x ;'
+
+t{ 3 # to-test -> 3 # 6 # 6 # 3 # }t
+
+': to-test2 0 #, {: x y -- x 2x 2x x :}
+     x 2* to y   x y y x ;'
+
+t{ 3 # to-test2 -> 3 # 6 # 6 # 3 # }t
+
+
+': test-swap {: a b -- b a :}
+     b a ;'
+
+t{ 1 # 2 # test-swap -> 2 # 1 # }t
+
+locals?
 
 \ -----------------------------------------------
 

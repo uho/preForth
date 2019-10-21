@@ -37,7 +37,9 @@ _dp:    DD _start  ; dictionary pointer: points to next free location in memory
 _hp:    DD 0       ; head pointer: points to first unused head
 _head:  DD 10000 dup (0)
 
-
+_locals DD localstk ; address pointer to locals
+        DD 1024 dup(0)
+localstk: DD 8 dup(0)
 
 section '.text' executable writable align 4096
 
@@ -397,6 +399,16 @@ code rp! ( x -- )
 : throw ( i*x 0 | i*x err -- j*x err )
     ?dup 0= ?exit  lit frame @ rp!  r> swap >r  sp! drop  r> r> lit frame ! ;
 
+\ support for locals
+: lallot ( n -- )
+    lit locals +! ;
+
+: >l ( x -- )
+    1 cells lallot  lit locals @  ! ;
+
+: +l ( offset -- addr )
+    lit locals @ swap cells - ;
+
 
 : cold ( -- )
    's' emit 'e' dup emit emit  'd' emit 10 emit
@@ -451,6 +463,9 @@ code rp! ( x -- )
    lit rp@         h, \ 48  30
    lit rp!         h, \ 49  31
    lit $lit        h, \ 50  32
+   lit lallot      h, \ 51  33
+   lit >l          h, \ 52  34
+   lit +l          h, \ 53  35
    tail interpreter ;
 
 pre
