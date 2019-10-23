@@ -10,65 +10,61 @@
 \
 
 
-program seedForthDemo.seed
+PROGRAM seedForthDemo.seed
 
-\ : compiler ( -- )
-\    key ?dup 0= ?exit compile, tail compiler ;
 
-'o' # 'k' # \ push stack marker. Used eventually below.
+'o' 'k' \ push stack marker. Used eventually below.
 
-': ?ok ( o k -- o k )  10 #, emit  >r dup emit r> dup  emit ;'
+: ?ok ( o k -- o k )  10 emit  >r dup emit r> dup  emit ;
 
 ?ok
 
-10 # emit  '*' # dup emit emit             \ interpret numbers and words
+10  emit  '*'  dup emit emit             \ interpret numbers and words
 
-': 3*  dup dup + + ;'           \ defintions
-': 1-  1 #, - ;'                \ compile number and words
+: 3*  dup dup + + ;        \ definitions
+: 1-  1 - ;                \ compile number and words
 
 \ output utilities
-': cr    ( -- ) 10 #,  emit ;'
-': space ( -- ) 32 #,  emit ;'
-': .digit ( n -- )  '0' #, + emit ;'
+: cr    ( -- ) 10 emit ;
+: space ( -- ) 32 emit ;
+: .digit ( n -- )  '0' + emit ;
 
-': star ( -- ) '*' #, emit ;'
+: star ( -- ) '*' emit ;
 
-': stars ( n -- )
-    ?dup IF BEGIN star 1- ?dup 0= UNTIL THEN ;'  \ standard Forth control structures
+: stars ( n -- )
+    ?dup IF BEGIN star 1- ?dup 0= UNTIL THEN ;  \ standard Forth control structures
 
-': dash ( -- ) '-' #, emit ;'
+: dash ( -- ) '-'  emit ;
 
-': dashes ( n -- )  BEGIN ?dup WHILE dash 1- REPEAT ;'
+: dashes ( n -- )  BEGIN ?dup WHILE dash 1- REPEAT ;
 
-': --- ( -- ) cr 80 #, dashes ;'
+: --- ( -- ) cr 80 dashes ;
 
-': space ( -- ) 32 #, emit ;'
-
-': spaces ( n -- )
-    BEGIN ?dup 0= ?exit space 1- AGAIN ;' \ another loop variation
+: spaces ( n -- )
+    BEGIN ?dup 0= ?exit space 1- AGAIN ; \ another loop variation
 
 ---
 
-': countdown ( n -- )
-    ?dup 0= ?exit  dup cr .digit  1- countdown ;'  \ recursion
+: countdown ( n -- )
+    ?dup 0= ?exit  dup cr .digit  1- countdown ;  \ recursion
 
-cr  '2' # emit  '*' # emit  '3' # emit  '=' # emit 2 #  3*  .digit      \ interpret new definitions
+cr  '2' emit  '*' emit  '3' emit  '=' emit 2 3*  .digit      \ interpret new definitions
 
-9 # countdown
-
----
-
-': another-count-down ( n -- )
-     BEGIN dup WHILE dup cr .digit 1- REPEAT drop ;' \ standard Forth control structures
-
-5 # another-count-down
+9 countdown
 
 ---
 
-': yes? ( f -- )
-    IF 'Y' #, ELSE 'N' #, THEN emit ;'  \ standard Forth conditionals
+: another-count-down ( n -- )
+     BEGIN dup WHILE dup cr .digit 1- REPEAT drop ; \ standard Forth control structures
 
-cr 0 # yes?  -1 # yes?   1 # yes?
+5 another-count-down
+
+---
+
+: yes? ( f -- )
+    IF 'Y'  ELSE 'N'  THEN emit ;  \ standard Forth conditionals
+
+cr 0 yes?  -1 yes?  1 yes?
 
 ?ok  \ display ok again (for error analysis)
 
@@ -76,66 +72,71 @@ cr 0 # yes?  -1 # yes?   1 # yes?
 
 \ utility words
 
-': 1+ ( x1 -- x2 )  1 #, + ;'
+: 1+ ( x1 -- x2 )  1 + ;
 
-': over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;'
+: over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;
 
-': 2drop ( x1 x2 -- )  drop drop ;'
+: 2drop ( x1 x2 -- )  drop drop ;
 
-': nip ( x1 x2 -- x2 ) swap drop ;'
+: nip ( x1 x2 -- x2 ) swap drop ;
 
-\ ': c, ( c -- )  here  1 #, allot  c! ;'
+\ : c, ( c -- )  here  1  allot  c! ;
 
-': /string ( x1 x2 x3 -- x4 x5 )   swap over - >r + r> ;'
+: /string ( x1 x2 x3 -- x4 x5 )   swap over - >r + r> ;
 
-': count ( addr -- c-addr u )  dup 1+ swap c@ ;'
+: count ( addr -- c-addr u )  dup 1+ swap c@ ;
 
-': type ( c-addr u -- )
-    BEGIN dup WHILE  over c@ emit  1 #, /string  REPEAT  2drop ;'
+: type ( c-addr u -- )
+    BEGIN dup WHILE  over c@ emit  1  /string  REPEAT  2drop ;
 
-here  5 # c,   'H' # c,  'e' # c,  'l' # dup c, c,   'o' # c,
+here  5 c,   'H'  c,  'e'  c,  'l'  dup c, c,   'o'  c,
 
 cr count type
 
 \ more utility words
 
-': < ( n1 n2 -- f )  - 0< ;'
-': > ( n1 n2 -- f )  swap < ;'
-': = ( x1 x2 -- f )  - 0= ;'
+: < ( n1 n2 -- f )  - 0< ;
+: > ( n1 n2 -- f )  swap < ;
+: = ( x1 x2 -- f )  - 0= ;
 
 \ hex number output
 
-': .hexdigit ( n -- )  dup 9 #, > IF lit [ 'A' # 10 # - , ] ELSE '0' #, THEN + emit ;'
+: .hexdigit ( n -- )  dup 9 > IF lit [ 'A' 10 - , ] ELSE '0' THEN + emit ;
 
-': 2* ( x1 -- x2 )  dup + ;'
+: 2* ( x1 -- x2 )  dup + ;
 
 
 \ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
-': u2/ ( x1 -- x2 )
-   0 #, 8 #, CELLS 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;'
+: u2/ ( x1 -- x2 )
+   0 8 cells 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;
 
-': odd? ( x1 -- f )  dup u2/ 2* = 0= ;'
+: odd? ( x1 -- f )  dup u2/ 2* = 0= ;
 
-': 2/mod ( x1 -- x2 r )  \ swapped results
-   dup u2/ swap odd? negate ;'
+: 2/mod ( x1 -- x2 r )  \ swapped results
+   dup u2/ swap odd? negate ;
 
-': 16/mod ( x -- x r )  \ swapped results
-   2/mod >r  2/mod >r  2/mod >r  2/mod  2* r> + 2* r> + 2* r> + ;'
+: 16/mod ( x -- x r )  \ swapped results
+   2/mod >r  2/mod >r  2/mod >r  2/mod  2* r> + 2* r> + 2* r> + ;
 
-': #### ( x -- )
+: #### ( x -- )
    16/mod >r 16/mod >r 16/mod >r  16/mod >r  16/mod >r  16/mod >r 16/mod >r
       .hexdigit  r> .hexdigit   r> .hexdigit  r> .hexdigit  r> .hexdigit
-   r> .hexdigit  r> .hexdigit   r> .hexdigit  space ;'
+   r> .hexdigit  r> .hexdigit   r> .hexdigit  space ;
 
-': (.) ( x -- )
-   ?dup IF  16/mod >r (.) r> .hexdigit THEN ;'
+: (.) ( x -- )
+   ?dup IF  16/mod >r (.) r> .hexdigit THEN ;
 
-': u. ( x -- )
-   ?dup IF (.) ELSE '0' #, emit THEN space ;'
+: u. ( x -- )
+   ?dup IF (.) ELSE '0' emit THEN space ;
 
-': . ( n -- )  dup 0< IF '-' #, emit negate THEN u. ;'
+: . ( n -- )  dup 0< IF '-'  emit negate THEN u. ;
 
-cr 100 # negate .  \ display negative number
+cr 42 .
+43 . 44 . 45 . 46 . 47 . 48 . 49 . 50 . 51 . 52 . 53 . 54 . 55 . 56 . 57 . 58 . 
+cr 100 .
+: hundred  100 ;
+
+cr 100 negate .    \ display negative number
 
 cr here u.         \ display larger number
 cr
@@ -146,63 +147,73 @@ cr
 
 \ create and defining words
 
-fun: V create 4 # ,   \ new token for tokenizer and new variable like definition
+\ Token V create 4 ,   \ new token for tokenizer and new variable like definition
 
-cr V @ u.  \  get value:  4
+\ cr V @ u.  \  get value:  4
 
-?ok
+\ ?ok
 
 ---
+
 
 \ We must split defining words into two parts.
 \  1) Build up the new word with function index in seedForth
 \  2) Let the tokenizer create its symbol table entry (then invoke 1)
 
-': _value ( x -- ) create , does> @ ;'  \ a seedForth defining word 1)
-: Value ( <name> x -- )  fun: _value ; \ macro 2)
+\ : _value ( x -- ) create , does> @ ;    \ a seedForth defining word 1)
+\ Definer Value _value ( x <name> -- )
+
+Definer Value ( x <name> -- )  create , does> @ ;
+
+10 Value ten   cr ten .
 
 
-': _variable ( -- )  create  0 #, ,  does>  ;'  \ a seedForth defining word
-: Variable  ( <name> -- ) fun: _variable ; \ macro
-
-fun: V1  5 # _value
-cr V1 u.  \ use value: 5
-6 # Value v4   v4 u.  \ values are initialized from stack: 6
+?ok
 
 
-fun: V2  _variable
-7 # V2 +!  V2 @ u.   8 # V2 !  V2 @ u.  \ fetch and store value: 7 8
+( <name> -- )
+\ : _variable  create  0 , does>  ;              \ a seedForth defining word
+\ Definer Variable _variable ( x <name> -- )
+
+Definer Variable ( <name> -- )  create 0 , does> ;
+
+\ : _const create , does> @ ;
+\ Definer Constant _const ( <name> x -- )
+
+Definer Constant ( x <name> -- )  create , does> @ ;
+
+0  Constant zero  
+
+cr zero .  \ constants are similar to values here: 0
 
 
-': doconst ( -- ) does> @ ;'  \ a does>  w/o creat path sets behavour
-: Constant  ( <name> x -- ) fun: create , doconst ; \ macro
+Variable v   5 v !  v @ .
 
-fun: nine create
-  9 # ,   \ parameter field
-  doconst \ set behaviour of last word
+20 Constant twenty  twenty .
 
-nine . \ display constant: 9
-
-0 # Constant zero  zero .  \ constants are similar to values here: 0
 
 ?ok
 ---
 
-
 \ structured data
 
-': _field ( addr -- addr' ) create over , + does> @ + ;'
-: Field ( <name> offset size -- offset' ) fun: _field ;
+\ : _field ( addr -- addr' ) create over , + does> @ + ;
+\ Definer Field _field ( <name> offset size -- offset' )
+
+Definer Field ( offset size <name> -- offset' ) create over , + does> @ + ;
+
 
 \ define structure
-0 #
+0 
 
-1 # cells Field >name
-2 # cells Field >date
+1 cells Field >name
+2 cells Field >date
 
-Value #person
+Value person
 
-fun: p1 create #person allot
+Definer Create ( <name> -- ) create ;
+
+Create p1 person allot
 
 
 
@@ -212,23 +223,34 @@ p1 >name u.    \ address calculation
 
 p1 >date u.    \ address calculation
 
-cr #person u.  \ size of structure
+cr person u.  \ size of structure
 
 ?ok
 ---
 
+
 \ Defered words
 
-': ' ( --  x )  key ;'
+: ' ( --  x )  key ;
 
-' star constant 'star  cr 'star .
+' star Constant 'star  cr 'star .
 
-': dodefer ( -- )  does> @ execute ;'
-: Defer  ( <name> -- ) fun: create 'star , dodefer ;    \ macro, star is default behaviour
+\ : _defer create 'star , does> @ execute ;
+\ Definer Defer _defer ( <name> -- )
 
-': >body ( xt -- body )  h@  1 #, cells + ;'
+\ see Defer
 
-': is ( xt -- )  ' >body ! ;'
+\ Macro defr Token seed _defer end-macro
+\ see defr
+
+
+Definer Defer ( <name> -- ) create 'star , does> @ execute ;
+see Defer
+
+
+: >body ( xt -- body )  h@  1 cells + ;
+
+: is ( xt -- )  ' >body ! ;
 
 cr ' dash dup .  execute            \ get execution token of definition
 cr
@@ -246,137 +268,142 @@ cr d1 d1 d1 \ now display dashes
 
 ?ok
 
-cr 80 # stars
+---
+
+cr 80  stars
 
 \ Tester 
 
-': empty-stack ( i*x -- )
-    BEGIN depth 0< WHILE    0 #, REPEAT
-    BEGIN depth    WHILE    drop REPEAT ;'
+: empty-stack ( i*x -- )
+    BEGIN depth 0< WHILE  0    REPEAT
+    BEGIN depth    WHILE  drop REPEAT ;
 
-variable actual-depth
+Variable actual-depth
 ( actual-results )
-20 # cells allot
+20 cells allot
 
-': nth-result ( n -- addr )
-   cells actual-depth + ;'
+: nth-result ( n -- addr )
+   cells actual-depth + ;
 
-': error ( i*x c-addr u -- )
-   cr  type empty-stack ;'
+: error ( i*x c-addr u -- )
+   cr  type empty-stack ;
 
-': t{ ( i*x -- )
-   '.' #, emit empty-stack ;'
+: t{ ( i*x -- )
+   '.'  emit empty-stack ;
 
-': -> ( -- )
+: -> ( -- )
    depth actual-depth !
-   BEGIN depth WHILE  depth nth-result !  REPEAT ;'
+   BEGIN depth WHILE  depth nth-result !  REPEAT ;
 
-fun: wrong create  ( -- addr )
+Create wrong  ( -- addr )
     ," wrong number of results"
 
-fun: incorrect create ( -- addr )
+Create incorrect ( -- addr )
     ," incorrect result"
 
-': }t ( i*x -- )
+: }t ( i*x -- )
    depth actual-depth @ - IF  wrong count  error  unnest THEN
-   BEGIN depth WHILE  depth nth-result @ - IF  incorrect count error  unnest THEN  REPEAT ;'
+   BEGIN depth WHILE  depth nth-result @ - IF  incorrect count error  unnest THEN  REPEAT ;
 
 ?ok 2drop
 
-fun: testing create ( -- addr )
+Create testing ( -- addr )
   ," testing"
 
 cr testing count type cr
 
-\ cr 't' # emit 'e' # emit 's' # emit 't' # emit  'i' # emit  'n' # emit 'g' # emit cr
+\ cr 't' emit 'e' emit 's' emit 't' emit  'i' emit  'n' emit 'g' emit cr
 
-\ t{ 3 # 4 # + -> 7 # }t
-\ t{ 3 # 4 # + -> 8 # }t
-\ t{ 3 # 4 # + -> 1 # 2 # }t
+\ t{ 3 4 + -> 7 }t
+\ t{ 3 4 + -> 8 }t
+\ t{ 3 4 + -> 1 2 }t
 
-fun: twice
-new  key dup compile,  key + compile,  key unnest compile,
+\ fun: twice
+\ new  key dup compile,  key + compile,  key unnest compile,
 
-t{ 2 # twice -> 4 # }t
+: twice ( x -- 2x ) 
+   dup + ;
 
-\ cr 2 # twice .
+t{ 2 twice -> 4 }t
 
-fun: area create 1 # , 
+\ cr 2  twice .
 
-t{ area @ -> 1 # }t
-t{ area 2 # cells - @ -> 0 # }t  \ extract the dummy Does> field.
+Create area 1 , 
 
-t{ 1 # 2 # couple -> 129 # dup + }t
-t{ 258 # -> 129 # dup + }t
-t{ -1 # 2 # + -> 1 # }t
+t{ area @ -> 1 }t
+t{ area 2 cells - @ -> 0 }t  \ extract the dummy Does> field.
 
-': large  12345 #, ;'
-t{ large -> 12340 # 5 # + }t
+t{ 1 2 couple -> 129 dup + }t
+t{ 258 -> 129 dup + }t
+t{ -1 2 + -> 1 }t
 
-': negative -12345 #, ;'
-t{ negative -> -12340 # 5 # - }t
+: large  12345 ;
+t{ large -> 12340 5 + }t
 
-t{ 10 #  ' dup catch  -> 10 # 10 # 0 # }t
+: negative -12345 ;
+t{ negative -> -12340 5 - }t
 
-': err99 ( x -- )  dup 9 #, = IF 99 #, throw THEN 1 #, + ;'
+t{ 10 ' dup catch  -> 10 10 0 }t
 
-t{ 1 #  ' err99 catch ->  2 #  0 # }t
-t{ 5 # 9 #  ' err99 catch nip ->  5 # 99 # }t
+: err99 ( x -- )  dup 9 = IF 99 throw THEN 1 + ;
 
-': rot ( a b c -- b c a )  >r swap r> swap ;'
-t{ 10 #  sp@ 20 # 30 # rot sp!  -> 10 # }t
+t{ 1 ' err99 catch -> 2 0 }t
+t{ 5 9 ' err99 catch nip ->  5 99 }t
 
-
-': rp!-test  ( -- )  rp@  10 #, >r  20 #, >r  30 #, >r  rp!  ;'
-
-t{ 99 # rp!-test -> 99 # }t
-
-t{ 0 # 0< -> 0 # }t
-t{ 1 # 0< -> 0 # }t
-t{ 2 # 0< -> 0 # }t
-t{ 1 # negate 0< -> -1 # }t
-t{ 2 # negate 0< -> -1 # }t
+: rot ( a b c -- b c a )  >r swap r> swap ;
+t{ 10 sp@ 20 30 rot sp! -> 10 }t
 
 
-': greeting ( -- )  s" a string literal"  ;' 
+: rp!-test  ( -- )  rp@  10 >r  20 >r  30 >r  rp!  ;
 
-t{ greeting nip -> 16 # }t
+t{ 99  rp!-test -> 99  }t
+
+t{ 0 0< -> 0 }t
+t{ 1 0< -> 0 }t
+t{ 2 0< -> 0 }t
+t{ 1 negate 0< -> -1 }t
+t{ 2 negate 0< -> -1 }t
 
 
-': compare ( c-addr1 u1 c-addr2 u2 -- n )
+: greeting ( -- )  s" a string literal"  ; 
+
+t{ greeting nip -> 16 }t
+
+
+: compare ( c-addr1 u1 c-addr2 u2 -- n )
     rot 
     BEGIN \ ( c-addr1 c-addr2 u1 u2 )
       over 
     WHILE
       dup
     WHILE
-      >r >r  over c@ over c@ - ?dup IF 0< dup + 1 #, + nip nip r> drop r> drop unnest THEN
+      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop unnest THEN
       1+ swap 1+ swap
       r> 1- r> 1-
     REPEAT
-      -1 #,
+      -1
     ELSE
-      dup 0= IF 0 #, ELSE 1 #, THEN
-    THEN >r 2drop 2drop r> ;'
+      dup 0= IF 0  ELSE 1  THEN
+    THEN >r 2drop 2drop r> ;
 
-t{ wrong count  wrong     count compare -> 0 # }t
-t{ wrong count  incorrect count compare -> 1 # }t  
+t{ wrong count  wrong     count compare -> 0 }t
+t{ wrong count  incorrect count compare -> 1 }t  
 
-': .s ( i*x -- i*x )  
-    depth 0= ?exit  >r .s r> dup . ;'
+: .s ( i*x -- i*x )  
+    depth 0= ?exit  >r .s r> dup . ;
 
 
-': alloc ( u -- addr )
-    here swap allot ;'
+: alloc ( u -- addr )
+    here swap allot ;
 
-': dispose ( addr -- )
-    drop ;'
+: dispose ( addr -- )
+    drop ;
 
 
 
 \ -----------------------------------------------
 
-': done ( -- )  cr s" done" type cr ;' done
-\ cr  'd' # emit 'o' # emit 'n' # emit 'e' # emit cr
+: done ( -- )  cr s" done" type cr ; done
+\ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
 
-end
+END

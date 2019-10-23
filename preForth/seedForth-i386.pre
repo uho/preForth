@@ -365,8 +365,18 @@ code rp! ( x -- )
 : interpreter ( -- )
    key execute   tail interpreter ;
 
+: num ( -- x )
+   key ?dup 0= ?exit execute tail num ;
+
+: ?lit ( xt -- xt )  
+   h@ lit num - ?exit drop       \ not num token: exit i.e. normal compile action
+   lit lit ,   num ,             \ generate  lit x   num call puts x on stack
+   r> drop   tail compiler ;
+
 : compiler ( -- )
-   key ?dup 0= ?exit compile, tail compiler ;
+   key ?dup 0= ?exit
+   dup ?lit 
+   compile, tail compiler ;
 
 : new ( -- )
    here h,  lit enter , ;
@@ -451,6 +461,7 @@ code rp! ( x -- )
    lit rp@         h, \ 48  30
    lit rp!         h, \ 49  31
    lit $lit        h, \ 50  32
+   lit num         h, \ 51  33
    tail interpreter ;
 
 pre

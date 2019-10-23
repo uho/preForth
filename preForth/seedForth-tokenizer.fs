@@ -1,105 +1,260 @@
-\ seedForth tokenizer (byte-tokenized source code)
+\ Another seedForth tokenizer    2019-10-18
 
-\ load on on top of gforth   uho  2018-04-13
+: fnv1a ( c-addr u -- x )
+    2166136261 >r
+    BEGIN dup WHILE  over c@ r> xor 16777619 um* drop    $FFFFFFFF and >r 1 /string REPEAT 2drop r> ;
 
-\ -----------------------------
+19 Constant #hashbits \ 0 < #hashbits < 16
 
-WARNINGS OFF
+1 #hashbits lshift Constant #hashsize
+\ #hashsize 1 - Constant tinymask
+#hashsize 1 - Constant mask   cr .( mask=) mask hex u. decimal
 
-VARIABLE OUT
 
-: PROGRAM ( <name> -- )
-   BL WORD COUNT R/W CREATE-FILE THROW OUT ! ;
+\ : fold ( x1 -- x2 )  dup   #hashbits rshift  xor  tinymask and ;
+
+: fold ( x1 -- x2 )  dup   #hashbits rshift  swap mask and  xor ;
+
+
+Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
+
+: 'token ( c-addr u -- addr )
+    fnv1a fold  cells tokens + ;
+
+: token@ ( c-addr u -- x )  'token @ ;
+
+: ?token ( c-addr u -- x )  2dup 'token dup @ IF  >r cr type ."  collides with token " r> @ name-see abort THEN nip nip ;
+
+
+
+VARIABLE OUTFILE
 
 : SUBMIT ( c -- )
-   PAD C!  PAD 1 OUT @ WRITE-FILE THROW ;
+    PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
 
-: END ( -- )
-   .S CR 0 SUBMIT OUT @ CLOSE-FILE THROW BYE ;
+: <name> ( -- c-addr u )  bl word count ;
 
-Variable #FUNS
+Variable #tokens  0 #tokens !
+: Token ( <name> -- )
+   :noname  
+   #tokens @  postpone LITERAL  postpone SUBMIT  postpone ;  
+   <name> 
+   cr  #tokens @ 3 .r space 2dup type 
+   ?token ! 1 #tokens +! ;
 
-: FUNCTIONS ( u -- )   #FUNS ! ;
+: Macro ( <name> -- )
+   <name> ?token :noname $FEED ;
 
+: end-macro ( 'hash colon-sys -- )
+   $FEED - Abort" end-macro without corresponding Macro"
+   postpone ;  ( 'hash xt )  swap ! ; immediate
 
-: #FUN: ( <name> n -- )
-    CREATE dup , 1+ FUNCTIONS DOES> @ SUBMIT ;
-    
-: FUN: ( <name> -- )
-    #FUNS @ #FUN: ;
-
-$02 #FUN: key
-$0A #FUN: -
-$29 #FUN: couple
-
-: byte# ( c -- )
-    ( seedForth ) key    
-    SUBMIT ;
-
-: # ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
-     dup 0<    IF  0 byte#   negate recurse  ( seedForth ) -  EXIT THEN
-     dup $FF > IF  dup 8 rshift  recurse  $FF and  byte#  ( seedForth ) couple EXIT THEN
-     byte# ;    
-
-$22 #FUN: compiler
-
-: [ ( -- )  0 SUBMIT ;
-: ] ( -- )  compiler ;
-
-\ Literal numbers
-
-$0C #FUN: lit
-$1E #FUN: ,
-$1F #FUN: c,
-
-: #, ( x -- ) lit [ # , ] ;    \ x is placed in memory as a cell-sized quantity (32/64 bit), as defined by comma
-
-\ Strings
-
-$32 #FUN: $lit
-
-: ", ( c-addr u -- )
-    dup # ( seedForth) c,  BEGIN dup WHILE >r dup char+ swap c@ # ( seedForth) c,  r> 1- REPEAT 2drop ;
-
-: ," ( ccc" -- )   [char] " parse ", ;
-
-: $, ( c-addr u -- )  $lit [ ", ] ;
-
-: s" ( ccc" -- )   [char] " parse $, ;  \ only in compile mode
+: seed ( i*x <name> -- j*x ) 
+    <name> token@ dup 0= Abort" is undefined"    postpone LITERAL   postpone EXECUTE ; immediate
 
 
-  $00 #FUN: bye       $01 #FUN: emit        ( $02 #FUN: key )      $03 #FUN: dup
-  $04 #FUN: swap      $05 #FUN: drop          $06 #FUN: 0<         $07 #FUN: ?exit
-  $08 #FUN: >r        $09 #FUN: r>         (  $0A #FUN: - )        $0B #FUN: unnest
-( $0C #FUN: lit )      $0D #FUN: @            $0E #FUN: c@         $0F #FUN: !
-  $10 #FUN: c!        $11 #FUN: execute       $12 #FUN: branch     $13 #FUN: ?branch
-  $14 #FUN: negate    $15 #FUN: +             $16 #FUN: 0=         $17 #FUN: ?dup
-  $18 #FUN: cells     $19 #FUN: +!            $1A #FUN: h@         $1B #FUN: h,
-  $1C #FUN: here      $1D #FUN: allot       ( $1E #FUN: , )      ( $1F #FUN: c, )
-  $20 #FUN: fun       $21 #FUN: interpreter ( $22 #FUN: compiler ) $23 #FUN: create
-  $24 #FUN: does>     $25 #FUN: cold          $26 #FUN: depth      $27 #FUN: compile,
-  $28 #FUN: new     ( $29 #FUN: couple  )     $2A #FUN: and        $2B #FUN: or
-  $2C #FUN: catch     $2D #FUN: throw         $2E #FUN: sp@        $2F #FUN: sp!
-  $30 #FUN: rp@       $31 #FUN: rp!         ( $32 #FUN: $lit )
+Token bye       Token emit          Token key        Token dup
+Token swap      Token drop          Token 0<         Token ?exit
+Token >r        Token r>            Token -          Token unnest
+Token lit       Token @             Token c@         Token !
+Token c!        Token execute       Token branch     Token ?branch
+Token negate    Token +             Token 0=         Token ?dup
+Token cells     Token +!            Token h@         Token h,
+Token here      Token allot         Token ,          Token c,  
+Token fun       Token interpreter   Token compiler   Token create
+Token does>     Token cold          Token depth      Token compile,
+Token new       Token couple        Token and        Token or
+Token catch     Token throw         Token sp@        Token sp!
+Token rp@       Token rp!           Token $lit       Token num
 
-$33 FUNCTIONS
 
-\ Definitions
-  
-: ': ( <name> -- ) FUN: fun ;
-: ;' ( -- ) unnest [ ;
+\ generate token sequences for numbers
+
+: seed-byte ( c -- )
+   seed key   SUBMIT ;
+
+: seed-number ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
+   dup 0<    IF  0 seed-byte   negate recurse  seed -   EXIT THEN
+   dup $FF > IF  dup 8 rshift  recurse  $FF and  seed-byte  seed couple EXIT THEN
+   seed-byte ;   
+
+: char-lit? ( c-addr u -- x flag )
+   3 - IF drop 0 false EXIT THEN
+   dup c@ [char] ' -  IF drop 0 false EXIT THEN
+   dup 2 chars + c@ [char] ' -  IF  drop 0 false EXIT THEN
+   char+ c@ true ;
+
+: process-digit? ( x c -- x' flag )
+   '0' - dup 10 u< IF  swap 10 * + true EXIT THEN  drop false ;
+
+: number? ( c-addr u -- x flag )
+	 dup 0= IF 2drop 0 false EXIT THEN
+ 	 over c@ '-' = dup >r IF 1 /string THEN
+     >r >r 0 r> r> bounds 
+     ?DO ( x )  
+      	I c@ process-digit? 0= IF unloop r> drop false EXIT THEN ( x d )
+     LOOP 
+     r> IF negate THEN true ;
+
+: seed-name ( c-addr u )
+	 2dup  token@ dup IF nip nip execute EXIT THEN drop
+	 2dup  char-lit? IF nip nip seed num  seed-number seed bye  EXIT THEN drop
+	 2dup  number? IF nip nip seed num  seed-number seed bye EXIT THEN drop
+	 cr type ."  not found" abort ;
+
+: seed-line ( -- )
+   BEGIN <name> dup WHILE  seed-name  REPEAT 2drop ; 
+
+: seed-file ( -- )
+   BEGIN refill WHILE  seed-line REPEAT ;
+
+: PROGRAM ( <name> -- )
+   <name> R/W CREATE-FILE THROW OUTFILE !
+   seed-file ;
+
+Macro END ( -- )
+   .S CR 0 SUBMIT OUTFILE @ CLOSE-FILE THROW BYE end-macro
+
+Macro [ ( -- )  0 SUBMIT end-macro  \ bye
+Macro ] ( -- )  seed compiler end-macro  \ compiler
+
+Macro : ( <name> -- ) seed fun  Token  end-macro
+Macro ; ( -- )         seed unnest   seed [ end-macro
+
+\ generate token sequences for strings
+
+: seed-string ( c-addr u -- )
+   dup seed-number  seed c,  
+   BEGIN dup WHILE 
+      >r dup char+ swap c@   seed-number seed c,   
+      r> 1- 
+   REPEAT 2drop 
+;
+
+Macro ," ( ccc" -- )   [char] " parse seed-string end-macro
+
+: $, ( c-addr u -- )  
+   seed $lit 
+   seed [ 
+   seed-string
+   seed ] 
+;
+
+Macro s" ( ccc" -- )  \ only in compile mode
+  [char] " parse $, 
+end-macro 
 
 
 \ Control structure macros
+: forward ( -- )
+   seed [   
+   seed here   
+	 0 seed-number  seed , 
+	 seed ] 
+;
 
-: AHEAD ( -- addr ) branch [ here  0 # , ] ;
-: IF ( -- addr )   ?branch [ here  0 # , ] ;
-: THEN ( addr -- ) [ here swap ! ] ;
-: ELSE ( addr1 -- addr2 )  branch  [ here 0 # ,  swap ] THEN ;
+: back ( -- )
+   seed [ 
+   seed , 
+   seed ]
+;
 
-: BEGIN ( -- addr )  [ here ] ;
-: AGAIN ( addr -- )   branch [ , ] ;
-: UNTIL ( addr -- )  ?branch [ , ] ;
-: WHILE ( addr1 -- addr2 addr1 )  IF [ swap ] ;
-: REPEAT ( addr -- ) AGAIN THEN ;
 
+Macro AHEAD ( -- addr ) 
+	seed branch  forward
+end-macro
+
+Macro IF ( -- addr )   
+	seed ?branch forward
+end-macro
+
+
+Macro THEN ( addr -- ) 
+  seed [ 
+  seed here 
+  seed swap 
+  seed ! 
+  seed ] 
+end-macro
+
+Macro ELSE ( addr1 -- addr2 )  
+  seed branch forward 
+  seed [ 
+  seed swap 
+  seed ] 
+  seed THEN 
+end-macro
+
+Macro BEGIN ( -- addr )  
+  seed [ 
+  seed here 
+  seed ] 
+end-macro
+
+Macro AGAIN ( addr -- )  
+  seed branch  back 
+end-macro
+
+Macro UNTIL ( addr -- )  
+  seed ?branch back 
+end-macro
+
+Macro WHILE ( addr1 -- addr2 addr1 )  
+  seed IF 
+  seed [ 
+  seed swap 
+  seed ] 
+end-macro
+
+Macro REPEAT ( addr -- ) 
+  seed AGAIN 
+  seed THEN 
+end-macro
+
+Macro ( ( -- )
+  postpone (
+end-macro
+
+Macro \ ( -- )
+  postpone \
+end-macro
+
+0 [if]
+
+Macro Token ( <name> -- )
+   postpone Token
+end-macro
+
+Macro Macro ( <name> -- )
+   Macro
+end-macro
+
+Macro end-macro ( -- )
+   postpone end-macro
+end-macro
+
+Macro seed ( <name> -- )
+   postpone seed
+end-macro
+
+[then]
+
+\ Macro Definer ( <name> <runtime> -- )
+\   Macro
+\     postpone Token
+\     postpone seed
+\   postpone end-macro
+\ end-macro
+
+Macro Definer ( <name> -- )
+   Macro
+      postpone Token
+      #tokens @ 1 #tokens +! 
+      postpone Literal
+      postpone SUBMIT
+      seed fun
+   postpone end-macro
+end-macro
+
+Macro see ( <name> -- )
+  <name> token@  ?dup 0= Abort" see cannot find name"  name-see end-macro

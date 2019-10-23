@@ -1,0 +1,21 @@
+PROGRAM hello.seed
+
+'*' emit 10 emit 13 emit
+
+\ dup swap drop
+\ ': false 0 ;'  ( numbers must be compiled )
+
+: over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;
+
+: /string ( x1 x2 x3 -- x4 x5 )   swap over - >r + r> ;
+
+: star  42 emit ;
+
+: type ( c-addr u -- )
+     BEGIN dup WHILE  over c@ emit  1 /string REPEAT drop drop ;
+
+: hi ( -- ) star s" hello, new tokenizer!" type star ;
+
+hi
+
+END
