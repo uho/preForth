@@ -4,17 +4,20 @@
     2166136261 >r
     BEGIN dup WHILE  over c@ r> xor 16777619 um* drop    $FFFFFFFF and >r 1 /string REPEAT 2drop r> ;
 
-19 Constant #hashbits \ 0 < #hashbits < 16
-
+15 Constant #hashbits
 1 #hashbits lshift Constant #hashsize
-\ #hashsize 1 - Constant tinymask
-#hashsize 1 - Constant mask   cr .( mask=) mask hex u. decimal
 
+#hashbits 16 < [IF]
 
-\ : fold ( x1 -- x2 )  dup   #hashbits rshift  xor  tinymask and ;
+  #hashsize 1 - Constant tinymask
+  : fold ( x1 -- x2 )  dup   #hashbits rshift  xor  tinymask and ;
 
-: fold ( x1 -- x2 )  dup   #hashbits rshift  swap mask and  xor ;
+[ELSE] \ #hasbits has 16 bits or more
 
+  #hashsize 1 - Constant mask 
+  : fold ( x1 -- x2 )  dup   #hashbits rshift  swap mask and  xor ;
+
+[THEN]
 
 Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
 
@@ -24,8 +27,6 @@ Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
 : token@ ( c-addr u -- x )  'token @ ;
 
 : ?token ( c-addr u -- x )  2dup 'token dup @ IF  >r cr type ."  collides with token " r> @ name-see abort THEN nip nip ;
-
-
 
 VARIABLE OUTFILE
 
@@ -39,7 +40,7 @@ Variable #tokens  0 #tokens !
    :noname  
    #tokens @  postpone LITERAL  postpone SUBMIT  postpone ;  
    <name> 
-   cr  #tokens @ 3 .r space 2dup type 
+   \ cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
    ?token ! 1 #tokens +! ;
 
 : Macro ( <name> -- )
@@ -219,33 +220,6 @@ Macro \ ( -- )
   postpone \
 end-macro
 
-0 [if]
-
-Macro Token ( <name> -- )
-   postpone Token
-end-macro
-
-Macro Macro ( <name> -- )
-   Macro
-end-macro
-
-Macro end-macro ( -- )
-   postpone end-macro
-end-macro
-
-Macro seed ( <name> -- )
-   postpone seed
-end-macro
-
-[then]
-
-\ Macro Definer ( <name> <runtime> -- )
-\   Macro
-\     postpone Token
-\     postpone seed
-\   postpone end-macro
-\ end-macro
-
 Macro Definer ( <name> -- )
    Macro
       postpone Token
@@ -255,6 +229,3 @@ Macro Definer ( <name> -- )
       seed fun
    postpone end-macro
 end-macro
-
-Macro see ( <name> -- )
-  <name> token@  ?dup 0= Abort" see cannot find name"  name-see end-macro
