@@ -38,8 +38,8 @@
 : 2@ ( addr -- x1 x2 )
    dup cell+ @ swap @ ;
 
-: 2! ( x1 x2 -- addr )
-   swap over cell+ ! ! ;
+: 2! ( x1 x2 addr -- )
+   swap over ! cell+ ! ;
 
 \ number output
 \ -------------
