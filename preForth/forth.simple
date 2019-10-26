@@ -531,8 +531,8 @@ immediate: ." ( -- )
    ['] (." ,
    '"' parse ", ; 
 
-: 0=exit ( -- )
-   ['] 0=  ['] ?exit ;
+immediate: 0=exit ( -- )
+   ['] 0= compile, ['] ?exit compile, ;
 
 immediate: FOR ( n -- )
    ['] BEGIN execute  
