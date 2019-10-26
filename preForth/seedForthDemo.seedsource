@@ -200,6 +200,22 @@ t{ 10 sp@ 20 30 rot sp! -> 10 }t
 
 t{ 99  rp!-test -> 99  }t
 
+: 2dup ( x1 x2 -- x1 x2 x1 x2 )  over over ;
+
+32 Constant bl
+
+: min ( n1 n2 -- n3 )
+     2dup > IF swap THEN drop ;
+
+: max ( n1 n2 -- n3 )
+     2dup < IF swap THEN drop ;
+
+t{ 3 4 max -> 4 }t
+t{ 3 4 min -> 3 }t
+t{ -1 4 max -> 4 }t
+t{ -1 4 min -> -1 }t
+
+: r@ ( -- x )  r> r> dup >r swap >r ;
 
 \ Test string Literals
 
@@ -243,9 +259,48 @@ t{ def abc compare ->  1 }t
     drop ;
 
 
+
+
+
+
+Create tib 80 allot
+Variable #tib
+
+: accept ( c-addr u1 -- c-addr u2 )
+    >r
+    0 BEGIN ( c-addr u2 ) ( R: u1 )
+        key dup 10 -
+    WHILE
+        dup  8 = over 127 = or IF  drop 1- 0 max  8 emit bl emit 8 emit ELSE
+        ( dup emit ) >r 2dup + r> swap c!  1+ r@ min THEN
+    REPEAT
+    drop  r> drop ;
+
+
+: query ( -- )
+    tib 80 accept #tib ! drop ;
+
+: upc ( c -- C )
+    dup 'a' < 0=  over 'z' > 0= and IF  'a' - 'A' + THEN ;
+
+: uppercase ( c-addr u -- )
+   BEGIN ( c-addr u )
+      dup
+   WHILE ( c-addr u )
+      over dup c@ upc swap c!  1 /string
+   REPEAT ( c-addr u ) 2drop ;
+
+: hi ( -- ) key drop \ discard END / bye token
+   BEGIN
+     cr s" > " type query 
+     cr .s
+     tib #tib @  2dup uppercase type  s"  ok" type
+   AGAIN ;
+
 \ -----------------------------------------------
 
 : done ( -- )  cr s" done" type cr ; done
 \ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
 
+\ hi
 END
