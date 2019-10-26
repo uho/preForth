@@ -12,7 +12,7 @@
   #hashsize 1 - Constant tinymask
   : fold ( x1 -- x2 )  dup   #hashbits rshift  xor  tinymask and ;
 
-[ELSE] \ #hasbits has 16 bits or more
+[ELSE] \ #hashbits has 16 bits or more
 
   #hashsize 1 - Constant mask 
   : fold ( x1 -- x2 )  dup   #hashbits rshift  swap mask and  xor ;
@@ -97,7 +97,7 @@ Token rp@       Token rp!           Token $lit       Token num
      LOOP 
      r> IF negate THEN true ;
 
-: seed-name ( c-addr u )
+: seed-name ( c-addr u -- )
 	 2dup  token@ dup IF nip nip execute EXIT THEN drop
 	 2dup  char-lit? IF nip nip seed num  seed-number seed bye  EXIT THEN drop
 	 2dup  number? IF nip nip seed num  seed-number seed bye EXIT THEN drop
