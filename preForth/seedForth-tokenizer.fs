@@ -26,7 +26,12 @@ Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
 
 : token@ ( c-addr u -- x )  'token @ ;
 
-: ?token ( c-addr u -- x )  2dup 'token dup @ IF  >r cr type ."  collides with token " r> @ name-see abort THEN nip nip ;
+: ?token ( c-addr u -- x )  
+    2dup 'token dup @ 
+    IF  
+       >r cr type ."  collides with another token " 
+       cr source type cr r> @ name-see abort 
+    THEN nip nip ;
 
 VARIABLE OUTFILE
 
@@ -56,7 +61,7 @@ Variable #tokens  0 #tokens !
 
 Token bye       Token emit          Token key        Token dup
 Token swap      Token drop          Token 0<         Token ?exit
-Token >r        Token r>            Token -          Token unnest
+Token >r        Token r>            Token -          Token exit
 Token lit       Token @             Token c@         Token !
 Token c!        Token execute       Token branch     Token ?branch
 Token negate    Token +             Token 0=         Token ?dup
@@ -120,7 +125,7 @@ Macro [ ( -- )  0 SUBMIT end-macro  \ bye
 Macro ] ( -- )  seed compiler end-macro  \ compiler
 
 Macro : ( <name> -- ) seed fun  Token  end-macro
-Macro ; ( -- )         seed unnest   seed [ end-macro
+Macro ; ( -- )         seed exit   seed [ end-macro
 
 \ generate token sequences for strings
 
@@ -228,4 +233,17 @@ Macro Definer ( <name> -- )
       postpone SUBMIT
       seed fun
    postpone end-macro
+end-macro
+
+\ for defining Macros later in seedForth
+Macro Macro ( <name> -- )
+   Macro
+end-macro
+
+Macro end-macro
+   postpone end-macro
+end-macro
+
+Macro seed ( <name> -- )
+   postpone seed
 end-macro

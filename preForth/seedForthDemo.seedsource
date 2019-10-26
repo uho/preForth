@@ -44,8 +44,8 @@ Variable actual-depth  ( actual-results )  20 cells allot
    BEGIN depth WHILE  depth nth-result !  REPEAT ;
 
 : }t ( i*x -- )
-   depth actual-depth @ - IF  s" wrong number of results" error  unnest THEN
-   BEGIN depth WHILE  depth nth-result @ - IF  s" incorrect result" error  unnest THEN  REPEAT ;
+   depth actual-depth @ - IF  s" wrong number of results" error  exit THEN
+   BEGIN depth WHILE  depth nth-result @ - IF  s" incorrect result" error  exit THEN  REPEAT ;
 
 \ Test basics
 t{ 10 '*' + ->  52 }t
@@ -137,6 +137,9 @@ Definer Constant ( x <name> -- )  create , does> @ ;
 
 5  Constant five
 t{ five -> 5 }t
+
+
+\ What about a inlining Constant?
 
 
 \ structured data
@@ -232,7 +235,7 @@ t{ greeting nip -> 16 }t
     WHILE
       dup
     WHILE
-      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop unnest THEN
+      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop exit THEN
       1+ swap 1+ swap
       r> 1- r> 1-
     REPEAT
@@ -297,9 +300,101 @@ Variable #tib
      tib #tib @  2dup uppercase type  s"  ok" type
    AGAIN ;
 
+\ Adder
+
+Definer Adder ( n <name> -- )  create , does>  @ + ;
+
+5 Adder 5+
+
+t{ 0 5+ -> 5 }t
+t{ 1 5+ -> 6 }t
+
 \ -----------------------------------------------
 
-: done ( -- )  cr s" done" type cr ; done
+\ Inlining Constant
+
+Definer iConstant ( x <name> -- )  create , ( immediate )  does> @  lit lit , , ;
+
+\ improve: needs to define macro
+
+5 iConstant iFive
+
+: test  [ iFive ] dup + ;
+
+t{ test -> 10 }t
+
+\ -----------------------------------------------
+
+Macro ." ( ccc" -- )
+   seed s"
+   seed type
+end-macro
+
+: hello ( -- ) ." Hello, seedForth world!" ;
+
+\ ---- self growing array
+
+: cmove ( c-addr1 c-addr2 u -- )
+   BEGIN
+     ?dup
+   WHILE
+     >r
+     over c@ over c!
+     1+ swap 1+ swap
+     r> 1-
+   REPEAT
+   2drop ;
+
+\ : place ( c-addr1 u c-addr2 -- )
+\    2dup >r >r 1+ swap cmove  r> r> c! ;
+
+: cell+ ( addr1 -- addr2 )
+    1 cells + ;
+
+: 2@ ( addr -- x1 x2 )
+   dup cell+ @ swap @ ;
+
+: 2! ( x1 x2 addr -- )
+   swap over ! cell+ ! ;
+
+Create m  1 , 2 ,
+
+t{ m 2@  m 2!  m @  m cell+ @ -> 1 2 }t
+
+
+
+: resize-array ( addr1 size1 -- addr2 size2 ) 
+    over swap \ addr1 addr1 size1 
+    dup 2* dup cells alloc swap \ addr1 addr1 size1 addr2 size2
+    >r dup >r  swap cells cmove \ addr1 
+    dispose
+    r> r> ;
+
+Definer Array ( n -- )  
+    create dup , 
+           here >r 0 ,
+           cells alloc r> !  \ { size | addr }
+    does> ( n -- addr )
+      BEGIN ( n body )
+         2dup @ < 0= 
+      WHILE ( n body )
+         dup >r 2@ resize-array r@ 2! r>
+      REPEAT ( n body ) 
+      cell+ @ swap  cells +
+;
+
+5 Array a
+
+10 0 a !
+20 1 a !
+30 2 a !
+40 3 a !
+50 4 a !
+
+t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
+
+
+: done ( -- )  cr ." done" cr ; done
 \ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
 
 \ hi

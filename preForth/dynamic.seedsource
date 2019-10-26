@@ -108,7 +108,7 @@ Variable anchor
 
 : fits? ( size -- mem | false ) >r anchor @
     BEGIN addr&size  r@ u< 0=
-         IF r> drop unnest THEN
+         IF r> drop exit THEN
          @ dup anchor @ =
     UNTIL 0= r> drop ;
 
@@ -124,7 +124,7 @@ Variable anchor
 
 
 : allocate ( size -- mem ior )
-    3 cells max dup >r  fits? ?dup 0= IF r> -8 unnest THEN ( "dictionary overflow" )
+    3 cells max dup >r  fits? ?dup 0= IF r> -8 exit THEN ( "dictionary overflow" )
     addr&size r@ -  dup waste u<
     IF  drop  dup @ over unlink  over addr&size use
     ELSE 2 cells -   over r@ use
@@ -137,13 +137,13 @@ Variable anchor
     IF #max and 2 cells +  rot over - rot rot +
     ELSE  drop  over anchor @  dup cell+ @  link THEN
     2dup + cell+ dup @ dup 0<
-    IF #max and swap cell+ unlink  +  2 cells +  release 0 unnest THEN
+    IF #max and swap cell+ unlink  +  2 cells +  release 0 exit THEN
     2drop release 0 ;
 
 : resize ( mem newsize -- mem' ior )
     over swap  over size  2dup >
-    IF ( mem mem size newsize )  swap allocate ?dup IF >r drop 2drop r>  unnest THEN 
-        dup >r swap move free r> swap unnest THEN
+    IF ( mem mem size newsize )  swap allocate ?dup IF >r drop 2drop r>  exit THEN 
+        dup >r swap move free r> swap exit THEN
     2drop drop ;
 
 : empty-memory ( addr size -- )

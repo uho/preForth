@@ -229,7 +229,10 @@ code and ( x1 x2 -- x3 )
         next
 ;
 
-code unnest ( -- )
+pre 
+_unnest:
+;
+code exit ( -- )
         mov esi,[ebp]
         lea ebp,[ebp+4]
         next
@@ -421,7 +424,7 @@ code rp! ( x -- )
    lit >r          h, \ 8   08
    lit r>          h, \ 9   09
    lit -           h, \ 10  0A
-   lit unnest      h, \ 11  0B
+   lit exit        h, \ 11  0B
    lit lit         h, \ 12  0C
    lit @           h, \ 13  0D
    lit c@          h, \ 14  0E
