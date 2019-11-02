@@ -45,7 +45,7 @@ Variable #tokens  0 #tokens !
    :noname  
    #tokens @  postpone LITERAL  postpone SUBMIT  postpone ;  
    <name> 
-   \ cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
+   cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
    ?token ! 1 #tokens +! ;
 
 : Macro ( <name> -- )
@@ -129,6 +129,15 @@ Macro ; ( -- )         seed exit   seed [ end-macro
 
 \ generate token sequences for strings
 
+: seed-stack-string ( c-addr u -- )
+   dup >r
+   BEGIN dup WHILE ( c-addr u )
+      over c@ seed-number 1 /string      
+   REPEAT ( c-addr u ) 
+   2drop 
+   r> seed-number
+;
+
 : seed-string ( c-addr u -- )
    dup seed-number  seed c,  
    BEGIN dup WHILE 
@@ -145,6 +154,10 @@ Macro ," ( ccc" -- )   [char] " parse seed-string end-macro
    seed-string
    seed ] 
 ;
+
+Macro $( \ ( ccc) -- )
+  [char] ) parse seed-stack-string
+end-macro
 
 Macro s" ( ccc" -- )  \ only in compile mode
   [char] " parse $, 
@@ -228,7 +241,7 @@ end-macro
 Macro Definer ( <name> -- )
    Macro
       postpone Token
-      #tokens @ 1 #tokens +! 
+      #tokens @  1 #tokens +! 
       postpone Literal
       postpone SUBMIT
       seed fun

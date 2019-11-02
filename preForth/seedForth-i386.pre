@@ -381,11 +381,11 @@ code rp! ( x -- )
    dup ?lit 
    compile, tail compiler ;
 
-: new ( -- )
-   here h,  lit enter , ;
+: new ( -- x )
+   lit hp @   here h,  lit enter , ;
 
 : fun ( -- )
-   new compiler ;
+   new drop  compiler ;
 
 : 2* ( x1 -- x2 )
    dup + ;
