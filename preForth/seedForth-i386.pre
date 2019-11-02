@@ -366,10 +366,10 @@ code rp! ( x -- )
    h@ invoke ;
 
 : interpreter ( -- )
-   key execute   tail interpreter ;
+   key ?dup 0= ?exit  execute   tail interpreter ;
 
-: num ( -- x )
-   key ?dup 0= ?exit execute tail num ;
+: num ( -- x ) 
+   tail interpreter ;
 
 : ?lit ( xt -- xt )  
    h@ lit num - ?exit drop       \ not num token: exit i.e. normal compile action
@@ -465,7 +465,7 @@ code rp! ( x -- )
    lit rp!         h, \ 49  31
    lit $lit        h, \ 50  32
    lit num         h, \ 51  33
-   tail interpreter ;
+   interpreter bye ;
 
 pre
  _start: DB 43

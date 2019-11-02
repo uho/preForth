@@ -395,6 +395,10 @@ t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
 
 
 : done ( -- )  cr ." done" cr ; done
+
+\ How to compile bye that normally exits the compile and interpret loop
+\ : goodbye  lit [ key bye , ] execute ; 
+
 \ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
 
 \ hi

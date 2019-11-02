@@ -41,7 +41,7 @@ VARIABLE OUTFILE
 : <name> ( -- c-addr u )  bl word count ;
 
 Variable #tokens  0 #tokens !
-: Token ( <name> -- )
+: Token ( <name> -- )  cr #tokens @ base @ >r hex 3 u.r r> base ! space >in @ <name> type >in !
    :noname  
    #tokens @  postpone LITERAL  postpone SUBMIT  postpone ;  
    <name> 
@@ -59,19 +59,19 @@ Variable #tokens  0 #tokens !
     <name> token@ dup 0= Abort" is undefined"    postpone LITERAL   postpone EXECUTE ; immediate
 
 
-Token bye       Token emit          Token key        Token dup
-Token swap      Token drop          Token 0<         Token ?exit
-Token >r        Token r>            Token -          Token exit
-Token lit       Token @             Token c@         Token !
-Token c!        Token execute       Token branch     Token ?branch
-Token negate    Token +             Token 0=         Token ?dup
-Token cells     Token +!            Token h@         Token h,
-Token here      Token allot         Token ,          Token c,  
-Token fun       Token interpreter   Token compiler   Token create
-Token does>     Token cold          Token depth      Token compile,
-Token new       Token couple        Token and        Token or
-Token catch     Token throw         Token sp@        Token sp!
-Token rp@       Token rp!           Token $lit       Token num
+(  0 $00 ) Token bye       Token emit          Token key        Token dup
+(  4 $04 ) Token swap      Token drop          Token 0<         Token ?exit
+(  8 $08 ) Token >r        Token r>            Token -          Token exit
+( 12 $0C ) Token lit       Token @             Token c@         Token !
+( 16 $10 ) Token c!        Token execute       Token branch     Token ?branch
+( 20 $14 ) Token negate    Token +             Token 0=         Token ?dup
+( 24 $18 ) Token cells     Token +!            Token h@         Token h,
+( 28 $1C ) Token here      Token allot         Token ,          Token c,  
+( 32 $20 ) Token fun       Token interpreter   Token compiler   Token create
+( 36 $24 ) Token does>     Token cold          Token depth      Token compile,
+( 40 $28 ) Token new       Token couple        Token and        Token or
+( 44 $2C ) Token catch     Token throw         Token sp@        Token sp!
+( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
 
 
 \ generate token sequences for numbers
@@ -121,7 +121,7 @@ Token rp@       Token rp!           Token $lit       Token num
 Macro END ( -- )
    .S CR 0 SUBMIT OUTFILE @ CLOSE-FILE THROW BYE end-macro
 
-Macro [ ( -- )  0 SUBMIT end-macro  \ bye
+Macro [ ( -- )  seed bye      end-macro  \ bye
 Macro ] ( -- )  seed compiler end-macro  \ compiler
 
 Macro : ( <name> -- ) seed fun  Token  end-macro
