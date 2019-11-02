@@ -1,27 +1,133 @@
-\ seedForth demo program source
+\ seedForth interactive system
 \
 \ tokenize with
 \
-\ gforth seedForth-tokinzer.fs seedForthDemo.seedsource
+\ gforth seedForth-tokinzer.fs seedForthInteractive.seedsource
 \
 \ then pipe into seedForth:
 \
-\ cat seedForthDemo.seed | ./seedForth
+\ cat seedForthInteractive.seed | ./seedForth
 \
 
-PROGRAM seedForthDemo.seed
+PROGRAM seedForthInteractive.seed
 
-Definer Variable create 0 , ;
+\ Defining words
+Definer Create ( <name> -- )      create ;
+Definer Variable ( <name> -- )    create 0 , ;
+Definer Constant ( x <name> -- )  create , does> @ ;
 
 \ Missing primitives
-: over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;
-: /string ( x1 x2 x3 -- x4 x5 )   swap over - >r + r> ;
-: 2drop ( x1 x2 -- )  drop drop ;
+: over ( x1 x2 -- x1 x2 x1 )  
+    >r dup r> swap ;
 
-\ output utilities
-: cr    ( -- ) 10 emit ;
+: rot ( a b c -- b c a )  
+    >r swap r> swap ;
+
+: /string ( x1 x2 x3 -- x4 x5 )   
+    swap over - >r + r> ;
+
+: 2drop ( x1 x2 -- )  
+    drop drop ;
+
+: 2dup ( x1 x2 -- x1 x2 x1 x2 )  
+    over over ;
+
+: 1+ ( x1 -- x2 )  
+    1 + ;
+
+: 1- ( x1 -- x2 )  
+    1 - ;
+
+: nip ( x1 x2 -- x2 ) 
+    swap drop ;
+
+: count ( addr -- c-addr u )  
+    dup 1+ swap c@ ;
+
+: < ( n1 n2 -- f )  
+    - 0< ;
+
+: > ( n1 n2 -- f )  
+    swap < ;
+
+: = ( x1 x2 -- f )  
+    - 0= ;
+
+: 0<> ( x -- f ) 
+    0= 0= ;
+
+: 2* ( x1 -- x2 )  
+    dup + ;
+
+: cell+ ( addr1 -- addr2 ) 
+    1 cells + ;
+
+: 2@ ( addr -- x1 x2 ) 
+    dup cell+ @ swap @ ;
+
+: 2! ( x1 x2 addr -- ) 
+    swap over ! cell+ ! ;
+
+Definer Field ( offset size <name> -- offset' ) 
+    create over , + does> @ + ;
+
+\ output
+32 Constant bl
+
+: cr    ( -- ) 
+    10 emit ;
+
 : type ( c-addr u -- )
     BEGIN dup WHILE  over c@ emit  1  /string  REPEAT  2drop ;
+
+: space ( -- ) 
+    bl emit ;
+
+: spaces ( n -- )
+    BEGIN ?dup WHILE space 1 - REPEAT ;
+
+Macro ." ( ccc" -- )
+   seed s"
+   seed type
+end-macro
+
+: .digit ( n -- )  
+    '0' + emit ;
+
+: third ( x1 x2 x3 -- x1 x2 x3 x1 )
+    >r over r> swap ;
+
+: min ( n1 n2 -- n3 )
+    2dup > IF swap THEN drop ;
+
+: max ( n1 n2 -- n3 )
+    2dup < IF swap THEN drop ;
+
+: r@ ( -- x )  
+    r> r> dup >r swap >r ;
+
+: cmove ( c-addr1 c-addr2 u -- )
+    BEGIN
+      ?dup
+    WHILE
+      >r
+      over c@ over c!
+      1+ swap 1+ swap
+      r> 1-
+    REPEAT
+    2drop ;
+
+: place ( c-addr1 u c-addr2 -- )
+    2dup >r >r 1+ swap cmove  r> r> c! ;
+
+Macro Literal
+   seed lit
+   seed [
+   seed ,
+   seed ]
+end-macro
+
+
 
 \ Tester 
 : empty-stack ( i*x -- )
@@ -54,532 +160,16 @@ t{ 1 0< -> 0 }t
 t{ 2 0< -> 0 }t
 t{ 1 negate 0< -> -1 }t
 t{ 2 negate 0< -> -1 }t
+t{ 10 20 30 third -> 10 20 30 10 }t
 
-
-\ output utilities
-: space ( -- ) 32 emit ;
-
-: spaces ( n -- )
-    BEGIN ?dup WHILE space 1 - REPEAT ; \ another loop variation
-
-: .digit ( n -- )  '0' + emit ;
-
-
-\ test conditionals
-
-: yes? ( f -- )
-    IF 'Y'  ELSE 'N'  THEN ;  \ standard Forth conditionals
-
-t{ 1 yes? -> 'Y' }t
-t{ 0 yes? -> 'N' }t
-
-
-\ utility words
-
-: 1+ ( x1 -- x2 )  1 + ;
-: 1- ( x1 -- x2 )  1 - ;
-: nip ( x1 x2 -- x2 ) swap drop ;
-\ : c, ( c -- )  here  1  allot  c! ;
-: count ( addr -- c-addr u )  dup 1+ swap c@ ;
-: < ( n1 n2 -- f )  - 0< ;
-: > ( n1 n2 -- f )  swap < ;
-: = ( x1 x2 -- f )  - 0= ;
-: 2* ( x1 -- x2 )  dup + ;
-
-t{ here 5 c, count -> here 5 }t
-
-\ hex number output
-
-: .hexdigit ( n -- )  dup 9 > IF lit [ 'A' 10 - , ] ELSE '0' THEN + emit ;
-
-\ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
-: u2/ ( x1 -- x2 )
-   0 8 cells 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;
-
-: odd? ( x1 -- f )  dup u2/ 2* = 0= ;
-
-: 2/mod ( x1 -- x2 r )  \ swapped results
-   dup u2/ swap odd? negate ;
-
-: 16/mod ( x -- x r )  \ swapped results
-   2/mod >r  2/mod >r  2/mod >r  2/mod  2* r> + 2* r> + 2* r> + ;
-
-: #### ( x -- )
-   16/mod >r 16/mod >r 16/mod >r  16/mod >r  16/mod >r  16/mod >r 16/mod >r
-      .hexdigit  r> .hexdigit   r> .hexdigit  r> .hexdigit  r> .hexdigit
-   r> .hexdigit  r> .hexdigit   r> .hexdigit  space ;
-
-: (.) ( x -- )
-   ?dup IF  16/mod >r (.) r> .hexdigit THEN ;
-
-: hex-u. ( x -- )
-   ?dup IF (.) ELSE '0' emit THEN space ;
-
-: hex. ( n -- )  dup 0< IF '-' emit negate THEN hex-u. ;
-
-
-\ decimal output
-
-\ number output
-\ -------------
-
-: 2dup ( x1 x2 -- x1 x2 x1 x2 )  over over ;
-
-: 2pick ( x1 x2 x3 -- x1 x2 x3 x1 )
-    >r over r> swap ;
-
-t{ 10 20 30 2pick -> 10 20 30 10 }t
-
-\ number output
-\ -------------
-
-: (/mod  ( n d q0 -- r d q )
-   >r 2dup <  r> swap ?exit
-   >r swap over -  swap  r> 1+  (/mod ;
-
-: 10* ( x1 -- x2 )
-    dup + dup dup + dup + + ;
-
-: (10u/mod ( n q d -- r q d )
-   2pick over > 0= ?exit     \ ( n q d )
-   dup >r 10*                 \ ( n q 10*d ) ( R: d )
-   (10u/mod                   \ ( r q d )
-   swap >r   0 (/mod nip   r> 10* + r> ;
-     
-: 10u/mod ( n -- r q )
-   0 1 (10u/mod drop  ;
-
-: (u. ( u1 -- )
-   ?dup IF 10u/mod (u. .digit THEN ;
-
-\ display unsigned number
-: u. ( u -- )
-   dup (u. 0= IF '0' emit THEN space ;
-
-\ display signed number
-: . ( n -- )
-   dup 0< IF '-' emit negate THEN u. ;
-
-
-: .s ( i*x -- i*x )  
-    depth 0= ?exit  >r .s r> dup . ;
-
-\ Defining words
-Definer Create ( <name> -- ) create ;
-
-Create dada 17 ,
-t{ dada @ -> 17 }t
-
-Definer Value ( x <name> -- )  create , does> @ ;
-
-10 Value ten
-t{ ten -> 10 }t
-
-
-Definer Constant ( x <name> -- )  create , does> @ ;
-
-5  Constant five
-t{ five -> 5 }t
-
-
-\ What about a inlining Constant?
-
-
-\ structured data
-
-Definer Field ( offset size <name> -- offset' ) 
-  create over , + does> @ + ;
-
-
-\ define structure
-0 
-  1 cells Field >name
-  2 cells Field >date
-Constant person
-
-Create p1 person allot
-
-t{ p1 0 cells + -> p1 >name }t   \ address calculation
-t{ p1 1 cells + -> p1 >date }t   \ address calculation
-t{ person -> 3 cells }t          \ size of structure
-
-
-\ Deferred words
-
-: ' ( --  x )  key ;
-
-: uninitialized ( -- ) cr s" uninitialized execution vector" type ;
-' uninitialized Constant 'uninitialized
-
-Definer Defer ( <name> -- ) create 'uninitialized , does> @ execute ;
-
-: >body ( xt -- body )  h@  1 cells + ;
-
-: is ( xt -- )  ' >body ! ;
-
-Defer d1  
-' ten is d1
-t{ d1 d1 d1 -> ten ten ten }t
-' five is d1
-t{ d1 d1 d1 -> five five five }t
-
-t{ 3 4 + -> 7 }t
-
-\ catch and throw tests
-
-t{ 10 ' dup catch  -> 10 10 0 }t
-
-: err99 ( x -- )  dup 9 = IF 99 throw THEN 1 + ;
-
-t{ 1 ' err99 catch -> 2 0 }t
-t{ 5 9 ' err99 catch nip ->  5 99 }t
-
-
-\ Test for sp!
-
-: rot ( a b c -- b c a )  >r swap r> swap ;
-t{ 10 sp@ 20 30 rot sp! -> 10 }t
-
-\ Test for rp!
-
-: rp!-test  ( -- )  rp@  10 >r  20 >r  30 >r  rp!  ;
-
-t{ 99  rp!-test -> 99  }t
-
-
-32 Constant bl
-
-: min ( n1 n2 -- n3 )
-     2dup > IF swap THEN drop ;
-
-: max ( n1 n2 -- n3 )
-     2dup < IF swap THEN drop ;
 
 t{ 3 4 max -> 4 }t
 t{ 3 4 min -> 3 }t
 t{ -1 4 max -> 4 }t
 t{ -1 4 min -> -1 }t
 
-: r@ ( -- x )  r> r> dup >r swap >r ;
 
-\ Test string Literals
 
-: greeting ( -- )  s" a string literal"  ; 
-t{ greeting nip -> 16 }t
-
-
-\ String comparison
-
-: compare ( c-addr1 u1 c-addr2 u2 -- n )
-    rot 
-    BEGIN \ ( c-addr1 c-addr2 u1 u2 )
-      over 
-    WHILE
-      dup
-    WHILE
-      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop exit THEN
-      1+ swap 1+ swap
-      r> 1- r> 1-
-    REPEAT
-      -1
-    ELSE
-      dup 0= IF 0  ELSE 1  THEN
-    THEN >r 2drop 2drop r> ;
-
-: abc ( -- c-addr u ) s" abc" ;
-: def ( -- c-addr u ) s" def" ;
-
-t{ abc abc compare -> 0 }t
-t{ def def compare -> 0 }t
-t{ abc def compare -> -1 }t
-t{ def abc compare ->  1 }t
-
-
-\ Some general memory allocation words
-
-: alloc ( u -- addr )
-    here swap allot ;
-
-: dispose ( addr -- )
-    drop ;
-
-
-
-
-
-
-Create tib 80 allot
-Variable #tib
-
-: accept ( c-addr u1 -- u2 )
-    >r
-    0 BEGIN ( c-addr u2 ) ( R: u1 )
-        key dup 10 -
-    WHILE ( c-addr u2 key )
-        dup  8 = over 127 = or IF  drop 1- 0 max  8 emit bl emit 8 emit ELSE
-        ( dup emit ) >r 2dup + r> swap c!  1+ r@ min THEN
-    REPEAT ( c-addr u2 key r:u1 )
-    drop  r> drop   nip ;
-
-: query ( -- )
-    tib 80 accept #tib ! ;
-
-: upc ( c -- C )
-    dup 'a' < 0=  over 'z' > 0= and IF  'a' - 'A' + THEN ;
-
-: uppercase ( c-addr u -- )
-   BEGIN ( c-addr u )
-      dup
-   WHILE ( c-addr u )
-      over dup c@ upc swap c!  1 /string
-   REPEAT ( c-addr u ) 2drop ;
-
-: lpc ( C -- c )
-    dup 'A' < 0=  over 'Z' > 0= and IF  'A' - 'a' + THEN ;
-
-: lowercase ( c-addr u -- )
-   BEGIN ( c-addr u )
-      dup
-   WHILE ( c-addr u )
-      over dup c@ lpc swap c!  1 /string
-   REPEAT ( c-addr u ) 2drop ;
-
-
-: hi ( -- ) key drop \ discard END / bye token
-   BEGIN
-     cr s" > " type query 
-     cr .s
-     tib #tib @  2dup uppercase type  s"  ok" type
-   AGAIN ;
-
-\ Adder
-
-Definer Adder ( n <name> -- )  create , does>  @ + ;
-
-5 Adder 5+
-
-t{ 0 5+ -> 5 }t
-t{ 1 5+ -> 6 }t
-
-\ -----------------------------------------------
-
-\ Inlining Constant
-
-Definer iConstant ( x <name> -- )  create , ( immediate )  does> @  lit lit , , ;
-
-\ improve: needs to define macro
-
-5 iConstant iFive
-
-: test  [ iFive ] dup + ;
-
-t{ test -> 10 }t
-
-\ -----------------------------------------------
-
-Macro ." ( ccc" -- )
-   seed s"
-   seed type
-end-macro
-
-: hello ( -- ) ." Hello, seedForth world!" ;
-
-\ ---- self growing array
-
-: cmove ( c-addr1 c-addr2 u -- )
-   BEGIN
-     ?dup
-   WHILE
-     >r
-     over c@ over c!
-     1+ swap 1+ swap
-     r> 1-
-   REPEAT
-   2drop ;
-
-: place ( c-addr1 u c-addr2 -- )
-    2dup >r >r 1+ swap cmove  r> r> c! ;
-
-: cell+ ( addr1 -- addr2 )
-    1 cells + ;
-
-: 2@ ( addr -- x1 x2 )
-   dup cell+ @ swap @ ;
-
-: 2! ( x1 x2 addr -- )
-   swap over ! cell+ ! ;
-
-Create m  1 , 2 ,
-
-t{ m 2@  m 2!  m @  m cell+ @ -> 1 2 }t
-
-
-
-: resize-array ( addr1 size1 -- addr2 size2 ) 
-    over swap \ addr1 addr1 size1 
-    dup 2* dup cells alloc swap \ addr1 addr1 size1 addr2 size2
-    >r dup >r  swap cells cmove \ addr1 
-    dispose
-    r> r> ;
-
-Definer Array ( n -- )  
-    create dup , 
-           here >r 0 ,
-           cells alloc r> !  \ { size | addr }
-    does> ( n -- addr )
-      BEGIN ( n body )
-         2dup @ < 0= 
-      WHILE ( n body )
-         dup >r 2@ resize-array r@ 2! r>
-      REPEAT ( n body ) 
-      cell+ @ swap  cells +
-;
-
-5 Array a
-
-10 0 a !
-20 1 a !
-30 2 a !
-40 3 a !
-50 4 a !
-
-t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
-
-cr $( hallo) .s
-
-: show ( S -- )
-   ?dup 0= ?exit  swap >r 1- show r> emit ;
-
-show
-
-: ,chars ( S -- )
-   ?dup 0= ?exit  swap >r 1- ,chars r> c, ;
-
-: ,str ( S -- )
-   dup c, ,chars ;
-
-here $( The quick brown fox jumps over the lazy dog.) ,str count cr type
-
-
-: !chars ( S addr -- addr' )
-    over 0= IF nip exit THEN
-    rot >r  swap 1- swap !chars
-    r> over c! 1+ ;
-
-
-: !str ( S addr -- )
-    2dup c! 1+ !chars drop ;
-
-cr here .     here 100 allot  10 , 20 , 30 ,  
-cr here - dup . allot 
-cr here .
-
-Macro .( 
-  seed $( seed show 
-end-macro
-
-\ Header
-
-0
-1 cells Field _link
-1       Field _flags
-1 cells Field _xt
-0       Field _name
-
-Constant #header
-
-
-Variable last  0 last !
-
-: $header ( c-addr u -- addr )
-    \ 2dup lowercase
-    dup #header + 1+ alloc >r ( c-addr u r:addr )
-    0 r@ _link !
-    0 r@ _flags c!
-    0 r@ _xt !
-    r@ _name place 
-    r> ;
-
-: link ( addr -- )  last @  swap _link dup last ! ! ;
-
-cr .( Header size = ) #header .
-
-: @flags ( -- x )  last @ _flags c@ ;
-: !flags ( x -- )  last @ _flags c! ;
-
-: 0<> ( x -- f ) 0= 0= ;
-
-128 Constant #immediate
-: immediate? ( addr -- f )
-    _flags @ #immediate and 0<> ;
-
-
-: immediate ( -- )
-    @flags  #immediate or  !flags ;
-
-: pad ( -- addr )
-   here 100 + ;
-
-
-Variable context
-
-: hide ( -- )  last @ @ context ! ;
-: reveal ( -- ) last @ context ! ;
-
-reveal
-
-\ : find ( c-addr u -- 0 | xt 1 | xt -1)
-\     context @
-\     BEGIN ?dup WHILE ( c-addr u link )
-\         >r 2dup r@ _name count compare 0= IF 2drop r@ _xt @ r> _flags c@ #immediate and 0= 2* 1+ exit THEN
-\         r> @
-\     REPEAT
-\     2drop 0
-\ ;
-
-: find-name ( c-addr u link -- header )
-    \ >r 2dup lowercase r>
-    BEGIN ( c-addr u link )
-      dup
-    WHILE ( c-addr u link )
-      >r  2dup  r> dup >r
-      _name count  compare  0= IF 2drop r> exit THEN
-      r> @
-    REPEAT
-    nip nip ;
-
-Macro s(
-  seed $( 
-  seed pad 
-  seed !str 
-  seed pad 
-  seed count
-end-macro
-
-Macro set-xt ( 'header xt -- )
-   \ seed h@
-   seed swap
-   seed _xt
-   seed !
-end-macro
-
-Macro make-header ( c-addr u -- addr )
-   seed $header
-   seed dup
-   seed link
-end-macro
-
-\ s( IF) make-header drop  immediate reveal
-
-\ cr .( dup -> ) s( dup) find .s drop drop 
-\ cr .( IF  -> ) s( IF) find .s drop drop
-\ cr .( xlerb -> ) s( xlerb) find .s drop
-
-\ cr 17 s( dup) find . execute .s drop drop
-
-
-: words ( -- )
-   context @ BEGIN ?dup WHILE dup _name count type space @ REPEAT ;
 
 : skip ( c-addr1 u1 c -- c-addr2 u2 )
    BEGIN
@@ -599,12 +189,402 @@ end-macro
      >r  1 /string  r>
    REPEAT THEN drop ;
 
+\ hex number output
+
+: .hexdigit ( n -- )  
+    dup 9 > IF lit [ 'A' 10 - , ] ELSE '0' THEN + emit ;
+
+\ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
+: u2/ ( x1 -- x2 )
+    0 8 cells 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;
+
+: odd? ( x1 -- f )  
+    dup u2/ 2* = 0= ;
+
+: 2/mod ( x1 -- x2 r )  \ swapped results
+    dup u2/ swap odd? negate ;
+
+: 16/mod ( x -- x r )  \ swapped results
+    2/mod >r  2/mod >r  2/mod >r  2/mod  2* r> + 2* r> + 2* r> + ;
+
+: #### ( x -- )
+    16/mod >r 16/mod >r 16/mod >r  16/mod >r  16/mod >r  16/mod >r 16/mod >r
+       .hexdigit  r> .hexdigit   r> .hexdigit  r> .hexdigit  r> .hexdigit
+    r> .hexdigit  r> .hexdigit   r> .hexdigit  space ;
+
+: (.) ( x -- )
+    ?dup IF  16/mod >r (.) r> .hexdigit THEN ;
+
+: hex-u. ( x -- )
+    ?dup IF (.) ELSE '0' emit THEN space ;
+
+: hex. ( n -- )  
+    dup 0< IF '-' emit negate THEN hex-u. ;
+
+
+\ decimal output
+\ --------------
+
+: (/mod  ( n d q0 -- r d q )
+    >r 2dup <  r> swap ?exit
+    >r swap over -  swap  r> 1+  (/mod ;
+
+: 10* ( x1 -- x2 )
+    dup + dup dup + dup + + ;
+
+: (10u/mod ( n q d -- r q d )
+    third over > 0= ?exit     \ ( n q d )
+    dup >r 10*                 \ ( n q 10*d ) ( R: d )
+    (10u/mod                   \ ( r q d )
+    swap >r   0 (/mod nip   r> 10* + r> ;
+     
+: 10u/mod ( n -- r q )
+    0 1 (10u/mod drop  ;
+
+: (u. ( u1 -- )
+    ?dup IF 10u/mod (u. .digit THEN ;
+
+\ display unsigned number
+: u. ( u -- )
+    dup (u. 0= IF '0' emit THEN space ;
+
+\ display signed number
+: . ( n -- )
+    dup 0< IF '-' emit negate THEN u. ;
+
+: .s ( i*x -- i*x )  
+    depth 0= ?exit  >r .s r> dup . ;
+
+\ Deferred words
+
+: ' ( --  x )  key ;
+
+: uninitialized ( -- ) 
+     cr s" uninitialized execution vector" type -1 throw ;
+
+Definer Defer ( <name> -- ) 
+   create [ ' uninitialized ] Literal , does> @ execute ;
+
+: >body ( xt -- body )  
+    h@  1 cells + ;
+
+: is ( xt -- )  \ only interactive
+    ' >body ! ;
+
+\ String comparison
+: compare ( c-addr1 u1 c-addr2 u2 -- n )
+    rot 
+    BEGIN \ ( c-addr1 c-addr2 u1 u2 )
+      over 
+    WHILE
+      dup
+    WHILE
+      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop exit THEN
+      1+ swap 1+ swap
+      r> 1- r> 1-
+    REPEAT
+      -1
+    ELSE
+      dup 0= IF 0  ELSE 1  THEN
+    THEN >r 2drop 2drop r> ;
+
+\ Some general memory allocation words
+
+: alloc ( u -- addr )
+    here swap allot ;
+
+: dispose ( addr -- )
+    drop ;
+
+Create tib 80 allot
+Variable #tib
+
+: accept ( c-addr u1 -- u2 )
+    >r
+    0 BEGIN ( c-addr u2 ) ( R: u1 )
+        key dup 10 = over 13 = or 0=
+    WHILE ( c-addr u2 key )
+        dup  8 = over 127 = or IF  drop 1- 0 max  8 emit bl emit 8 emit ELSE
+        ( dup emit ) >r 2dup + r> swap c!  1+ r@ min THEN
+    REPEAT ( c-addr u2 key r:u1 )
+    drop  r> drop   nip ;
+
+: query ( -- )
+    tib 80 accept #tib ! ;
+
+\ Header
+
+0
+1 cells Field _link
+1       Field _flags
+1 cells Field _xt
+0       Field _name
+
+Constant #header
+
+
+Variable last  0 last !
+
+: "header ( c-addr u -- addr )
+    \ 2dup lowercase
+    dup #header + 1+ alloc >r ( c-addr u r:addr )
+    0 r@ _link !
+    0 r@ _flags c!
+    0 r@ _xt !
+    r@ _name place 
+    r> ;
+
+: link ( addr -- )  
+    last @  swap _link dup last ! ! ;
+
+: @flags ( -- x )  
+    last @ _flags c@ ;
+
+: !flags ( x -- )  
+    last @ _flags c! ;
+
+128 Constant #immediate
+
+: immediate? ( addr -- f )
+    _flags @ #immediate and 0<> ;
+
+: immediate ( -- )
+    @flags  #immediate or  !flags ;
+
+: pad ( -- addr )
+   here 100 + ;
+
+Variable context
+
+: words ( -- )
+   context @ BEGIN ?dup WHILE dup _name count type space @ REPEAT ;
+
+: hide ( -- )  
+    last @ @ context ! ;
+
+: reveal ( -- ) 
+    last @ context ! ;
+
+reveal
+
+: !chars ( S addr -- addr' )
+    over 0= IF nip exit THEN
+    rot >r  swap 1- swap !chars
+    r> over c! 1+ ;
+
+: !str ( S addr -- )
+    2dup c! 1+ !chars drop ;
+
+Macro has-header ( <name> -- )
+   seed $name 
+   seed pad 
+   seed !str 
+   seed pad 
+   seed count
+   seed "header
+   seed dup
+   seed link
+   seed _xt
+   seed !
+end-macro
+
+
+' bye         has-header bye         \ 0   00
+' emit        has-header emit        \ 1   01
+' key         has-header key         \ 2   02
+' dup         has-header dup         \ 3   03
+' swap        has-header swap        \ 4   04
+' drop        has-header drop        \ 5   05
+' 0<          has-header 0<          \ 6   06
+' ?exit       has-header ?exit       \ 7   07
+' >r          has-header >r          \ 8   08
+' r>          has-header r>          \ 9   09
+' -           has-header -           \ 10  0A
+' exit        has-header exit        \ 11  0B
+' lit         has-header lit         \ 12  0C
+' @           has-header @           \ 13  0D
+' c@          has-header c@          \ 14  0E
+' !           has-header !           \ 15  0F
+' c!          has-header c!          \ 16  10
+' execute     has-header execute     \ 17  11
+' branch      has-header branch      \ 18  12
+' ?branch     has-header ?branch     \ 19  13
+' negate      has-header negate      \ 20  14
+' +           has-header +           \ 21  15
+' 0=          has-header 0=          \ 22  16
+' ?dup        has-header ?dup        \ 23  17
+' cells       has-header cells       \ 24  18
+' +!          has-header +!          \ 25  19
+' h@          has-header h@          \ 26  1A
+' h,          has-header h,          \ 27  1B
+' here        has-header here        \ 28  1C
+' allot       has-header allot       \ 29  1D
+' ,           has-header ,           \ 30  1E
+' c,          has-header c,          \ 31  1F
+' fun         has-header fun         \ 32  20
+' interpreter has-header interpreter \ 33  21
+' compiler    has-header compiler    \ 34  22
+' create      has-header create      \ 35  23
+' does>       has-header does>       \ 36  24
+' cold        has-header cold        \ 37  25
+' depth       has-header depth       \ 38  26
+' compile,    has-header compile,    \ 39  26
+' new         has-header new         \ 40  28
+' couple      has-header couple      \ 41  29
+' and         has-header and         \ 42  2A
+' or          has-header or          \ 43  2B
+' catch       has-header catch       \ 44  2C
+' throw       has-header throw       \ 45  2D
+' sp@         has-header sp@         \ 46  2E
+' sp!         has-header sp!         \ 47  2F
+' rp@         has-header rp@         \ 48  30
+' rp!         has-header rp!         \ 49  31
+' $lit        has-header $lit        \ 50  32
+' num         has-header num         \ 51  33
+
+' over        has-header over      
+' /string     has-header /string   
+' type        has-header type      
+' 2dup        has-header 2dup      
+' cr          has-header cr        
+' .s          has-header .s        
+' t{          has-header t{        
+' ->          has-header ->        
+' }t          has-header }t        
+
+' space       has-header space     
+' spaces      has-header spaces    
+
+' 1+          has-header 1+        
+' 1-          has-header 1-        
+' nip         has-header nip       
+' <           has-header <         
+' >           has-header >         
+' =           has-header =         
+' count       has-header count     
+' 2*          has-header 2*        
+
+' cmove       has-header cmove     
+' cell+       has-header cell+     
+' place       has-header place     
+' compare     has-header compare   
+' 2@          has-header 2@        
+' 2!          has-header 2!        
+
+' skip        has-header skip      
+' scan        has-header scan 
+' .           has-header .         
+' words       has-header words 
+' immediate   has-header immediate
+' pad         has-header pad  
+
+
+
+
+Macro :noname
+   seed new
+   seed compiler
+end-macro
+
+\ :noname 10 ; 
+
+
+: (IF)  ( -- c:orig )
+     [ ' ?branch ] Literal compile,  here 0 , ;
+
+: (AHEAD)  ( -- c:orig )
+     [ ' branch ] Literal compile,  here 0 , ;
+
+: (THEN) ( c:orig -- )
+     here swap ! ;
+
+: (ELSE) ( c:orig1 -- c:orig2 )
+     [ ' branch ] Literal compile,  here 0 ,  swap (THEN) ;
+
+: (WHILE) ( c: orig -- c:dest c:orig )
+     (IF) swap ;
+
+: (AGAIN) ( c:orig -- )
+     [ ' branch ] Literal compile, , ;
+
+: (UNTIL)
+     [ ' ?branch ] Literal compile, , ;
+
+: (REPEAT)
+     (AGAIN) (THEN) ;
+
+' (IF)        has-header IF immediate
+' (ELSE)      has-header ELSE immediate
+' (THEN)      has-header THEN immediate
+' (AHEAD)     has-header AHEAD immediate
+
+' here        has-header BEGIN immediate
+' (WHILE)     has-header WHILE immediate
+' (AGAIN)     has-header AGAIN immediate
+' (UNTIL)     has-header UNTIL immediate
+' (REPEAT)    has-header REPEAT immediate
+
+
+Variable >in ( -- addr )
+
+: source ( -- c-addr u )
+   tib   #tib @ ;
+
+: parse ( c -- c-addr u )
+   >r source >in @ /string
+   2dup r> dup >r  scan
+   2dup r> skip  nip source nip swap - >in !
+   nip - ;
+
+: parse-name ( -- c-addr u )
+   source >in @ /string
+   bl skip  2dup bl scan  source nip  2dup swap - 1+ min >in !    nip - ;
+
+' parse        has-header parse     
+' parse-name   has-header parse-name 
+
+
+: (Literal) ( x -- )
+    lit [ ' lit , ] compile, , ;
+
+' (Literal)   has-header Literal  immediate
+
+: (.") ( ccc" -- )
+    [ ' $lit ] Literal compile,  
+    '"' parse here over 1+ allot place 
+    [ ' type ] Literal compile, ;
+
+' (.") has-header ." immediate
+
+
+\ : (Create) ( <name> -- )
+\      Header create  hp@ swap _xt ! 0 , ;  
+\ ' (Create)   has-header Create
+
+: find-name ( c-addr u link -- header|0 )
+    \ >r 2dup lowercase r>
+    BEGIN ( c-addr u link )
+      dup
+    WHILE ( c-addr u link )
+      >r  2dup  r> dup >r
+      _name count  compare  0= IF 2drop r> exit THEN
+      r> @
+    REPEAT
+    nip nip ;
+
+: tick ( <name> -- xt )
+   parse-name last @ find-name dup IF _xt @ exit THEN -13 throw ;
+
+' tick        has-header '
+
+: ([']) ( <name> -- xt )
+    tick  [ ' lit ] Literal compile,  , ;
+
+' ([']) has-header ['] immediate
+
 
 : digit? ( c -- f )
     dup '0' < IF drop 0 exit THEN '9' > 0= ;
-
-\ : 10* ( x1 -- x2 )
-\    dup + dup dup + dup + + ;
 
 : ?# ( c-addr u -- x 0 0 | c-addr u )
     dup 0= ?exit
@@ -637,41 +617,16 @@ end-macro
     lit [ ' lit , ] compile, rot , ;
 
 
-
-Variable >in ( -- addr )
-
-: source ( -- c-addr u )
-   tib   #tib @ ;
-
-: parse ( c -- c-addr u )
-   >r source >in @ /string
-   2dup r> dup >r  scan
-   2dup r> skip  nip source nip swap - >in !
-   nip - ;
-
-: parse-name ( -- c-addr u )
-   source >in @ /string
-   bl skip  2dup bl scan  source nip  2dup swap - 1+ min >in !    nip - ;
-
-Variable handlers
-
-Variable compilers
-
-Variable interpreters
-
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
    2dup context @ find-name ?dup IF nip nip _xt @ execute 0 0 THEN
 ;
 
-Defer restart
-
-
 : (interpreters ( c-addr1 u1 | i*x c-addr2 u2 )
    ?word
    ?#
    ?'x'
-   over IF space type '?' emit  restart THEN 
+   over IF space type '?' emit  space -13 throw THEN 
 ;
 
 : ,word ( c-addr1 u1 | i*x c-addr2 u2 )
@@ -684,16 +639,33 @@ Defer restart
     ,word
     ,#
     ,'x'
-    over IF space type '?' emit  restart THEN 
+    over IF space type '?' emit  space -13 throw THEN 
 ;
 
+Variable compilers       ' (compilers compilers !
+Variable interpreters    ' (interpreters interpreters !
+Variable handlers        interpreters @ handlers !
 
+: (]) ( -- )
+   compilers @ handlers ! ;
 
-' (compilers compilers !
+: ([)
+   interpreters @ handlers ! ;
 
-' (interpreters interpreters !   
+: Header ( <name> -- addr )
+    parse-name "header dup link reveal ;
 
-interpreters @ handlers !
+: (:) ( <name> -- )
+    Header new swap _xt ! hide  (]) ;
+
+: (;) ( -- )
+   lit [ ' exit , ] compile,  reveal ([) ;
+
+' (])   has-header ] 
+' ([)   has-header [  immediate 
+' (;)   has-header ;  immediate
+' (:)   has-header : 
+
 
 : interpret ( -- )
    BEGIN ( )
@@ -708,140 +680,21 @@ interpreters @ handlers !
 
 : .ok ( -- ) ."  ok" ;
 
-: (restart ( -- )
+: restart ( -- )
+   ([)
    BEGIN
      prompt query  0 >in !  interpret  .ok
    0 UNTIL ;
-
-' (restart is restart
 
 : warm ( -- )
    \ [ ' [ compile, ] 
    empty-stack restart ;
 
 
-: (Literal) ( x -- )
-    lit [ ' lit , ] compile, , ;
-
-Macro Literal
-   seed lit
-   seed [
-   seed ,
-   seed ]
- end-macro
-
-\ : abcd 
-\    [ 3 4 + ] Literal . ;
-
-\ cr .( ----> ) abcd cr
-
-
-s( bye)      make-header ' bye       set-xt \ 0   00
-s( emit)     make-header ' emit      set-xt \ 1   01
-s( key)      make-header ' key       set-xt \ 2   02
-s( dup)      make-header ' dup       set-xt \ 3   03
-s( swap)     make-header ' swap      set-xt \ 4   04
-s( drop)     make-header ' drop      set-xt \ 5   05
-s( 0<)       make-header ' 0<        set-xt \ 6   06
-s( ?exit)    make-header ' ?exit     set-xt \ 7   07
-s( >r)       make-header ' >r        set-xt \ 8   08
-s( r>)       make-header ' r>        set-xt \ 9   09
-s( -)        make-header ' -         set-xt \ 10  0A
-s( lit)      make-header ' lit       set-xt \ 12  0C
-s( @)        make-header ' @         set-xt \ 13  0D
-s( c@)       make-header ' c@        set-xt \ 14  0E
-s( !)        make-header ' !         set-xt \ 15  0F
-s( c!)       make-header ' c!        set-xt \ 16  10
-s( ?branch)  make-header ' ?branch   set-xt \ 17  11
-s( branch)   make-header ' branch    set-xt \ 18  12
-s( negate)   make-header ' negate    set-xt \ 20  14
-s( 0=)       make-header ' 0=        set-xt \ 22  16
-s( cells)    make-header ' cells     set-xt \ 24  18
-s( h@)       make-header ' h@        set-xt \ 26  1A
-s( here)     make-header ' here      set-xt \ 28  1C
-s( ,)        make-header ' ,         set-xt \ 30  1E
-s( c,)       make-header ' c,        set-xt \ 31  1F
-s( fun)      make-header ' fun       set-xt \ 32  20
-s( compiler) make-header ' compiler  set-xt \ 34  22
-s( does>)    make-header ' does>     set-xt \ 36  24
-s( depth)    make-header ' depth     set-xt \ 38  26
-s( new)      make-header ' new       set-xt \ 40  28
-s( couple)   make-header ' couple    set-xt \ 41  29
-s( and)      make-header ' and       set-xt \ 42  2A
-s( catch)    make-header ' catch     set-xt \ 44  2C
-s( throw)    make-header ' throw     set-xt \ 45  2D
-s( sp@)      make-header ' sp@       set-xt \ 46  2E
-s( rp@)      make-header ' rp@       set-xt \ 48  30
-s( $lit)     make-header ' $lit      set-xt \ 50  32
-s( num)      make-header ' num       set-xt \ 51  33
-
-s( +)        make-header ' +         set-xt
-s( over)     make-header ' over      set-xt
-s( /string)  make-header ' /string   set-xt
-s( type)     make-header ' type      set-xt
-s( 2dup)     make-header ' 2dup      set-xt
-s( cr)       make-header ' cr        set-xt
-s( .s)       make-header ' .s        set-xt
-s( t{)       make-header ' t{        set-xt
-s( ->)       make-header ' ->        set-xt
-s( }t)       make-header ' }t        set-xt
-
-s( space)    make-header ' space     set-xt
-s( spaces)   make-header ' spaces    set-xt
-
-s( 1+)       make-header ' 1+        set-xt
-s( 1-)       make-header ' 1-        set-xt
-s( nip)      make-header ' nip       set-xt
-s( <)        make-header ' <         set-xt
-s( >)        make-header ' >         set-xt
-s( =)        make-header ' =         set-xt
-s( count)    make-header ' count     set-xt
-s( 2*)       make-header ' 2*        set-xt
-
-s( cmove)    make-header ' cmove     set-xt
-s( cell+)    make-header ' cell+     set-xt
-s( place)    make-header ' place     set-xt
-s( compare)  make-header ' compare   set-xt
-s( 2@)       make-header ' 2@        set-xt
-s( 2!)       make-header ' 2!        set-xt
-
-s( skip)     make-header ' skip      set-xt
-s( scan)     make-header ' scan      set-xt
-s( parse)    make-header ' parse     set-xt
-s( parse-name) make-header ' parse-name set-xt
-s( Literal)  make-header ' (Literal) set-xt immediate
-s( .)        make-header ' .         set-xt
-
-
-
-s( words)    make-header ' words     set-xt  
-
-: (]) ( -- )
-   compilers @ handlers ! ;
-
-: ([)
-   interpreters @ handlers ! ;
-
-: (:) ( <name> -- )
-   parse-name make-header new set-xt (]) ;
-
-: (;) ( -- )
-   lit [ ' exit , ] compile,  reveal ([) ;
-
-s( ]) make-header ' (]) set-xt
-s( [) make-header ' ([) set-xt immediate 
-s( ;) make-header ' (;) set-xt immediate
-s( :) make-header ' (:) set-xt
-
-: fin  ." Good bye" 0 emit [ 0 h@ , ] ;
-
-s( fin) make-header ' fin set-xt
-
-reveal
 
 2 Constant major ( -- x )
 0 Constant minor ( -- x )
-0 Constant patch ( -- x )
+1 Constant patch ( -- x )
 
 : .version ( -- )
     major .digit '.' emit
@@ -850,20 +703,16 @@ reveal
 
 : .banner ( -- )
     cr ." seedForth " .version
-    cr ." ---------------" cr cr ;
+    cr ." ---------------" cr ;
 
 : boot ( -- )
-   key drop
+   key drop \ skip 0 of boot program
    .banner
-   words
+   words cr
    BEGIN
-     lit [ ' warm , ] catch ?dup IF ." error " . cr THEN
+      [ ' warm ] Literal catch ?dup IF ." error " . cr THEN
    AGAIN ;
 
-\ : cold ( -- )  -1 throw ;
-
-: done ( -- )  cr ." done " .s cr ; done
-\ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
-
+reveal
 boot
 END

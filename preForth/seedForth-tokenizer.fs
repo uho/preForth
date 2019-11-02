@@ -41,7 +41,7 @@ VARIABLE OUTFILE
 : <name> ( -- c-addr u )  bl word count ;
 
 Variable #tokens  0 #tokens !
-: Token ( <name> -- )  cr #tokens @ base @ >r hex 3 u.r r> base ! space >in @ <name> type >in !
+: Token ( <name> -- )
    :noname  
    #tokens @  postpone LITERAL  postpone SUBMIT  postpone ;  
    <name> 
@@ -119,12 +119,12 @@ Variable #tokens  0 #tokens !
    seed-file ;
 
 Macro END ( -- )
-   .S CR 0 SUBMIT OUTFILE @ CLOSE-FILE THROW BYE end-macro
+   .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
 
 Macro [ ( -- )  seed bye      end-macro  \ bye
 Macro ] ( -- )  seed compiler end-macro  \ compiler
 
-Macro : ( <name> -- ) seed fun  Token  end-macro
+Macro : ( <name> -- )  seed fun  Token  end-macro
 Macro ; ( -- )         seed exit   seed [ end-macro
 
 \ generate token sequences for strings
@@ -154,6 +154,10 @@ Macro ," ( ccc" -- )   [char] " parse seed-string end-macro
    seed-string
    seed ] 
 ;
+
+Macro $name ( <name> -- )
+   <name> seed-stack-string
+end-macro
 
 Macro $( \ ( ccc) -- )
   [char] ) parse seed-stack-string
