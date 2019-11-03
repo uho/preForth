@@ -12,9 +12,9 @@
 PROGRAM seedForthInteractive.seed
 
 \ Defining words
-Definer Create ( <name> -- )      create ;
-Definer Variable ( <name> -- )    create 0 , ;
-Definer Constant ( x <name> -- )  create , does> @ ;
+Definer Create ( <name> -- )      create ( x ) drop ;
+Definer Variable ( <name> -- )    create ( x ) drop 0 , ;
+Definer Constant ( x <name> -- )  create ( x ) >r , r> does> @ ;
 
 \ Missing primitives
 : over ( x1 x2 -- x1 x2 x1 )  
@@ -69,7 +69,7 @@ Definer Constant ( x <name> -- )  create , does> @ ;
     swap over ! cell+ ! ;
 
 Definer Field ( offset size <name> -- offset' ) 
-    create over , + does> @ + ;
+    create >r over , + r> does> @ + ;
 
 \ output
 32 Constant bl
@@ -263,7 +263,7 @@ t{ -1 4 min -> -1 }t
      cr s" uninitialized execution vector" type -1 throw ;
 
 Definer Defer ( <name> -- ) 
-   create [ ' uninitialized ] Literal , does> @ execute ;
+   create >r [ ' uninitialized ] Literal , r> does> @ execute ;
 
 : >body ( xt -- body )  
     h@  1 cells + ;
@@ -481,6 +481,11 @@ end-macro
 
 
 
+\ ' "header     has-header "header
+\ ' link        has-header link
+\ ' _xt         has-header _xt
+
+
 Macro :noname
    seed new
    seed compiler
@@ -489,46 +494,50 @@ end-macro
 \ :noname 10 ; 
 
 
-: (IF)  ( -- c:orig )
-     [ ' ?branch ] Literal compile,  here 0 , ;
+\ : (IF)  ( -- c:orig )
+\      [ ' ?branch ] Literal compile,  here 0 , ;
+\ 
+\ : (AHEAD)  ( -- c:orig )
+\      [ ' branch ] Literal compile,  here 0 , ;
+\ 
+\ : (THEN) ( c:orig -- )
+\      here swap ! ;
+\ 
+\ : (ELSE) ( c:orig1 -- c:orig2 )
+\      [ ' branch ] Literal compile,  here 0 ,  swap (THEN) ;
+\ 
+\ : (WHILE) ( c: orig -- c:dest c:orig )
+\      (IF) swap ;
+\ 
+\ : (AGAIN) ( c:orig -- )
+\      [ ' branch ] Literal compile, , ;
+\ 
+\ : (UNTIL)
+\      [ ' ?branch ] Literal compile, , ;
 
-: (AHEAD)  ( -- c:orig )
-     [ ' branch ] Literal compile,  here 0 , ;
+\ : (REPEAT) ( c:orig c:dest -- )
+\     (AGAIN) (THEN) ;
 
-: (THEN) ( c:orig -- )
-     here swap ! ;
+\ ' (IF)        has-header IF immediate
+\ ' (ELSE)      has-header ELSE immediate
+\ ' (THEN)      has-header THEN immediate
+\ ' (AHEAD)     has-header AHEAD immediate
 
-: (ELSE) ( c:orig1 -- c:orig2 )
-     [ ' branch ] Literal compile,  here 0 ,  swap (THEN) ;
-
-: (WHILE) ( c: orig -- c:dest c:orig )
-     (IF) swap ;
-
-: (AGAIN) ( c:orig -- )
-     [ ' branch ] Literal compile, , ;
-
-: (UNTIL)
-     [ ' ?branch ] Literal compile, , ;
-
-: (REPEAT)
-     (AGAIN) (THEN) ;
-
-' (IF)        has-header IF immediate
-' (ELSE)      has-header ELSE immediate
-' (THEN)      has-header THEN immediate
-' (AHEAD)     has-header AHEAD immediate
-
-' here        has-header BEGIN immediate
-' (WHILE)     has-header WHILE immediate
-' (AGAIN)     has-header AGAIN immediate
-' (UNTIL)     has-header UNTIL immediate
-' (REPEAT)    has-header REPEAT immediate
+\ ' here        has-header BEGIN immediate
+\ ' (WHILE)     has-header WHILE immediate
+\ ' (AGAIN)     has-header AGAIN immediate
+\ ' (UNTIL)     has-header UNTIL immediate
+\ ' (REPEAT)    has-header REPEAT immediate
 
 
 Variable >in ( -- addr )
 
+' >in has-header >in
+
 : source ( -- c-addr u )
    tib   #tib @ ;
+
+' source has-header source
 
 : parse ( c -- c-addr u )
    >r source >in @ /string
@@ -543,23 +552,45 @@ Variable >in ( -- addr )
 ' parse        has-header parse     
 ' parse-name   has-header parse-name 
 
+: (Create) ( <name> -- )
+    parse-name "header  dup link create  swap _xt ! reveal ;
+
+' (Create)    has-header Create
+
+: last-xt ( -- xt )
+     last @ _xt @ ;
+
+: (Does>) ( -- )
+     [ ' last-xt ] Literal compile,
+     [ ' does> ] Literal compile, ; 
+
+' (Does>) has-header Does> immediate
+' last has-header last
+' _xt has-header _xt
+' _name has-header _name
 
 : (Literal) ( x -- )
     lit [ ' lit , ] compile, , ;
 
 ' (Literal)   has-header Literal  immediate
 
-: (.") ( ccc" -- )
+: (s") ( ccc" -- )
     [ ' $lit ] Literal compile,  
-    '"' parse here over 1+ allot place 
+    '"' parse here over 1+ allot place ;
+
+\ ' (s") has-header s" immediate
+
+: (.") ( ccc" -- )
+    (s")
     [ ' type ] Literal compile, ;
 
 ' (.") has-header ." immediate
 
+: dot-paren 
+   ')' parse type ;
 
-\ : (Create) ( <name> -- )
-\      Header create  hp@ swap _xt ! 0 , ;  
-\ ' (Create)   has-header Create
+' dot-paren has-header .( immediate
+
 
 : find-name ( c-addr u link -- header|0 )
     \ >r 2dup lowercase r>
@@ -571,6 +602,20 @@ Variable >in ( -- addr )
       r> @
     REPEAT
     nip nip ;
+
+' find-name has-header find-name
+
+: (postpone) ( <name> -- )
+    parse-name last @ find-name dup 0= -13 and throw 
+    dup immediate? IF
+      _xt @ compile, 
+    ELSE 
+      [ ' lit ] Literal compile,  _xt @ ,  [ ' compile, ] Literal compile, 
+    THEN 
+;
+
+' (postpone) has-header postpone immediate
+' immediate? has-header immediate?
 
 : tick ( <name> -- xt )
    parse-name last @ find-name dup IF _xt @ exit THEN -13 throw ;
@@ -675,10 +720,16 @@ Variable handlers        interpreters @ handlers !
    REPEAT 
    2drop ;
 
-: prompt ( -- )
-    cr .s handlers @ compilers @ = IF ']' ELSE '>' THEN emit space ;
+Variable echo  -1 echo !
 
-: .ok ( -- ) ."  ok" ;
+' echo has-header echo
+
+: prompt ( -- )
+    echo @ IF
+       cr .s handlers @ compilers @ = IF ']' ELSE '>' THEN emit space 
+    THEN ;
+
+: .ok ( -- ) echo @ IF ."  ok" THEN ;
 
 : restart ( -- )
    ([)
@@ -694,7 +745,7 @@ Variable handlers        interpreters @ handlers !
 
 2 Constant major ( -- x )
 0 Constant minor ( -- x )
-1 Constant patch ( -- x )
+2 Constant patch ( -- x )
 
 : .version ( -- )
     major .digit '.' emit
@@ -708,11 +759,13 @@ Variable handlers        interpreters @ handlers !
 : boot ( -- )
    key drop \ skip 0 of boot program
    .banner
-   words cr
    BEGIN
       [ ' warm ] Literal catch ?dup IF ." error " . cr THEN
    AGAIN ;
 
+' boot has-header boot
+
+0 echo !
 reveal
 boot
 END

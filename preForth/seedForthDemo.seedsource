@@ -11,7 +11,7 @@
 
 PROGRAM seedForthDemo.seed
 
-Definer Variable create 0 , ;
+Definer Variable create ( x ) drop 0 , ;
 
 \ Missing primitives
 : over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;
@@ -121,19 +121,19 @@ t{ here 5 c, count -> here 5 }t
     depth 0= ?exit  >r .s r> dup . ;
 
 \ Defining words
-Definer Create ( <name> -- ) create ;
+Definer Create ( <name> -- ) create ( x ) drop ;
 
 Create dada 17 ,
 t{ dada @ -> 17 }t
 
 
-Definer Value ( x <name> -- )  create , does> @ ;
+Definer Value ( x <name> -- )  create >r , r> does> @ ;
 
 10 Value ten
 t{ ten -> 10 }t
 
 
-Definer Constant ( x <name> -- )  create , does> @ ;
+Definer Constant ( x <name> -- )  create >r , r> does> @ ;
 
 5  Constant five
 t{ five -> 5 }t
@@ -145,7 +145,7 @@ t{ five -> 5 }t
 \ structured data
 
 Definer Field ( offset size <name> -- offset' ) 
-  create over , + does> @ + ;
+  create >r over , + r> does> @ + ;
 
 
 \ define structure
@@ -168,7 +168,7 @@ t{ person -> 3 cells }t          \ size of structure
 : uninitialized ( -- ) cr s" uninitialized execution vector" type ;
 ' uninitialized Constant 'uninitialized
 
-Definer Defer ( <name> -- ) create 'uninitialized , does> @ execute ;
+Definer Defer ( <name> -- ) create >r 'uninitialized , r> does> @ execute ;
 
 : >body ( xt -- body )  h@  1 cells + ;
 
@@ -302,7 +302,7 @@ Variable #tib
 
 \ Adder
 
-Definer Adder ( n <name> -- )  create , does>  @ + ;
+Definer Adder ( n <name> -- )  create >r , r> does>  @ + ;
 
 5 Adder 5+
 
@@ -313,7 +313,7 @@ t{ 1 5+ -> 6 }t
 
 \ Inlining Constant
 
-Definer iConstant ( x <name> -- )  create , ( immediate )  does> @  lit lit , , ;
+Definer iConstant ( x <name> -- )  create >r , ( immediate )  r> does> @  lit lit , , ;
 
 \ improve: needs to define macro
 
@@ -371,10 +371,10 @@ t{ m 2@  m 2!  m @  m cell+ @ -> 1 2 }t
     r> r> ;
 
 Definer Array ( n -- )  
-    create dup , 
+    create >r dup , 
            here >r 0 ,
            cells alloc r> !  \ { size | addr }
-    does> ( n -- addr )
+    r> does> ( n -- addr )
       BEGIN ( n body )
          2dup @ < 0= 
       WHILE ( n body )

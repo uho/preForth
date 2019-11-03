@@ -381,7 +381,7 @@ code rp! ( x -- )
    dup ?lit 
    compile, tail compiler ;
 
-: new ( -- x )
+: new ( -- xt )
    lit hp @   here h,  lit enter , ;
 
 : fun ( -- )
@@ -396,12 +396,12 @@ code rp! ( x -- )
 : $lit ( -- addr u )
     r>  dup   1 +   dup >r  swap c@  dup r> + >r ;
 
-: create ( -- )
+: create ( -- xt )
    0 , \ dummy does> field
-   here h, lit dovar , ;
+   lit hp @  here h, lit dovar , ;
 
-: does> ( -- ) \ set code field of last defined word
-    r>   lit hp @ 1 - h@  dup >r 1 cells - !   lit dodoes r> !
+: does> ( xt -- ) \ set code field of last defined word
+    r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
 ;
 
 : catch ( i*x xt -- j*x 0 | i*x err )
