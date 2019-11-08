@@ -117,6 +117,9 @@ end-macro
     REPEAT
     2drop ;
 
+: move cmove ;
+
+
 : place ( c-addr1 u c-addr2 -- )
     2dup >r >r 1+ swap cmove  r> r> c! ;
 
@@ -288,13 +291,100 @@ Definer Defer ( <name> -- )
       dup 0= IF 0  ELSE 1  THEN
     THEN >r 2drop 2drop r> ;
 
-\ Some general memory allocation words
+
+\ dynamic memory
+\ -------------------------------------
+: 256* ( x1 -- x2 ) 2* 2* 2* 2* 2* 2* 2* 2* ;
+: u< < ;
+
+Variable anchor
+
+50 Constant waste
+
+128 256* 256* 256* ( 32bit ) Constant #free  \ sign bit
+#free 1 - ( 31bit ) Constant #max
+
+
+: size ( mem -- size ) 1 cells - @ #max and ;
+
+: addr&size ( mem -- mem size ) dup size ;
+
+: above ( mem -- >mem )   addr&size + 2 cells + ;
+
+: use ( mem size -- )
+    dup >r swap  2dup 1 cells - !  r> #max and + ! ;
+
+: release ( mem size -- )  #free or use ;
+
+: fits? ( size -- mem | false ) >r anchor @
+    BEGIN addr&size  r@ u< 0=
+         IF r> drop exit THEN
+         @ dup anchor @ =
+    UNTIL 0= r> drop ;
+
+: link ( mem >mem <mem -- )
+    >r 2dup cell+ !  over !  r> 2dup !  swap cell+ ! ;
+
+: @links ( mem -- <mem mem> )  dup @  swap cell+ @ ;
+
+: setanchor ( mem -- mem ) 
+    dup anchor @ = IF  dup @ anchor ! THEN ;
+
+: unlink ( mem -- ) setanchor  @links 2dup !  swap cell+ ! ;
+
+
+: allocate ( size -- mem ior )
+    3 cells max dup >r  fits? ?dup 0= IF r> -8 exit THEN ( "dictionary overflow" )
+    addr&size r@ -  dup waste u<
+    IF  drop  dup @ over unlink  over addr&size use
+    ELSE 2 cells -   over r@ use
+         over above   dup rot release
+         2dup swap @links link THEN
+    r> drop  anchor ! 0 ;
+
+: free ( mem -- ior )
+    addr&size  over 2 cells -  @ dup 0<
+    IF #max and 2 cells +  rot over - rot rot +
+    ELSE  drop  over anchor @  dup cell+ @  link THEN
+    2dup + cell+ dup @ dup 0<
+    IF #max and swap cell+ unlink  +  2 cells +  release 0 exit THEN
+    2drop release 0 ;
+
+: resize ( mem newsize -- mem' ior )
+    over swap  over size  2dup >
+    IF ( mem mem size newsize )  swap allocate ?dup IF >r drop 2drop r>  exit THEN 
+        dup >r swap move free r> swap exit THEN
+    2drop drop ;
+
+: empty-memory ( addr size -- )
+    >r  cell+ dup anchor !   dup 2 cells use  dup 2dup link
+    dup above  swap over  dup link
+    dup r> 7 cells -  release  above 1 cells -  0 swap ! ;
+
+: init ( -- )
+    here 10000  ( chars ) dup allot empty-memory ;
+
+init
 
 : alloc ( u -- addr )
-    here swap allot ;
+     allocate throw ;
 
 : dispose ( addr -- )
-    drop ;
+     free throw ;
+
+
+: ?memory ( -- ) anchor @ 
+   cr ." ->: "  BEGIN cr dup u. ." : " addr&size u.        @ dup anchor @ = UNTIL
+   cr ." <-: "  BEGIN cr dup u. ." : " addr&size u.  cell+ @ dup anchor @ = UNTIL
+   drop ;
+
+\ Some general memory allocation words
+
+\ : alloc ( u -- addr )
+\     here swap allot ;
+
+\ : dispose ( addr -- )
+\    drop ;
 
 Create tib 80 allot
 Variable #tib
@@ -334,7 +424,7 @@ Variable last  0 last !
     r@ _name place 
     r> ;
 
-: link ( addr -- )  
+: link-header ( addr -- )  
     last @  swap _link dup last ! ! ;
 
 : @flags ( -- x )  
@@ -383,7 +473,7 @@ Macro has-header ( <name> -- )
    seed count
    seed "header
    seed dup
-   seed link
+   seed link-header
    seed _xt
    seed !
 end-macro
@@ -478,6 +568,9 @@ end-macro
 ' immediate   has-header immediate
 ' pad         has-header pad  
 
+' allocate    has-header allocate
+' free        has-header free
+' ?memory     has-header ?memory
 
 
 
@@ -492,6 +585,21 @@ Macro :noname
 end-macro
 
 \ :noname 10 ; 
+
+
+: compile ( -- )
+   r> dup cell+ >r @ , ;
+
+
+\ Macro compile 
+\   seed [
+\   seed '
+\
+\   seed ]
+\   seed compile,
+\ end-macro 
+
+\ lit [ ' ?branch , ] compile,
 
 
 \ : (IF)  ( -- c:orig )
@@ -553,7 +661,7 @@ Variable >in ( -- addr )
 ' parse-name   has-header parse-name 
 
 : (Create) ( <name> -- )
-    parse-name "header  dup link create  swap _xt ! reveal ;
+    parse-name "header  dup link-header create  swap _xt ! reveal ;
 
 ' (Create)    has-header Create
 
@@ -698,7 +806,7 @@ Variable handlers        interpreters @ handlers !
    interpreters @ handlers ! ;
 
 : Header ( <name> -- addr )
-    parse-name "header dup link reveal ;
+    parse-name "header dup link-header reveal ;
 
 : (:) ( <name> -- )
     Header new swap _xt ! hide  (]) ;
@@ -744,8 +852,8 @@ Variable echo  -1 echo !
 
 
 2 Constant major ( -- x )
-0 Constant minor ( -- x )
-2 Constant patch ( -- x )
+1 Constant minor ( -- x )
+0 Constant patch ( -- x )
 
 : .version ( -- )
     major .digit '.' emit
@@ -753,8 +861,8 @@ Variable echo  -1 echo !
     patch .digit ;
 
 : .banner ( -- )
-    cr ." seedForth " .version
-    cr ." ---------------" cr ;
+    cr ." seedForth/interactive " .version
+    cr ." ---------------------------" cr ;
 
 : boot ( -- )
    key drop \ skip 0 of boot program
