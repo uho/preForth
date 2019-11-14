@@ -320,6 +320,25 @@ code rp! ( x -- )
         next
 ;
 
+code um* ( u1 u2 -- ud )
+        pop edx
+        pop eax
+        mul edx
+        push eax
+        push edx
+        next
+;
+
+code um/mod ( ud u1 -- u2 u3 )
+        pop ebx
+        pop edx
+        pop eax
+        div ebx
+        push edx
+        push eax
+        next
+;
+
 : negate ( n1 -- n2 )
    0 swap - ;
 
@@ -465,6 +484,8 @@ code rp! ( x -- )
    lit rp!         h, \ 49  31
    lit $lit        h, \ 50  32
    lit num         h, \ 51  33
+   lit um*         h, \ 52  34
+   lit um/mod      h, \ 53  35
    interpreter bye ;
 
 pre
