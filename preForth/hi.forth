@@ -168,7 +168,7 @@ t{ 10 20 30 1 pick ->  10 20 30 20 }t
 
 t{ 10 20 30 1 roll ->  10 30 20 }t
 
-Variable (to) (to) off
+| Variable (to) (to) off
 
 : Value ( x -- ) 
     Create , 
@@ -197,7 +197,6 @@ t{ 3 3 5 within -> true }t
 t{ 4 3 5 within -> true }t
 t{ 5 3 5 within -> false }t
 t{ 6 3 5 within -> false }t
-
 
 Variable up
 
@@ -234,23 +233,37 @@ t{ 10 fib -> 55 }t
 
 
 \ remove headers from dictionary
-: unlink-header ( addr name -- ) 2dup ." unlink " . .
-    dup >r ( _link ) @ swap !  r> free throw ; 
+| : unlink-header ( addr name -- ) 2dup ." unlink " . .
+     dup >r ( _link ) @ swap !  r> dispose ;
 
 : remove-headers ( -- )
    context dup @ 
    BEGIN ( addr name )
       dup 
    WHILE ( addr name )
-      dup headerless? IF over >r unlink-header r> dup ELSE nip dup THEN
-      @ 
-   REPEAT  
+      dup headerless? IF over >r unlink-header r> ELSE nip THEN ( addr )
+      dup @ 
+   REPEAT
    2drop ;
 
 | : hidden ." still there - " ;
 
 : visible hidden hidden ;
 
-remove-headers
+\ remove-headers
+
+: package ( <name> -- )  parse-name 2drop ;
+: private ( -- ) heads off ;
+: public ( -- ) heads on ;
+: end-package ( -- ) remove-headers ;
+
+
+package test
+  : a ." a" ;
+private
+  : b ." b" ;
+public
+  : c a b ." c" ;
+end-package
 
 echo on

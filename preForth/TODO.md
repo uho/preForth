@@ -54,4 +54,7 @@
 
 - Recognizers based text interpreter/compiler (based on new terms)
 
+- marker
+
+- Prefix Bit and Prefix Dictionary Search
 

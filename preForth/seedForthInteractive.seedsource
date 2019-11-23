@@ -610,6 +610,8 @@ end-macro
 ' xor         has-header xor
 ' minint      has-header minint
 ' maxint      has-header maxint
+' dispose     has-header dispose
+' alloc       has-header alloc
 
 ' cr          has-header cr        
 ' .s          has-header .s        
