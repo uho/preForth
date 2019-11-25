@@ -6,9 +6,9 @@
 
 - Assembler (proof of concept) i386 stm8 ...
 
-- | based on allocated headers
++ | based on allocated headers
 
-- packages à la swiftForth
++ packages à la swiftForth (currently based on headerless definitions)
 
 - dual xt headers
 
@@ -26,7 +26,9 @@
 
 - relative branches
 
-- DO LOOP FOR NEXT
+- DO LOOP 
+
++ FOR NEXT
 
 - more arithmetic  log2 ...
 
@@ -56,5 +58,12 @@
 
 - marker
 
-- Prefix Bit and Prefix Dictionary Search
++ Prefix Bit and Prefix Dictionary Search  -> needs to adjust intput stream... not just find prefix words in dict...
 
++ Unicode names, emojies
+
++ ANSI color
+
++ ANS error codes
+
+- and XCHARS wordset

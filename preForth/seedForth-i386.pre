@@ -34,7 +34,7 @@ _frame: DD 0 ; frame pointer for catch/throw
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
         ; free memory starts at _start
 
-_hp:    DD 0       ; head pointer: points to first unused head
+_hp:    DD 0       ; head pointer: index of first unused head
 _head:  DD 10000 dup (0)
 
 
