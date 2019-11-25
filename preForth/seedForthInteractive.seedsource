@@ -329,17 +329,17 @@ Definer Defer ( <name> -- )
 \ String comparison
 : compare ( c-addr1 u1 c-addr2 u2 -- n )
     rot 
-    BEGIN \ ( c-addr1 c-addr2 u1 u2 )
+    BEGIN \ ( c-addr1 c-addr2 u2 u1 )
       over 
-    WHILE
+    WHILE \ ( c-addr1 c-addr2 u2 u1 )
       dup
-    WHILE
-      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop exit THEN
+    WHILE \ ( c-addr1 c-addr2 u2 u1 )
+      >r >r  over c@ over c@ - ?dup IF 0< 2* 1+ ( -1 | 1 ) nip nip r> drop r> drop exit THEN
       1+ swap 1+ swap
       r> 1- r> 1-
-    REPEAT
-      -1
-    ELSE
+    REPEAT \ ( c-addr1 c-addr2 u2>0 0 )
+      -1 
+    ELSE   \ ( c-addr1 c-addr2 0 u1 )
       dup 0= IF 0  ELSE 1  THEN
     THEN >r 2drop 2drop r> ;
 
@@ -488,24 +488,15 @@ Variable last  0 last !
 : !flags ( x -- )  
     last @ _flags c! ;
 
-128 Constant #immediate
 
-: immediate? ( addr -- f )
-    _flags @ #immediate and 0<> ;
+Definer Header-flag ( x <name> -- )
+  create >r , r> does> ( -- ) @  @flags or !flags ;
 
-: immediate ( -- )
-    @flags  #immediate or  !flags ;
+Definer Header-flag? ( x <name> -- )
+  create >r , r> does> ( addr -- f ) @ swap _flags @ and 0<> ; 
 
-
-64 Constant #headerless
-
-: headerless? ( addr -- f )
-    _flags @ #headerless and 0<> ;
-
-: headerless ( -- )
-    @flags  #headerless or  !flags ;
-
-
+128 dup Header-flag immediate  Header-flag? immediate?
+ 64 dup Header-flag headerless Header-flag? headerless?
 
 : pad ( -- addr )
    here 100 + ;
@@ -656,6 +647,7 @@ end-macro
 ' reveal      has-header reveal
 ' hide        has-header hide
 ' pad         has-header pad  
+' >body       has-header >body
 
 ' allocate    has-header allocate
 ' free        has-header free
@@ -664,11 +656,9 @@ end-macro
 ' headerless  has-header headerless
 ' headerless? has-header headerless?
 
-
 \ ' "header     has-header "header
 \ ' link        has-header link
 \ ' _xt         has-header _xt
-
 
 Macro :noname
    seed new
@@ -680,7 +670,6 @@ end-macro
 
 : compile ( -- )
    r> dup cell+ >r @ , ;
-
 
 \ Macro compile 
 \   seed [
@@ -799,6 +788,8 @@ Variable heads -1 heads !
 
 ' dot-paren has-header .( immediate
 
+: match ( c-addr1 u1 header -- f )
+    _name count compare 0= ;
 
 : find-name ( c-addr u link -- header|0 )
     \ >r 2dup lowercase r>
@@ -806,7 +797,7 @@ Variable heads -1 heads !
       dup
     WHILE ( c-addr u link )
       >r  2dup  r> dup >r
-      _name count  compare  0= IF 2drop r> exit THEN
+      match IF 2drop r> exit THEN
       r> @
     REPEAT
     nip nip ;
@@ -814,7 +805,7 @@ Variable heads -1 heads !
 ' find-name has-header find-name
 
 : (postpone) ( <name> -- )
-    parse-name last @ find-name dup 0= -13 and throw 
+    parse-name last @ find-name dup 0= -13 and throw
     dup immediate? IF
       _xt @ compile, 
     ELSE 
@@ -869,23 +860,26 @@ Variable heads -1 heads !
     ?'x' dup ?exit
     lit [ ' lit , ] compile, rot , ;
 
-
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
-   2dup context @ find-name ?dup IF nip nip _xt @ execute 0 0 THEN
+   2dup context @ find-name ?dup IF 
+     nip nip _xt @ execute 0 0 
+   THEN
 ;
 
 : (interpreters ( c-addr1 u1 | i*x c-addr2 u2 )
    ?word
    ?#
    ?'x'
-   over IF space type '?' emit  space -13 throw THEN 
+   over IF space type ( '?' emit ) space -13 throw THEN 
 ;
 
 : ,word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
    2dup context @ find-name ?dup
-   IF nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 THEN
+   IF 
+      nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
+   THEN 
 ;
 
 : (compilers ( c-addr u1 | i*x c-addr2 u2 )
@@ -922,7 +916,6 @@ Variable handlers        interpreters @ handlers !
 ' |     has-header |
 ' heads has-header heads
 
-
 : interpret ( -- )
    BEGIN ( )
       parse-name dup
@@ -947,18 +940,39 @@ Variable echo  -1 echo !
 
 ' echo has-header echo
 
+\ ANSI terminal colors
+
+: esc ( -- ) 27 emit ;
+: bold ( -- ) esc ." [1m" ;
+: normal ( -- ) esc ." [0m" ;
+: black ( -- ) esc ." [30m" ;
+: red ( -- ) esc ." [31m" ;
+: green ( -- ) esc ." [32m" ;
+: yellow ( -- ) esc ." [33m" ;
+: blue ( -- ) esc ." [34m" ;
+
+: compiling? ( -- f )
+   handlers @ compilers @ = ;
+
+' compiling? has-header compiling?
+
 : prompt ( -- )
     echo @ IF
-       cr .s handlers @ compilers @ = IF ']' ELSE '>' THEN emit space 
+       cr blue bold .s normal black  compiling? IF ']' ELSE '>' THEN emit space 
     THEN ;
 
-: .ok ( -- ) echo @ IF ."  ok" THEN ;
+
+: .ok ( -- ) 
+    echo @ IF space bold green ." ok 🙂" normal black  THEN ; \ 🆗
+
+: ?stack ( -- )
+    depth 0< -4 and throw ;
 
 : restart ( -- )
    tib 0 'source 2!
    ([)
    BEGIN
-     prompt query  0 >in !  interpret  .ok
+     prompt query  0 >in !  interpret  ?stack .ok
    0 UNTIL ;
 
 : warm ( -- )
@@ -980,11 +994,21 @@ Variable echo  -1 echo !
     cr ." seedForth/interactive " .version
     cr ." ---------------------------" cr ;
 
+: .error# ( n -- )
+    dup  -4 = IF drop ." stack underflow" exit THEN
+    dup -13 = IF drop ." not found" exit THEN
+    dup -16 = IF drop ." attempt to use zero-length string as a name" exit THEN
+    dup -39 = IF drop ." unexpected end of file" exit THEN
+    ." error " . ;
+
+: .error ( n -- )
+     red bold .error# normal black ."  🤔 " ;
+
 : boot ( -- )
    key drop \ skip 0 of boot program
    .banner
    BEGIN
-      [ ' warm ] Literal catch ?dup IF ." error " . cr THEN
+      [ ' warm ] Literal catch ?dup IF  .error  cr THEN
    AGAIN ;
 
 ' boot has-header boot

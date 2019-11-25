@@ -1,4 +1,7 @@
 0 echo !
+
+cr .( ⓪ )
+
 : 2drop  drop drop ;
 : ( 
    ')' parse 2drop ; immediate
@@ -38,8 +41,14 @@
 : REPEAT ( c:orig c:dest -- )
     postpone AGAIN   postpone THEN ; immediate
 
-: s"  
-    postpone $lit  '"' parse here over 1+ allot place ; immediate
+: s" ( ccc" -- c-addr u ) \ compile only
+    postpone $lit
+    '"' parse
+    dup 0= -39 and throw   
+    here over 1+ allot place ; immediate  
+
+cr .( ① )
+cr
 
 : :noname ( -- xt ) 
     new ] ;
@@ -129,6 +138,12 @@ t{ 3 4 n>r-test -> 2 3 4 }t
 : nr>-test ( x1 x2 -- x1 x2 n )  >r >r 2 >r  nr> ;
 t{ 3 4 nr>-test -> 3 4 2 }t
 
+: 2rot ( x1 x2 x3 x4 x5 x6 -- x3 x4 x5 x6 x1 x2 )
+    2>r 2swap 2r> 2swap ;
+
+t{ 1 2 3 4 5 6 2rot -> 3 4 5 6 1 2 }t
+
+
 : lshift ( x u -- ) BEGIN ?dup WHILE swap 2* swap 1-  REPEAT ;
 
 \ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
@@ -212,6 +227,7 @@ Variable up
 
 cr cr words cr
 cr .( ready )
+cr .( ② )
 
 \ : test s" xlerb" evaluate ;
 
@@ -230,6 +246,31 @@ t{ 6 fac -> 720 }t
     dup 1- fib  swap 2 - fib + ;
 
 t{ 10 fib -> 55 }t
+
+: sqr ( u -- u^2 )  dup * ;
+
+: u/ ( u1 u2 -- u3 )  >r 0 r> um/mod nip ;
+
+: sqrt ( u^2 -- u )
+    dup 0= ?exit
+    dup >r dup
+    BEGIN ( xi-1 xi )
+      nip dup
+      \ x = (x + n//x) // 2
+      r@ over u/ + u2/ ( xi xi+1 )
+      2dup over 1+ over = >r = r> or
+    UNTIL ( xi xi+1 )
+    drop r> drop ;
+
+t{ 15 sqrt -> 3 }t
+t{ 16 sqrt -> 4 }t
+
+: pyth ( a b -- c )
+    swap sqr  swap sqr  + sqrt ;
+
+t{ 3 4 pyth -> 5 }t
+t{ 65535 dup * sqrt -> 65535 }t
+
 
 
 \ remove headers from dictionary
@@ -250,6 +291,19 @@ t{ 10 fib -> 55 }t
 
 : visible hidden hidden ;
 
+
+: save-mem ( c-addr1 u1 -- c-addr2 u2 )
+    dup >r allocate throw swap over r@ cmove r> ;
+
+: s( ( -- c-addr u )
+    ')' parse  save-mem ; immediate
+
+cr .( ③ )
+
+\ : Marker ( <name> -- )
+\    Create here , hp @ , Does> 2@  here - allot   hp ! ;
+\ Cannot access hp  what about dictionary headers?
+
 \ remove-headers
 
 : package ( <name> -- )  parse-name 2drop ;
@@ -266,4 +320,66 @@ public
   : c a b ." c" ;
 end-package
 
+t{ s( abc) s( abc) compare -> 0 }t
+t{ s( abc) s( ab)  compare -> 1 }t
+t{ s( ab)  s( abc) compare -> -1 }t
+t{ s( abc) s( def)  compare -> -1 }t
+t{ s( def) s( abc)  compare -> 1 }t
+
+: Defer ( <name> -- )
+    Create 0 , Does> @ execute ;
+
+Defer %defer  ' %defer >body 1 cells -  @  Constant dodefer
+
+
+\ highly implementation specific
+: backpatch ( xt1 xt2 -- ) >body >r
+    >body 1 cells -  r@ !
+    [ ' exit ] Literal >body 1 cells - r> cell+ ! ;
+
+: hallo ." hallo" ;
+: moin hallo hallo ;
+
+: abc ." abc" ;
+
+' abc ' hallo backpatch
+
+: FOR ( n -- )
+    postpone BEGIN 
+    postpone >r ; immediate
+
+: NEXT ( -- )
+    postpone r> 
+    postpone 1-
+    postpone dup
+    postpone 0<
+    postpone UNTIL
+    postpone drop ; immediate
+
+: cntdwn 65535 FOR r@ . NEXT ;
+
+: ²  sqr ;
+: √  sqrt ;
+
+: ⟼  -> ;
+
+: testall ( -- ) \ see if sqrt works for all 32 bit numbers
+    65535 FOR
+       t{ r@ ² √  ⟼  r@ }t
+    NEXT ." ⚑" ;
+
+cr .( ➍ )
+
+Variable Δ
+
+: ❤️ ." love" ;
+: ♩ ." pling" ;
+: :smile: ." 😀" ;
+
+
+"well " type
+
+: lalelu "la" "le" "lu" 2rot type 2swap type type ; lalelu
+
 echo on
+
