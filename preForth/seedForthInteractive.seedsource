@@ -343,6 +343,24 @@ Definer Defer ( <name> -- )
       dup 0= IF 0  ELSE 1  THEN
     THEN >r 2drop 2drop r> ;
 
+\ prefix string comparison
+: prefix-compare ( c-addr1 u1 c-addr2 u2 -- n )
+    rot 
+    BEGIN \ ( c-addr1 c-addr2 u2 u1 )
+      over 
+    WHILE \ ( c-addr1 c-addr2 u2 u1 )
+      dup
+    WHILE \ ( c-addr1 c-addr2 u2 u1 )
+      >r >r  over c@ over c@ - ?dup IF 0< 2* 1+ ( -1 | 1 ) nip nip r> drop r> drop exit THEN
+      1+ swap 1+ swap
+      r> 1- r> 1-
+    REPEAT \ ( c-addr1 c-addr2 u2>0 0 )
+       -1 
+    ELSE \ ( c-addr1 c-addr2 0 u1 )
+        0
+    THEN >r 2drop 2drop r> ;
+
+
 
 \ dynamic memory
 \ -------------------------------------
@@ -497,6 +515,7 @@ Definer Header-flag? ( x <name> -- )
 
 128 dup Header-flag immediate  Header-flag? immediate?
  64 dup Header-flag headerless Header-flag? headerless?
+ 32 dup Header-flag prefix     Header-flag? prefix?
 
 : pad ( -- addr )
    here 100 + ;
@@ -656,9 +675,14 @@ end-macro
 ' headerless  has-header headerless
 ' headerless? has-header headerless?
 
+' prefix      has-header prefix
+' prefix?     has-header prefix?
+
 \ ' "header     has-header "header
 \ ' link        has-header link
 \ ' _xt         has-header _xt
+
+' prefix-compare has-header prefix-compare
 
 Macro :noname
    seed new
@@ -789,7 +813,9 @@ Variable heads -1 heads !
 ' dot-paren has-header .( immediate
 
 : match ( c-addr1 u1 header -- f )
-    _name count compare 0= ;
+    dup >r _name count 
+    r> prefix? IF  prefix-compare 0= exit THEN  
+    compare 0= ;
 
 : find-name ( c-addr u link -- header|0 )
     \ >r 2dup lowercase r>
@@ -860,9 +886,16 @@ Variable heads -1 heads !
     ?'x' dup ?exit
     lit [ ' lit , ] compile, rot , ;
 
+Variable last->in
+
+: ?prefix-update ( header -- ) 
+     dup prefix? IF dup _name c@ last->in @ + >in ! THEN
+;
+
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
    2dup context @ find-name ?dup IF 
+     ?prefix-update
      nip nip _xt @ execute 0 0 
    THEN
 ;
@@ -878,6 +911,7 @@ Variable heads -1 heads !
    dup 0= ?exit
    2dup context @ find-name ?dup
    IF 
+      ?prefix-update
       nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
    THEN 
 ;
@@ -918,6 +952,8 @@ Variable handlers        interpreters @ handlers !
 
 : interpret ( -- )
    BEGIN ( )
+      source >in @ /string bl skip drop source drop - >in ! \ skip spaces so that last->in is at start of token
+      >in @ last->in !
       parse-name dup
    WHILE ( c-addr u )
       handlers @ execute 2drop  

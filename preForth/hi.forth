@@ -326,6 +326,13 @@ t{ s( ab)  s( abc) compare -> -1 }t
 t{ s( abc) s( def)  compare -> -1 }t
 t{ s( def) s( abc)  compare -> 1 }t
 
+
+t{ s( abc) s( abc) prefix-compare -> 0 }t
+t{ s( abc) s( ab)  prefix-compare -> 0 }t
+t{ s( ab)  s( abc) prefix-compare -> -1 }t
+t{ s( abc) s( def) prefix-compare -> -1 }t
+t{ s( def) s( abc) prefix-compare -> 1 }t
+
 : Defer ( <name> -- )
     Create 0 , Does> @ execute ;
 
@@ -376,6 +383,12 @@ Variable Δ
 : ♩ ." pling" ;
 : :smile: ." 😀" ;
 
+: " ( ccc" -- c-addr u )
+      compiling? IF
+        postpone s"
+      ELSE
+        '"' parse dup 0= -39 and throw  save-mem 
+      THEN ; immediate prefix
 
 "well " type
 
