@@ -222,7 +222,7 @@ Variable up
 1 User u2
 2 User u3
 
-: n' parse-name last @ find-name ;
+: n' parse-name find-name ;
 
 
 cr cr words cr
@@ -278,7 +278,7 @@ t{ 65535 dup * sqrt -> 65535 }t
      dup >r ( _link ) @ swap !  r> dispose ;
 
 : remove-headers ( -- )
-   context dup @ 
+   context @ dup @ 
    BEGIN ( addr name )
       dup 
    WHILE ( addr name )
@@ -376,10 +376,7 @@ Variable Δ
 : ♩ ." pling" ;
 : :smile: ." 😀" ;
 
-
-"well " type
-
-: lalelu "la" "le" "lu" 2rot type 2swap type type ; lalelu
+Variable ∆t
 
 echo on
 

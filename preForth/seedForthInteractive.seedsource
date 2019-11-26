@@ -501,16 +501,20 @@ Definer Header-flag? ( x <name> -- )
 : pad ( -- addr )
    here 100 + ;
 
-Variable context
+
+: wordlist ( -- wid )  here 0 , ;
+
+Variable current
+Variable context   wordlist dup context ! current !
 
 : words ( -- )
-   context @ BEGIN ?dup WHILE dup  dup headerless? IF '|' emit THEN _name count type space @ REPEAT ;
+   context @ @  BEGIN ?dup WHILE dup  dup headerless? IF '|' emit THEN _name count type space @ REPEAT ;
 
 : hide ( -- )  
-    last @ @ context ! ;
+    last @ @  current @ ! ;
 
 : reveal ( -- ) 
-    last @ context ! ;
+    last @    current @ ! ;
 
 reveal
 
@@ -791,7 +795,7 @@ Variable heads -1 heads !
 : match ( c-addr1 u1 header -- f )
     _name count compare 0= ;
 
-: find-name ( c-addr u link -- header|0 )
+: find-name-in ( c-addr u link -- header|0 )
     \ >r 2dup lowercase r>
     BEGIN ( c-addr u link )
       dup
@@ -802,10 +806,16 @@ Variable heads -1 heads !
     REPEAT
     nip nip ;
 
+\ ' find-name-in has-header find-name-in
+
+: find-name ( c-addr u -- header|0 )
+    context @ @ find-name-in ;
+
 ' find-name has-header find-name
 
+
 : (postpone) ( <name> -- )
-    parse-name last @ find-name dup 0= -13 and throw
+    parse-name find-name dup 0= -13 and throw
     dup immediate? IF
       _xt @ compile, 
     ELSE 
@@ -817,7 +827,7 @@ Variable heads -1 heads !
 ' immediate? has-header immediate?
 
 : tick ( <name> -- xt )
-   parse-name last @ find-name dup IF _xt @ exit THEN -13 throw ;
+   parse-name find-name dup IF _xt @ exit THEN -13 throw ;
 
 ' tick        has-header '
 
@@ -862,7 +872,7 @@ Variable heads -1 heads !
 
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
-   2dup context @ find-name ?dup IF 
+   2dup find-name ?dup IF 
      nip nip _xt @ execute 0 0 
    THEN
 ;
@@ -876,7 +886,7 @@ Variable heads -1 heads !
 
 : ,word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
-   2dup context @ find-name ?dup
+   2dup find-name ?dup
    IF 
       nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
    THEN 
@@ -945,11 +955,12 @@ Variable echo  -1 echo !
 : esc ( -- ) 27 emit ;
 : bold ( -- ) esc ." [1m" ;
 : normal ( -- ) esc ." [0m" ;
-: black ( -- ) esc ." [30m" ;
+\ : black ( -- ) esc ." [30m" ;
 : red ( -- ) esc ." [31m" ;
 : green ( -- ) esc ." [32m" ;
-: yellow ( -- ) esc ." [33m" ;
+\ : yellow ( -- ) esc ." [33m" ;
 : blue ( -- ) esc ." [34m" ;
+: reset-colors ( -- ) esc ." [39;49m" ;
 
 : compiling? ( -- f )
    handlers @ compilers @ = ;
@@ -958,12 +969,12 @@ Variable echo  -1 echo !
 
 : prompt ( -- )
     echo @ IF
-       cr blue bold .s normal black  compiling? IF ']' ELSE '>' THEN emit space 
+       cr blue bold .s normal reset-colors compiling? IF ']' ELSE '>' THEN emit space 
     THEN ;
 
 
 : .ok ( -- ) 
-    echo @ IF space bold green ." ok 🙂" normal black  THEN ; \ 🆗
+    echo @ IF space bold green ." ok 🙂" normal reset-colors  THEN ; \ 🆗
 
 : ?stack ( -- )
     depth 0< -4 and throw ;
@@ -1002,7 +1013,7 @@ Variable echo  -1 echo !
     ." error " . ;
 
 : .error ( n -- )
-     red bold .error# normal black ."  🤔 " ;
+     red bold .error# normal reset-colors ."  🤔 " ;
 
 : boot ( -- )
    key drop \ skip 0 of boot program
@@ -1012,6 +1023,15 @@ Variable echo  -1 echo !
    AGAIN ;
 
 ' boot has-header boot
+
+\ ---- try colored words with embedded ESC sequences
+Create colored-header here 0 c, here 
+   27 c,  '[' c,  '3' c, '1' c, 'm' c,  'r' c, 'e' c, 'd' c, 'w' c, 'o' c, 'r' c, 'd' c,
+   27 c,  '[' c,  '3' c, '9' c, ';' c,  '4' c, '9' c, 'm' c,
+here swap - swap c!
+
+colored-header count "header dup link-header
+\ --------
 
 cr
 t{ -> }t
