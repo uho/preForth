@@ -1049,6 +1049,12 @@ Variable echo  -1 echo !
 
 ' boot has-header boot
 
+\ cannot use ' prefix as this collides with tick! How to solve this in general?
+\
+\ : ' ( ccc" -- c-addr u )
+\      ''' parse 0= -39 and throw  c@ 
+\      compiling? IF c@ postpone Literal THEN ; immediate prefix
+
 cr
 t{ -> }t
 
