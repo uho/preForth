@@ -746,6 +746,8 @@ Variable >in ( -- addr )
 
 ' >in has-header >in
 
+: adjust ( n -- )  >in +! ;
+
 : source ( -- c-addr u ) 'source 2@ ;
 
 ' source has-header source
@@ -886,17 +888,18 @@ Variable heads -1 heads !
     ?'x' dup ?exit
     lit [ ' lit , ] compile, rot , ;
 
-Variable last->in
-
-: ?prefix-update ( header -- ) 
-     dup prefix? IF dup _name c@ last->in @ + >in ! THEN
-;
+: ?prefix-adjust ( u1 header -- )
+    dup prefix? IF  
+       _name c@ swap -  
+       source >in @ 1- /string drop c@ bl = +  \ ugly end of line handling
+       adjust exit 
+    THEN 2drop ;
 
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
-   2dup context @ find-name ?dup IF 
-     ?prefix-update
-     nip nip _xt @ execute 0 0 
+   2dup context @ find-name ?dup IF    ( c-addr1 u1 header )
+     swap over ?prefix-adjust  ( c-addr1 header )  \ fixup if prefix
+     nip _xt @ execute 0 0 
    THEN
 ;
 
@@ -910,9 +913,9 @@ Variable last->in
 : ,word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
    2dup context @ find-name ?dup
-   IF 
-      ?prefix-update
-      nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
+   IF ( c-addr u1 header )
+      swap over ?prefix-adjust  ( c-addr1 header )  \ fixup if prefix
+      nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
    THEN 
 ;
 
@@ -952,8 +955,6 @@ Variable handlers        interpreters @ handlers !
 
 : interpret ( -- )
    BEGIN ( )
-      source >in @ /string bl skip drop source drop - >in ! \ skip spaces so that last->in is at start of token
-      >in @ last->in !
       parse-name dup
    WHILE ( c-addr u )
       handlers @ execute 2drop  
@@ -981,7 +982,7 @@ Variable echo  -1 echo !
 : esc ( -- ) 27 emit ;
 : bold ( -- ) esc ." [1m" ;
 : normal ( -- ) esc ." [0m" ;
-: black ( -- ) esc ." [30m" ;
+: reset-color ( -- ) esc ." [39;49m" ;
 : red ( -- ) esc ." [31m" ;
 : green ( -- ) esc ." [32m" ;
 : yellow ( -- ) esc ." [33m" ;
@@ -994,12 +995,12 @@ Variable echo  -1 echo !
 
 : prompt ( -- )
     echo @ IF
-       cr blue bold .s normal black  compiling? IF ']' ELSE '>' THEN emit space 
+       cr blue bold .s normal reset-color  compiling? IF ']' ELSE '>' THEN emit space 
     THEN ;
 
 
 : .ok ( -- ) 
-    echo @ IF space bold green ." ok 🙂" normal black  THEN ; \ 🆗
+    echo @ IF space bold green ." ok 🙂" normal reset-color  THEN ; \ 🆗
 
 : ?stack ( -- )
     depth 0< -4 and throw ;
@@ -1038,7 +1039,7 @@ Variable echo  -1 echo !
     ." error " . ;
 
 : .error ( n -- )
-     red bold .error# normal black ."  🤔 " ;
+     red bold .error# normal reset-color ."  🤔 " ;
 
 : boot ( -- )
    key drop \ skip 0 of boot program
