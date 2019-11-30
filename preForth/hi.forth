@@ -41,6 +41,14 @@ cr .( ⓪ )
 : REPEAT ( c:orig c:dest -- )
     postpone AGAIN   postpone THEN ; immediate
 
+\ are these necessary? 
+\ you can use the phrase  dup x = IF drop  instead of   x case? IF  or  x OF 
+: case? ( n1 n2 -- true | n1 false )
+    over = dup IF nip THEN ;
+
+: OF ( n1 n2 -- n1 | )
+    postpone case?  postpone IF ; immediate
+
 : s" ( ccc" -- c-addr u ) \ compile only
     postpone $lit
     '"' parse
@@ -225,7 +233,7 @@ Variable up
 : n' parse-name find-name ;
 
 
-cr cr words cr
+\ cr cr words cr
 cr .( ready )
 cr .( ② )
 
@@ -274,7 +282,7 @@ t{ 65535 dup * sqrt -> 65535 }t
 
 
 \ remove headers from dictionary
-| : unlink-header ( addr name -- ) 2dup ." unlink " . .
+| : unlink-header ( addr name -- ) \ 2dup ." unlink " . .
      dup >r ( _link ) @ swap !  r> dispose ;
 
 : remove-headers ( -- )
@@ -287,9 +295,9 @@ t{ 65535 dup * sqrt -> 65535 }t
    REPEAT
    2drop ;
 
-| : hidden ." still there - " ;
+| : hidden-word ." still there - " ;
 
-: visible hidden hidden ;
+: visible-word ( -- ) hidden-word hidden-word ;
 
 
 : save-mem ( c-addr1 u1 -- c-addr2 u2 )
@@ -329,20 +337,29 @@ t{ s( def) s( abc)  compare -> 1 }t
 : Defer ( <name> -- )
     Create 0 , Does> @ execute ;
 
-Defer %defer  ' %defer >body 1 cells -  @  Constant dodefer
+Defer %defer  ' %defer >body 2 cells -  @  Constant dodefer
+              ' %defer >body 1 cells -  @  Constant dodoes
 
 
 \ highly implementation specific
-: backpatch ( xt1 xt2 -- ) >body >r
+: backpatch1 ( xt1 xt2 -- ) >body >r
     >body 1 cells -  r@ !
     [ ' exit ] Literal >body 1 cells - r> cell+ ! ;
 
-: hallo ." hallo" ;
+: dp! ( addr -- )  here - allot ;
+
+: backpatch ( xt1 xt2 -- ) 
+    here >r  >body dp!  compile,  postpone exit  r> dp! ;
+
+: hallo ." original" ;
 : moin hallo hallo ;
 
-: abc ." abc" ;
+: abc ." backpatched" ;
 
 ' abc ' hallo backpatch
+
+
+
 
 : FOR ( n -- )
     postpone BEGIN 
@@ -377,6 +394,130 @@ Variable Δ
 : :smile: ." 😀" ;
 
 Variable ∆t
+
+Variable voc-link  0 voc-link !
+
+: Vocabulary ( <name> -- )  
+   wordlist Create here voc-link @ , voc-link ! last @ , , 
+   Does> 2 cells +  @  >r get-order nip r> swap set-order ;
+
+: .voc ( wid -- ) 
+   dup forth-wordlist = IF drop ." Forth " exit THEN
+   voc-link @
+   BEGIN ( wid link )
+     dup
+   WHILE ( wid link )
+     2dup  2 cells + @ = IF  nip cell+ @ _name count type space exit THEN
+     @ 
+   REPEAT ( wid 0 )
+   drop u. ;
+
+' .voc ' .wordlist backpatch
+
+
+: recurse ( -- )  last @ _xt @ compile, ; immediate
+
+: cntd ( n -- ) ?dup 0= ?exit dup . 1- recurse '.' emit ;
+
+
+\ number output:  <# # #s #> sign hold holds base . u. .r u.r
+
+Variable base
+Variable hld
+
+: hold ( c -- )   -1 hld +!  hld @ c! ;
+
+\ : holds ( c-addr u -- )  recursive
+\    dup 0= IF 2drop exit THEN 
+\    over c@ >r  1 /string holds  r> hold ;
+
+: holds ( c-addr u -- )
+   BEGIN dup WHILE 1- 2dup + c@ hold REPEAT 2drop ;
+
+: mu/mod ( d n1 -- rem d.quot ) 
+   >r   0 r@  um/mod   r> swap >r um/mod  r> ; 
+
+: <# ( -- )  pad hld ! ;
+
+: # ( ud1 -- ud2 )  
+     base @ mu/mod  rot 9 over < IF [ 'A' '9' 1+ - ] Literal + THEN '0' + hold ;
+
+: #s ( ud1 -- d.0 )  BEGIN #  2dup or 0= UNTIL ;
+
+: #> ( ud -- c-addr u )  2drop hld @ pad over - ; 
+
+: sign ( n -- )  0< IF '-' hold THEN ;
+
+: decimal ( -- ) 10 base ! ; decimal
+: hex     ( -- ) 16 base ! ;
+
+| : (.) ( n -- ) dup abs 0 <# #s rot sign #> ;
+: dot ( n -- )  (.) type space ; ' dot ' . backpatch
+: .r ( n l -- )  >r (.) r> over - 0 max spaces type ;
+
+| : (u.) ( u -- ) 0 <# #s #> ;
+: u. ( u -- ) (u.) type space ;
+: u.r ( u l -- )  >r (u.) r> over - 0 max spaces type ;
+
+: at-xy ( u1 u2 -- ) \ col row
+    esc ." [" 1+  0 u.r ." ;" 1+ 0 u.r ." H" ;
+
+\ : at? CSI 6n 
+
+: clreol ( -- )
+    esc ." [K" ;
+
+: save-cursor-position ( -- ) 27 emit '7' emit ;
+: restore-cursor-position  ( -- ) 27 emit '8' emit ;
+
+: show-status ( -- )
+   save-cursor-position reverse
+   base @ >r decimal 
+   0 1 at-xy  clreol  80 spaces  0 1 at-xy  
+     ."  seedForth 😉 "
+     ." | order: " order  
+     ." | base: "  r@ . 
+     ." | stack: " .s  
+   r> base !
+   normal restore-cursor-position ;
+
+' show-status ' .status >body !
+
+only Forth also definitions
+Vocabulary root
+
+: only ( -- ) only root ;
+
+root definitions
+
+: order order ;
+: definitions definitions ;
+: words words ;
+: Forth Forth ;
+: only only ;
+: also also ;
+: bye bye ;
+
+only Forth also definitions order
+
+: mod ( u1 u2 -- u3 ) 0 swap um/mod drop ;
+
+: prime? ( u -- f )
+    dup 2 = IF drop true exit THEN
+    dup 2 mod 0= IF drop false exit THEN
+    3 BEGIN ( u i )
+        2dup dup * < 0= 
+      WHILE ( u i )
+        2dup mod  0= IF 2drop false exit THEN
+        2+
+      REPEAT ( u i )
+      2drop true 
+;
+
+: th.prime ( u -- )
+    1 BEGIN over WHILE 1+ dup prime? IF swap 1- swap THEN REPEAT nip ; 
+
+cr cr cr .( The ) 10001 dup . .( st prime is ) th.prime . 
 
 echo on
 

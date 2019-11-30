@@ -65,7 +65,7 @@ main:  cld
        sub esp, 16
        and esp, 0xfffffff0
        mov dword [esp+8], 7  ; rwx
-       mov eax, memtop
+       mov eax, _memtop
        sub eax, origin
        mov dword [esp+4], eax
        mov dword [esp], origin
@@ -429,6 +429,8 @@ code um/mod ( ud u1 -- u2 u3 )
 : throw ( i*x 0 | i*x err -- j*x err )
     ?dup 0= ?exit  lit frame @ rp!  r> swap >r  sp! drop  r> r> lit frame ! ;
 
+: unused ( -- u )  
+    lit memtop  here - ;
 
 : cold ( -- )
    's' emit 'e' dup emit emit  'd' emit 10 emit
@@ -486,10 +488,11 @@ code um/mod ( ud u1 -- u2 u3 )
    lit num         h, \ 51  33
    lit um*         h, \ 52  34
    lit um/mod      h, \ 53  35
+   lit unused      h, \ 54  36
    interpreter bye ;
 
 pre
  _start: DB 43
 	 DD 10000 dup (0)
- memtop: DD 0
+ _memtop: DD 0
 ;

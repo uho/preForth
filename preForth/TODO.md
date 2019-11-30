@@ -1,8 +1,8 @@
 # Things to do
 
-- wordlists, search order
++ wordlists, search order, vocabulary   split into traditional (Vocabulary only/also) and modern word set (get-order)
 
-- number output with given base <# # #s hold #> u. u.r . .r    um/mod /mod / mod
++ number output with given base <# # #s hold #> u. u.r . .r    um/mod /mod / mod   currently using globals BASE, HLD and PAD
 
 - Assembler (proof of concept) i386 stm8 ...
 
@@ -43,6 +43,10 @@
 
 - interpretive conditionals
 
+- conditional compilation
+
+- source code library WANT
+
 - intermediate definitions (forgettable)
 
 - dictionary experiments
@@ -66,4 +70,27 @@
 
 + ANS error codes
 
-- and XCHARS wordset
+- and XCHARS wordset and support for unicode characters such as '∆' -> U+0394
+
+- file i/o and include
+
+- (interactive) decompiler
+
+- dump
+
+- State machine / decision table using graphics characters
+
++ Cursor positioning AT-XY
+
++ Status line
+
+- AT?
+
+- String Stack
+
+- locals
+
+- generalize linked list handling (map/filter)
+
+
+

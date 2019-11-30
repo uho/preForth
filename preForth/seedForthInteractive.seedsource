@@ -51,6 +51,9 @@ end-macro
 : 1+ ( x1 -- x2 )  
     1 + ;
 
+: 2+ ( x1 -- x2 )  
+    2 + ;
+    
 : 1- ( x1 -- x2 )  
     1 - ;
 
@@ -86,6 +89,9 @@ end-macro
 
 : cell+ ( addr1 -- addr2 ) 
     1 cells + ;
+
+: cell- ( addr1 -- addr2 )
+    -1 cells + ;
 
 : 2@ ( addr -- x1 x2 ) 
     dup cell+ @ swap @ ;
@@ -468,7 +474,7 @@ Constant #tib
 Constant #header
 
 
-Variable last  0 last !
+Variable last
 
 : "header ( c-addr u -- addr )
     \ 2dup lowercase
@@ -479,8 +485,11 @@ Variable last  0 last !
     r@ _name place 
     r> ;
 
+
+Variable current
+
 : link-header ( addr -- )  
-    last @  swap _link dup last ! ! ;
+    current @ @  swap _link dup last ! dup current @ ! ! ;
 
 : @flags ( -- x )  
     last @ _flags c@ ;
@@ -504,11 +513,65 @@ Definer Header-flag? ( x <name> -- )
 
 : wordlist ( -- wid )  here 0 , ;
 
-Variable current
-Variable context   wordlist dup context ! current !
+: under+ ( x1 x2 x3 -- x1+x3 x2 )  rot + swap ;
+: tuck ( x1 x2 -- x2 x1 x2 )  swap over ;
 
-: words ( -- )
-   context @ @  BEGIN ?dup WHILE dup  dup headerless? IF '|' emit THEN _name count type space @ REPEAT ;
+Create search-order  0 , 10 cells allot
+
+: get-order ( -- wid0 wid1 wid2 ... widn n )
+   search-order dup @ dup >r cells + r@
+   BEGIN ( addr n )
+      dup
+   WHILE ( addr n )
+      >r dup >r @ r> cell- r> 1-
+   REPEAT ( wid0 wid1 wid2 ... widn addr 0 )
+   2drop r> ;
+
+: set-order ( wid0 wid1 wid2 ... widn n )
+   dup search-order !
+   search-order cell+ swap
+   BEGIN ( wid0 wid1 ... widn addr n )
+      dup
+   WHILE ( wid0 wid1 ... widn addr n )
+      >r  swap over !  cell+ r> 1-
+   REPEAT ( addr 0 )
+   2drop ;
+
+: get-current ( -- wid )  current @ ;
+: set-current ( wid -- )  current ! ;
+
+: context ( -- addr )  search-order cell+ ;
+
+wordlist Constant forth-wordlist 
+
+: Forth ( -- )   get-order nip forth-wordlist swap set-order ;
+: also ( -- )  get-order  over swap 1+ set-order ;
+: previous ( -- )   get-order nip 1- set-order ;
+: only ( -- )   forth-wordlist 1 set-order ;
+: definitions ( -- )  get-order over set-current  set-order ;
+\ : OnlyForth ( -- )  only Forth also definitions ;
+
+only Forth also definitions
+
+: .wordlist ( wid -- )
+     dup forth-wordlist = IF drop ." Forth " exit THEN
+     u. ;
+
+: order ( -- )
+    search-order dup cell+ swap @
+    BEGIN ( addr n )
+      dup
+    WHILE ( addr n )
+      >r dup @ .wordlist
+      cell+ r> 1-
+    REPEAT ( addr n )
+    2drop 
+    space current @ .wordlist ;
+
+: words ( -- ) 0 >r
+   context @ @  
+   BEGIN ?dup WHILE dup  dup headerless? IF '|' emit THEN _name count type space @ r> 1+ >r REPEAT 
+   r> space . ." words" ;
 
 : hide ( -- )  
     last @ @  current @ ! ;
@@ -603,10 +666,14 @@ end-macro
 ' 2swap       has-header 2swap
 ' 2over       has-header 2over
 ' xor         has-header xor
+' max         has-header max
+' min         has-header min
 ' minint      has-header minint
 ' maxint      has-header maxint
 ' dispose     has-header dispose
 ' alloc       has-header alloc
+
+' unused      has-header unused
 
 ' cr          has-header cr        
 ' .s          has-header .s        
@@ -618,7 +685,8 @@ end-macro
 ' space       has-header space     
 ' spaces      has-header spaces    
 
-' 1+          has-header 1+        
+' 1+          has-header 1+
+' 2+          has-header 2+        
 ' 1-          has-header 1-
 ' invert      has-header invert      
 ' nip         has-header nip
@@ -635,7 +703,8 @@ end-macro
 ' r@          has-header r@
 ' third       has-header third
 ' cmove       has-header cmove     
-' cell+       has-header cell+     
+' cell+       has-header cell+
+' cell-       has-header cell-   
 ' place       has-header place     
 ' compare     has-header compare   
 ' 2@          has-header 2@        
@@ -659,6 +728,22 @@ end-macro
 
 ' headerless  has-header headerless
 ' headerless? has-header headerless?
+
+' set-current has-header set-current
+' get-current has-header get-current
+' set-order   has-header set-order
+' get-order   has-header get-order
+' wordlist    has-header wordlist
+' only        has-header only
+' also        has-header also
+' previous    has-header previous
+' order       has-header order
+' forth-wordlist has-header forth-wordlist
+' Forth       has-header Forth
+' definitions has-header definitions
+' only        has-header only
+\ ' OnlyForth   has-header OnlyForth
+' .wordlist   has-header .wordlist
 
 \ ' "header     has-header "header
 \ ' link        has-header link
@@ -809,7 +894,15 @@ Variable heads -1 heads !
 \ ' find-name-in has-header find-name-in
 
 : find-name ( c-addr u -- header|0 )
-    context @ @ find-name-in ;
+    search-order  dup cell+ swap @
+    BEGIN ( c-addr u addr n )
+       dup
+    WHILE ( c-addr u addr n )
+       >r >r
+       2dup r@ @ find-name-in ?dup IF nip nip r> drop r> drop  exit THEN 
+       r> cell+ r> 1-
+    REPEAT ( c-addr u addr n )
+    2drop 2drop 0 ;
 
 ' find-name has-header find-name
 
@@ -952,26 +1045,34 @@ Variable echo  -1 echo !
 
 \ ANSI terminal colors
 
-: esc ( -- ) 27 emit ;
+: esc ( -- ) 27 emit ;               ' esc has-header esc
 : bold ( -- ) esc ." [1m" ;
-: normal ( -- ) esc ." [0m" ;
+: normal ( -- ) esc ." [0m" ;        ' normal has-header normal
+: reverse ( -- )  esc ." [7m" ;      ' reverse has-header reverse
 \ : black ( -- ) esc ." [30m" ;
 : red ( -- ) esc ." [31m" ;
 : green ( -- ) esc ." [32m" ;
 \ : yellow ( -- ) esc ." [33m" ;
 : blue ( -- ) esc ." [34m" ;
 : reset-colors ( -- ) esc ." [39;49m" ;
+: page ( -- ) esc ." [2J" esc ." [H" ;
+
+' blue has-header blue
+' page has-header page
 
 : compiling? ( -- f )
    handlers @ compilers @ = ;
 
 ' compiling? has-header compiling?
 
+Defer .status   : noop ;  ' noop is .status
+
+' .status has-header .status
+
 : prompt ( -- )
     echo @ IF
        cr blue bold .s normal reset-colors compiling? IF ']' ELSE '>' THEN emit space 
     THEN ;
-
 
 : .ok ( -- ) 
     echo @ IF space bold green ." ok 🙂" normal reset-colors  THEN ; \ 🆗
@@ -983,7 +1084,7 @@ Variable echo  -1 echo !
    tib 0 'source 2!
    ([)
    BEGIN
-     prompt query  0 >in !  interpret  ?stack .ok
+     .status prompt query  0 >in !  interpret  ?stack .ok
    0 UNTIL ;
 
 : warm ( -- )
@@ -1003,7 +1104,8 @@ Variable echo  -1 echo !
 
 : .banner ( -- )
     cr ." seedForth/interactive " .version
-    cr ." ---------------------------" cr ;
+    cr ." ---------------------------" 
+    cr unused . ." bytes free" cr ;
 
 : .error# ( n -- )
     dup  -4 = IF drop ." stack underflow" exit THEN
@@ -1014,6 +1116,7 @@ Variable echo  -1 echo !
 
 : .error ( n -- )
      red bold .error# normal reset-colors ."  🤔 " ;
+
 
 : boot ( -- )
    key drop \ skip 0 of boot program
@@ -1032,6 +1135,18 @@ here swap - swap c!
 
 colored-header count "header dup link-header
 \ --------
+
+Macro ninelit
+  seed lit
+  seed [
+  9
+  seed ,
+  seed ]
+end-macro
+
+: nine  ninelit ;
+
+' nine has-header nine
 
 cr
 t{ -> }t
