@@ -106,7 +106,7 @@ Definer Field ( offset size <name> -- offset' )
 32 Constant bl
 
 : cr ( -- ) 
-    10 emit ;
+    10 emit 13 emit ;
 
 : type ( c-addr u -- )
     BEGIN dup WHILE  over c@ emit  1  /string  REPEAT  2drop ;
@@ -450,15 +450,26 @@ Create tib 80 allot
 Create 'source here 0 , tib ,  \ ' source is normally  ^tib #tib is set to c-addr u for evaluate
 Constant #tib
 
+Defer getkey   ' key is getkey
+
+\ : getkey key ;
+
+Variable input-echo -1 input-echo !
+
 : accept ( c-addr u1 -- u2 )
     >r
     0 BEGIN ( c-addr u2 ) ( R: u1 )
-        key dup 10 = over 13 = or 0=
+        getkey dup 10 = over 13 = or 0=
     WHILE ( c-addr u2 key )
-        dup  8 = over 127 = or IF  drop 1- 0 max  8 emit bl emit 8 emit ELSE
-        ( dup emit ) >r 2dup + r> swap c!  1+ r@ min THEN
+        dup  8 = over 127 = or 
+           IF  drop dup 0 > 
+               IF 1-  8 emit bl emit 8 emit ELSE 7 emit THEN ELSE
+        input-echo @ IF dup emit THEN >r 2dup + r> swap c!  1+ r@ min THEN
     REPEAT ( c-addr u2 key r:u1 )
-    drop  r> drop   nip ;
+    drop  r> drop   nip  
+    \ input-echo @ IF cr THEN
+    input-echo @ IF space THEN 
+;
 
 : query ( -- )
     tib 80 accept #tib ! ;
@@ -513,8 +524,8 @@ Definer Header-flag? ( x <name> -- )
 
 : wordlist ( -- wid )  here 0 , ;
 
-: under+ ( x1 x2 x3 -- x1+x3 x2 )  rot + swap ;
-: tuck ( x1 x2 -- x2 x1 x2 )  swap over ;
+\ : under+ ( x1 x2 x3 -- x1+x3 x2 )  rot + swap ;
+\ : tuck ( x1 x2 -- x2 x1 x2 )  swap over ;
 
 Create search-order  0 , 10 cells allot
 
@@ -744,6 +755,8 @@ end-macro
 ' only        has-header only
 \ ' OnlyForth   has-header OnlyForth
 ' .wordlist   has-header .wordlist
+' key?        has-header key?
+' getkey      has-header getkey
 
 \ ' "header     has-header "header
 \ ' link        has-header link
@@ -1040,8 +1053,9 @@ Variable handlers        interpreters @ handlers !
 ' evaluate has-header evaluate
 
 Variable echo  -1 echo !
-
 ' echo has-header echo
+
+' input-echo has-header input-echo
 
 \ ANSI terminal colors
 
@@ -1067,6 +1081,8 @@ Variable echo  -1 echo !
 
 Defer .status   : noop ;  ' noop is .status
 
+' noop has-header noop
+
 ' .status has-header .status
 
 : prompt ( -- )
@@ -1084,13 +1100,12 @@ Defer .status   : noop ;  ' noop is .status
    tib 0 'source 2!
    ([)
    BEGIN
-     .status prompt query  0 >in !  interpret  ?stack .ok
+     .status  prompt query  0 >in !  interpret  ?stack .ok
    0 UNTIL ;
 
 : warm ( -- )
    \ [ ' [ compile, ] 
    empty-stack restart ;
-
 
 
 2 Constant major ( -- x )
@@ -1128,25 +1143,13 @@ Defer .status   : noop ;  ' noop is .status
 ' boot has-header boot
 
 \ ---- try colored words with embedded ESC sequences
-Create colored-header here 0 c, here 
-   27 c,  '[' c,  '3' c, '1' c, 'm' c,  'r' c, 'e' c, 'd' c, 'w' c, 'o' c, 'r' c, 'd' c,
-   27 c,  '[' c,  '3' c, '9' c, ';' c,  '4' c, '9' c, 'm' c,
-here swap - swap c!
+\ Create colored-header here 0 c, here 
+\    27 c,  '[' c,  '3' c, '1' c, 'm' c,  'r' c, 'e' c, 'd' c, 'w' c, 'o' c, 'r' c, 'd' c,
+\    27 c,  '[' c,  '3' c, '9' c, ';' c,  '4' c, '9' c, 'm' c,
+\ here swap - swap c!
 
-colored-header count "header dup link-header
+\ colored-header count "header dup link-header
 \ --------
-
-Macro ninelit
-  seed lit
-  seed [
-  9
-  seed ,
-  seed ]
-end-macro
-
-: nine  ninelit ;
-
-' nine has-header nine
 
 cr
 t{ -> }t

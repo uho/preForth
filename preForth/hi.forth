@@ -1,4 +1,5 @@
 0 echo !
+0 input-echo !
 
 cr .( ⓪ )
 
@@ -221,14 +222,6 @@ t{ 4 3 5 within -> true }t
 t{ 5 3 5 within -> false }t
 t{ 6 3 5 within -> false }t
 
-Variable up
-
-: User ( x -- )
-    Create cells , Does> @ up @ + ;
-
-0 User u1
-1 User u2
-2 User u3
 
 : n' parse-name find-name ;
 
@@ -419,6 +412,20 @@ Variable voc-link  0 voc-link !
 
 : cntd ( n -- ) ?dup 0= ?exit dup . 1- recurse '.' emit ;
 
+\ division / /mod  fm/mod sm/rem mod
+
+: s>d ( n -- d )  dup 0< ;
+
+: dnegate ( d1 -- d2 )  ;   \ define w/o carry
+
+: sm/rem ( d1 n1 -- n2 n3 ) ;
+    
+
+t{  10 s>d  3  sm/rem ->   1  3 }t
+t{ -10 s>d  3  sm/rem ->  -1 -3 }t
+t{  10 s>d -3  sm/rem ->   1 -3 }t
+t{ -10 s>d -3  sm/rem ->  -1  3 }t
+
 
 \ number output:  <# # #s #> sign hold holds base . u. .r u.r
 
@@ -460,28 +467,45 @@ Variable hld
 : u.r ( u l -- )  >r (u.) r> over - 0 max spaces type ;
 
 : at-xy ( u1 u2 -- ) \ col row
-    esc ." [" 1+  0 u.r ." ;" 1+ 0 u.r ." H" ;
+    base @ >r decimal
+    esc ." [" 1+  0 u.r ." ;" 1+ 0 u.r ." H" 
+    r> base ! ;
 
 \ : at? CSI 6n 
 
 : clreol ( -- )
     esc ." [K" ;
 
+: scroll-up ( -- )
+    esc ." [S" ;
+
 : save-cursor-position ( -- ) 27 emit '7' emit ;
 : restore-cursor-position  ( -- ) 27 emit '8' emit ;
 
+0 Value status-line
+132 Value terminal-width
+
 : show-status ( -- )
-   save-cursor-position reverse
-   base @ >r decimal 
-   0 1 at-xy  clreol  80 spaces  0 1 at-xy  
-     ."  seedForth 😉 "
+   status-line IF scroll-up THEN
+   save-cursor-position blue reverse
+   base @ >r decimal
+   0 status-line 1 max at-xy  ( clreol ) terminal-width spaces  
+   0 status-line 1 max at-xy  
+     ."  seedForth 😉     "
+     ." | free: " unused u.
      ." | order: " order  
      ." | base: "  r@ . 
-     ." | stack: " .s  
+     ." | " depth 0= IF ." ∅" ELSE .s THEN  
    r> base !
-   normal restore-cursor-position ;
+   normal restore-cursor-position
+   status-line 0= ?exit
+   0 status-line 1 - at-xy clreol
+   0 status-line 2 - at-xy 
+;
 
-' show-status ' .status >body !
+: +status ( -- ) [ ' show-status ] Literal  [ ' .status >body ] Literal ! ;
+: -status ( -- ) [ ' noop ] Literal  [ ' .status >body ] Literal ! ;
+
 
 only Forth also definitions
 Vocabulary root
@@ -498,7 +522,7 @@ root definitions
 : also also ;
 : bye bye ;
 
-only Forth also definitions order
+only Forth also definitions
 
 : mod ( u1 u2 -- u3 ) 0 swap um/mod drop ;
 
@@ -519,5 +543,119 @@ only Forth also definitions order
 
 cr cr cr .( The ) 10001 dup . .( st prime is ) th.prime . 
 
+
+\ cooperative multi tasker
+\ -------------------------
+
+Variable up  \ user pointer
+
+: up@ ( -- x ) up @ ;
+: up! ( x -- ) up ! ;
+
+: User ( x -- )
+    Create , Does> @ up@ + ;
+
+0
+1 cells over + swap User task-state
+1 cells over + swap User task-link
+1 cells over + swap User sp-save
+1 cells over + swap User rp-save
+
+Constant task-size
+
+: pause ( -- )
+    rp@  rp-save !  sp@ sp-save !
+    BEGIN task-link @ up! task-state @ UNTIL
+    sp-save @ sp!  rp-save @ rp! ;   
+
+Create operator 
+   true ,      \ task-state
+   operator ,  \ task-link to itself
+   0 ,         \ sp-save
+   0 ,         \ rp-save
+
+operator up!
+
+
+: task ( stacksize rstacksize -- tid )
+    here >r
+    0 , ( task-state ) 
+    task-link @ , r@ task-link !
+    over  here + 2 cells + , ( sp-save )
+    + dup here +   cell+ ,   ( rp-save )
+    allot              \ allocate stack and return stack
+    r> ;
+
+: wake ( tid -- )  ( _task-state ) on ;
+: sleep ( tid -- )  ( _task-state ) off ;
+: stop ( -- ) up@ sleep pause ;
+
+: task-push ( x tid -- ) \ push x on tids stack
+    2 cells + ( sp_save )  dup >r @  1 cells -  dup r> !  !
+;
+
+: task-rpush ( x tid -- ) \ push x on tids return-stack
+    3 cells + ( rp_save )  dup >r @  1 cells -  dup r> !  !
+;
+
+: (activate) ( xt -- )
+    pause execute stop ;
+
+: activate ( xt tid -- )
+    \ put xt on stack of tid
+    dup >r  task-push
+    \ put (activate)'s body on return stack
+    [ ' (activate) >body ] Literal  r@ task-rpush
+    r> wake
+;
+
+100 cells 100 cells  task Constant t1
+
+Variable counter  0 counter !
+: do-counter ( -- )  
+   BEGIN  1 counter +!  pause AGAIN ;
+
+' do-counter  t1 activate
+
+\ : multi-key ( -- c )
+\    BEGIN pause key? UNTIL key ;
+
+100 cells 100 cells task Constant counter-display
+
+: ctr ( -- x ) counter @ 13 rshift ;
+
+: .emoji ( n -- )
+    0 OF ." 😀" exit THEN
+    1 OF ." 😃" exit THEN
+    2 OF ." 😄" exit THEN
+    3 OF ." 😆" exit THEN
+    4 OF ." ☺️" exit THEN
+    5 OF ." 😊" exit THEN
+    6 OF ." 🙂" exit THEN
+    7 OF ." 😉" exit THEN ;
+
+: .counter ( -- )  
+    BEGIN 
+       ctr
+       BEGIN pause ctr  over - UNTIL drop
+       save-cursor-position blue reverse   
+       11 status-line dup 1 = IF 1- THEN at-xy
+       ctr 3 rshift 7 and .emoji  
+       14 status-line dup 1 = IF 1- THEN at-xy 
+       ctr 0 999 um/mod drop 3 u.r
+       normal restore-cursor-position
+    AGAIN ;
+' .counter counter-display activate
+
+: multikey ( -- c)  BEGIN key? 0= WHILE pause REPEAT key ;
+
+: multi ( -- ) [ ' multikey ] Literal [ ' getkey >body ] Literal ! ;
+: single ( -- ) [ ' key ] Literal [ ' getkey >body ] Literal ! ;
+
+: stars ( n -- )  ?dup IF  1- FOR '*' emit NEXT  THEN ;
+
+26 to status-line
+
 echo on
+input-echo on
 

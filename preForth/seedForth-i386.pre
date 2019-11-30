@@ -25,10 +25,10 @@ section '.bss' executable writable
 
        DD 10000 dup(0)
 stck:  DD 16 dup(0)
-  
+
        DD 10000 dup(0)
 rstck: DD 16 dup(0)
-
+  
 _frame: DD 0 ; frame pointer for catch/throw
 
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
@@ -36,8 +36,6 @@ _dp:    DD _start  ; dictionary pointer: points to next free location in memory
 
 _hp:    DD 0       ; head pointer: index of first unused head
 _head:  DD 10000 dup (0)
-
-
 
 section '.text' executable writable align 4096
 
@@ -47,6 +45,7 @@ extrn getchar
 extrn fflush
 extrn exit
 extrn mprotect
+extrn ioctl
   
 macro next  {
        lodsd
@@ -150,9 +149,33 @@ code key ( -- c )
         pop ebp
         cmp eax,-1
         jnz key1
-        mov eax,4
+        mov eax,4   ; eof: return Ctrl-D 
 key1:   push eax
         next
+;
+
+code key? ( -- f )
+       push ebp  
+       mov  ebp, esp
+       and  esp, 0xfffffff0
+       sub  esp, 32
+
+       mov dword [esp], 0
+       mov dword [esp+4], 1074030207 ; FIONREAD
+       lea dword eax, [esp+24]
+       mov dword [esp+8], eax
+
+       call ioctl
+       mov dword eax, [esp+24]
+
+       mov esp, ebp
+       pop ebp
+
+       cmp eax, 0
+       jz keyq1
+       mov eax, -1
+keyq1: push eax
+       next
 ;
 
 code dup ( x -- x x )
@@ -288,7 +311,7 @@ code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
         pop eax
         or eax,eax
         jz _branchX
-	lea esi,[esi+4]
+	      lea esi,[esi+4]
         next
 ;
 
@@ -489,10 +512,11 @@ code um/mod ( ud u1 -- u2 u3 )
    lit um*         h, \ 52  34
    lit um/mod      h, \ 53  35
    lit unused      h, \ 54  36
+   lit key?        h, \ 55  37
    interpreter bye ;
 
 pre
  _start: DB 43
-	 DD 10000 dup (0)
+	 DD 100000 dup (0)
  _memtop: DD 0
 ;

@@ -8,13 +8,15 @@
 
 + | based on allocated headers
 
-+ packages à la swiftForth (currently based on headerless definitions)
++ packages à la swiftForth (currently based on headerless definitions) with vocabularies
 
 - dual xt headers
 
-- high level multi tasker definitions
++ high level multi tasker definitions
 
 - more Standard words (at least CORE words w/ exceptions such as BASE STATE)
+
+- Divison SM/REM FM/MOD ...
 
 - umbilical Block-Interface
 
@@ -92,5 +94,6 @@
 
 - generalize linked list handling (map/filter)
 
++ key? and raw-terminal
 
 
