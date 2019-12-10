@@ -555,22 +555,27 @@ Variable up  \ user pointer
 : User ( x -- )
     Create , Does> @ up@ + ;
 
+: his ( task addr -- ) up@ - + ;
+
 0
 1 cells over + swap User task-state
 1 cells over + swap User task-link
+1 cells over + swap User error#
 1 cells over + swap User sp-save
 1 cells over + swap User rp-save
+1 cells over + swap User frame-save
 
 Constant task-size
 
 : pause ( -- )
-    rp@  rp-save !  sp@ sp-save !
+    rp@  rp-save !  sp@ sp-save ! frame @ frame-save !
     BEGIN task-link @ up! task-state @ UNTIL
-    sp-save @ sp!  rp-save @ rp! ;   
+    sp-save @ sp!  rp-save @ rp! frame-save @  frame ! ;   
 
 Create operator 
    true ,      \ task-state
    operator ,  \ task-link to itself
+   0 ,         \ error#
    0 ,         \ sp-save
    0 ,         \ rp-save
 
@@ -581,25 +586,26 @@ operator up!
     here >r
     0 , ( task-state ) 
     task-link @ , r@ task-link !
+    0 , ( error# )
     over  here + 2 cells + , ( sp-save )
     + dup here +   cell+ ,   ( rp-save )
     allot              \ allocate stack and return stack
     r> ;
 
-: wake ( tid -- )  ( _task-state ) on ;
-: sleep ( tid -- )  ( _task-state ) off ;
+: wake ( tid -- )   task-state his on ;
+: sleep ( tid -- )  task-state his off ;
 : stop ( -- ) up@ sleep pause ;
 
 : task-push ( x tid -- ) \ push x on tids stack
-    2 cells + ( sp_save )  dup >r @  1 cells -  dup r> !  !
+   sp-save his  dup >r @  1 cells -  dup r> !  !
 ;
 
 : task-rpush ( x tid -- ) \ push x on tids return-stack
-    3 cells + ( rp_save )  dup >r @  1 cells -  dup r> !  !
+    rp-save his  dup >r @  1 cells -  dup r> !  !
 ;
 
 : (activate) ( xt -- )
-    pause execute stop ;
+    catch  error# !  stop ;
 
 : activate ( xt tid -- )
     \ put xt on stack of tid
@@ -613,7 +619,7 @@ operator up!
 
 Variable counter  0 counter !
 : do-counter ( -- )  
-   BEGIN  1 counter +!  pause AGAIN ;
+   BEGIN  1 counter +!  pause  AGAIN ;
 
 ' do-counter  t1 activate
 
@@ -647,14 +653,44 @@ Variable counter  0 counter !
     AGAIN ;
 ' .counter counter-display activate
 
-: multikey ( -- c)  BEGIN key? 0= WHILE pause REPEAT key ;
+: multikey ( -- c)  BEGIN key? 0= WHILE  pause  REPEAT key ;
 
 : multi ( -- ) [ ' multikey ] Literal [ ' getkey >body ] Literal ! ;
 : single ( -- ) [ ' key ] Literal [ ' getkey >body ] Literal ! ;
 
 : stars ( n -- )  ?dup IF  1- FOR '*' emit NEXT  THEN ;
 
-26 to status-line
+0 to status-line 
+cr .( Adjust your terminal to have ) status-line 1+ . .( lines.)
+
+-77 Constant UTF-8-err
+
+128 Constant max-single-byte
+ 
+: u8@+ ( u8addr -- u8addr' u )
+    count  dup max-single-byte u< ?exit  \ special case ASCII
+    dup 194 u< IF  UTF-8-err throw  THEN  \ malformed character
+    127 and  64 >r
+    BEGIN  dup r@ and  WHILE  r@ xor
+      6 lshift r> 5 lshift >r >r count
+      dup 192 and 128 <> IF   UTF-8-err throw  THEN
+      63 and r> or
+    REPEAT  r> drop ;
+ 
+: u8!+ ( u u8addr -- u8addr' )
+    over max-single-byte u< IF  swap over c! 1+  exit  THEN \ special case ASCII
+    >r 0 swap  63
+    BEGIN  2dup swap u<  WHILE
+      u2/ >r  dup 63 and 128 or swap 6 rshift r>
+    REPEAT  127 xor 2* or  r>
+    BEGIN   over 128 u< 0= WHILE  swap over c! 1+  REPEAT  nip ;
+ 
+cr s( Δ) 2dup type .(  has codepoint ) drop  u8@+ . drop
+
+cr 916 pad u8!+ pad swap over - type
+
+t{ s( Δ) drop u8@+ nip -> 916 }t
+t{ 916 pad u8!+   pad -   pad c@  pad 1+ c@ -> 2 206 148 }t
 
 echo on
 input-echo on

@@ -242,14 +242,14 @@ t{ 10 -10 < -> 0 }t
 t{ 10 -1000 < -> 0 }t
 t{ 1000 -10 < ->  0 }t
 
-: minint ( -- n )
-   1 BEGIN dup 2* dup WHILE nip REPEAT drop ;
+\ : minint ( -- n )
+\   1 BEGIN dup 2* dup WHILE nip REPEAT drop ;
 
-minint 1- Constant maxint
+\ minint 1- Constant maxint
 
-t{ minint negate -> minint }t
-t{ minint maxint < -> -1 }t
-t{ maxint minint < -> 0  }t
+\ t{ minint negate -> minint }t
+\ t{ minint maxint < -> -1 }t
+\ t{ maxint minint < -> 0  }t
 
 
 t{ 0 1 u< -> -1 }t
@@ -679,8 +679,8 @@ end-macro
 ' xor         has-header xor
 ' max         has-header max
 ' min         has-header min
-' minint      has-header minint
-' maxint      has-header maxint
+\ ' minint      has-header minint
+\ ' maxint      has-header maxint
 ' dispose     has-header dispose
 ' alloc       has-header alloc
 
@@ -757,6 +757,7 @@ end-macro
 ' .wordlist   has-header .wordlist
 ' key?        has-header key?
 ' getkey      has-header getkey
+' frame       has-header frame
 
 \ ' "header     has-header "header
 \ ' link        has-header link

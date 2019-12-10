@@ -73,6 +73,7 @@ Variable #tokens  0 #tokens !
 ( 44 $2C ) Token catch     Token throw         Token sp@        Token sp!
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
 ( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?
+( 53 $35 ) Token frame
 
 \ generate token sequences for numbers
 

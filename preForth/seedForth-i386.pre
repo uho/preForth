@@ -29,7 +29,7 @@ stck:  DD 16 dup(0)
        DD 10000 dup(0)
 rstck: DD 16 dup(0)
   
-_frame: DD 0 ; frame pointer for catch/throw
+_fp:   DD 0 ; frame pointer for catch/throw
 
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
         ; free memory starts at _start
@@ -446,11 +446,15 @@ code um/mod ( ud u1 -- u2 u3 )
     r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
 ;
 
+: frame ( -- addr ) 
+    lit fp ;
+
 : catch ( i*x xt -- j*x 0 | i*x err )
-    lit frame @ >r  sp@ >r  rp@  lit frame !  execute    r> drop r> lit frame ! 0 ;
+    frame @ >r  sp@ >r  rp@  frame !  execute    r> drop r> frame ! 0 ;
 
 : throw ( i*x 0 | i*x err -- j*x err )
-    ?dup 0= ?exit  lit frame @ rp!  r> swap >r  sp! drop  r> r> lit frame ! ;
+    ?dup 0= ?exit  frame @ rp!  r> swap >r  sp! drop  r> r> frame ! ;
+
 
 : unused ( -- u )  
     lit memtop  here - ;
@@ -513,6 +517,7 @@ code um/mod ( ud u1 -- u2 u3 )
    lit um/mod      h, \ 53  35
    lit unused      h, \ 54  36
    lit key?        h, \ 55  37
+   lit frame       h, \ 56  38
    interpreter bye ;
 
 pre
