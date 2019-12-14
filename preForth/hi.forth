@@ -3,7 +3,6 @@
 
 cr .( ⓪ )
 
-: 2drop  drop drop ;
 : ( 
    ')' parse 2drop ; immediate
 
@@ -50,12 +49,6 @@ cr .( ⓪ )
 : OF ( n1 n2 -- n1 | )
     postpone case?  postpone IF ; immediate
 
-: s" ( ccc" -- c-addr u ) \ compile only
-    postpone $lit
-    '"' parse
-    dup 0= -39 and throw   
-    here over 1+ allot place ; immediate  
-
 cr .( ① )
 cr
 
@@ -88,13 +81,6 @@ false invert Constant true
 
 : erase ( c-addr u -- )  0 fill ;
 : blank ( c-addr u -- ) bl fill ;
-
-\ : xor ( x1 x2 -- x3 ) 
-\    2dup or >r  invert swap invert or r> and ;
-\
-\ t{ 15 10 xor -> 5 }t
-\ t{ 21845 dup xor -> 0 }t  \ $5555
-\ t{ 21845 dup 2* xor -> 65535 }t
 
 : 0> ( n -- f )  0 > ;
 
@@ -181,7 +167,6 @@ t{ 3 3 <> -> 0 }t
 t{ 'x' 'u' <> -> -1 }t
 
 
-
 : pick ( xn ... xi ... x0 i -- xn ... xi ... x0 xi )
     1+ cells sp@ + @ ;
 t{ 10 20 30 1 pick ->  10 20 30 20 }t
@@ -204,14 +189,6 @@ t{ 10 20 30 1 roll ->  10 30 20 }t
 
 5 Value val
 t{ val  42 to val  val -> 5 42 }t
-
-
-\ : u< ( u1 u2 -- f )
-\   over 0< IF  dup 0< IF < exit THEN \ both large
-\               2drop false exit THEN  \ u1 is larger
-\   dup 0<  IF  2drop true exit THEN \ u2 is larger
-\   <  \ both small
-\ ;
 
 
 :  within ( test low high -- flag ) 
@@ -288,6 +265,8 @@ t{ 65535 dup * sqrt -> 65535 }t
       dup @ 
    REPEAT
    2drop ;
+
+: clear ( -- )  remove-headers ;
 
 | : hidden-word ." still there - " ;
 
@@ -626,9 +605,6 @@ Variable counter  0 counter !
 
 ' do-counter  t1 activate
 
-\ : multi-key ( -- c )
-\    BEGIN pause key? UNTIL key ;
-
 100 cells 100 cells task Constant counter-display
 
 : ctr ( -- x ) counter @ 13 rshift ;
@@ -656,7 +632,7 @@ Variable counter  0 counter !
     AGAIN ;
 ' .counter counter-display activate
 
-: multikey ( -- c)  BEGIN key? 0= WHILE  pause  REPEAT key ;
+: multikey ( -- c)  BEGIN pause key? UNTIL key ;
 
 : multi ( -- ) [ ' multikey ] Literal [ ' getkey >body ] Literal ! ;
 : single ( -- ) [ ' key ] Literal [ ' getkey >body ] Literal ! ;

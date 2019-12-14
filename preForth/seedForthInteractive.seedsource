@@ -33,6 +33,12 @@ end-macro
 : -rot ( a b c -- c a b )
     swap >r swap r> ;
 
+: under+ ( x1 x2 x3 -- x1+x3 x2 )  
+    rot + swap ;
+
+: tuck ( x1 x2 -- x2 x1 x2 )  
+    swap over ;
+
 : /string ( x1 x2 x3 -- x4 x5 )   
     swap over - >r + r> ;
 
@@ -156,7 +162,6 @@ end-macro
 : place ( c-addr1 u c-addr2 -- )
     2dup >r >r 1+ swap cmove  r> r> c! ;
 
-
 \ Exception handling 
 
 Variable frame ( -- addr ) 
@@ -169,6 +174,7 @@ Variable frame ( -- addr )
     ?dup 0= ?exit  frame @ rp!  r> swap >r  sp! drop  
     r> r> frame ! ;
 
+\ tests: see later when ' is defined
 
 \ Tester 
 : empty-stack ( i*x -- )
@@ -287,33 +293,6 @@ t{ 0 -1 u< -> -1 }t
      >r  1 /string  r>
    REPEAT THEN drop ;
 
-\ decimal output
-\ --------------
-
-\ : (u/mod  ( u d q0 -- r d q )
-\    >r 
-\    BEGIN ( u d r:q0 ) 
-\      2dup u< 0=
-\    WHILE ( u d )
-\       swap over - swap ( u' d r:q0 )
-\       r> 1+ >r
-\    REPEAT ( u' d r:q0 )
-\    r> ;
-\
-: 10* ( x1 -- x2 )
-    dup + dup dup + dup + + ;
-
-\ : 10* ( x1 -- x2 ) 10 um* drop ;
-
-\ : (10u/mod ( u q d -- r q d )
-\    third over swap u< 0= ?exit     \ ( u q d )
-\    dup >r 10*                      \ ( u q 10*d ) ( R: d )
-\    (10u/mod                        \ ( r q d )
-\    swap >r   0 (u/mod nip   r> 10* + r> ;
-     
-\ : 10u/mod ( u -- r q )
-\    0 1 (10u/mod drop  ;
-
 : (u. ( u1 -- )
     ?dup IF 0 10 um/mod (u. .digit THEN ;
 
@@ -344,6 +323,16 @@ Definer Defer ( <name> -- )
 : is ( xt -- )  \ only interactive
     ' >body ! ;
 
+\ catch and throw tests
+
+t{ 10 ' dup catch  -> 10 10 0 }t
+ 
+: err99 ( x -- )  dup 9 = IF 99 throw THEN 1 + ;
+ 
+t{ 1 ' err99 catch -> 2 0 }t
+t{ 5 9 ' err99 catch nip ->  5 99 }t
+
+
 \ String comparison
 : compare ( c-addr1 u1 c-addr2 u2 -- n )
     rot 
@@ -364,15 +353,12 @@ Definer Defer ( <name> -- )
 
 \ dynamic memory
 \ -------------------------------------
-: 256* ( x1 -- x2 ) 2* 2* 2* 2* 2* 2* 2* 2* ;
-
 Variable anchor
 
 50 Constant waste
 
-128 256* 256* 256* ( 32bit ) Constant #free  \ sign bit
-#free 1 - ( 31bit ) Constant #max
-
+minint  Constant #free  \ sign bit
+maxint  Constant #max
 
 : size ( mem -- size ) 1 cells - @ #max and ;
 
@@ -400,7 +386,6 @@ Variable anchor
     dup anchor @ = IF  dup @ anchor ! THEN ;
 
 : unlink ( mem -- ) setanchor  @links 2dup !  swap cell+ ! ;
-
 
 : allocate ( size -- mem ior )
     3 cells max dup >r  fits? ?dup 0= IF r> -8 exit THEN ( "dictionary overflow" )
@@ -463,8 +448,6 @@ Create 'source here 0 , tib ,  \ ' source is normally  ^tib #tib is set to c-add
 Constant #tib
 
 Defer getkey   ' key is getkey
-
-\ : getkey key ;
 
 Variable input-echo -1 input-echo !
 
@@ -535,9 +518,6 @@ Definer Header-flag? ( x <name> -- )
 
 
 : wordlist ( -- wid )  here 0 , ;
-
-\ : under+ ( x1 x2 x3 -- x1+x3 x2 )  rot + swap ;
-\ : tuck ( x1 x2 -- x2 x1 x2 )  swap over ;
 
 Create search-order  0 , 10 cells allot
 
@@ -771,66 +751,17 @@ end-macro
 ' getkey      has-header getkey
 ' frame       has-header frame
 
-\ ' "header     has-header "header
-\ ' link        has-header link
-\ ' _xt         has-header _xt
+' "header     has-header "header
+' link-header has-header link-header
+' _xt         has-header _xt
 
 Macro :noname
    seed new
    seed compiler
 end-macro
 
-\ :noname 10 ; 
-
-
 : compile ( -- )
    r> dup cell+ >r @ , ;
-
-\ Macro compile 
-\   seed [
-\   seed '
-\
-\   seed ]
-\   seed compile,
-\ end-macro 
-
-\ lit [ ' ?branch , ] compile,
-
-
-\ : (IF)  ( -- c:orig )
-\      [ ' ?branch ] Literal compile,  here 0 , ;
-\ 
-\ : (AHEAD)  ( -- c:orig )
-\      [ ' branch ] Literal compile,  here 0 , ;
-\ 
-\ : (THEN) ( c:orig -- )
-\      here swap ! ;
-\ 
-\ : (ELSE) ( c:orig1 -- c:orig2 )
-\      [ ' branch ] Literal compile,  here 0 ,  swap (THEN) ;
-\ 
-\ : (WHILE) ( c: orig -- c:dest c:orig )
-\      (IF) swap ;
-\ 
-\ : (AGAIN) ( c:orig -- )
-\      [ ' branch ] Literal compile, , ;
-\ 
-\ : (UNTIL)
-\      [ ' ?branch ] Literal compile, , ;
-
-\ : (REPEAT) ( c:orig c:dest -- )
-\     (AGAIN) (THEN) ;
-
-\ ' (IF)        has-header IF immediate
-\ ' (ELSE)      has-header ELSE immediate
-\ ' (THEN)      has-header THEN immediate
-\ ' (AHEAD)     has-header AHEAD immediate
-
-\ ' here        has-header BEGIN immediate
-\ ' (WHILE)     has-header WHILE immediate
-\ ' (AGAIN)     has-header AGAIN immediate
-\ ' (UNTIL)     has-header UNTIL immediate
-\ ' (REPEAT)    has-header REPEAT immediate
 
 
 Variable >in ( -- addr )
@@ -890,7 +821,7 @@ Variable heads -1 heads !
     [ ' $lit ] Literal compile,  
     '"' parse here over 1+ allot place ;
 
-\ ' (s") has-header s" immediate
+' (s") has-header s" immediate
 
 : (.") ( ccc" -- )
     (s")
@@ -917,7 +848,7 @@ Variable heads -1 heads !
     REPEAT
     nip nip ;
 
-\ ' find-name-in has-header find-name-in
+' find-name-in has-header find-name-in
 
 : find-name ( c-addr u -- header|0 )
     search-order  dup cell+ swap @
@@ -971,7 +902,7 @@ Variable heads -1 heads !
       dup
     WHILE
       over c@ dup digit? 0= IF drop r> drop r> drop 2drop exit THEN
-      '0' - r> 10*  + >r
+      '0' - r> 10 um* drop  + >r
       1 /string
     REPEAT
     2drop 2drop r>  r> IF negate THEN 0 0 ;
@@ -1170,7 +1101,7 @@ here swap - swap c!
  colored-header count "header dup link-header
 \ --------
 
-' token has-header token
+\ ' token has-header token
 
 cr
 t{ -> }t
