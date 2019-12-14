@@ -184,12 +184,12 @@ t{ 3 4 + -> 7 }t
 
 \ catch and throw tests
 
-t{ 10 ' dup catch  -> 10 10 0 }t
-
-: err99 ( x -- )  dup 9 = IF 99 throw THEN 1 + ;
-
-t{ 1 ' err99 catch -> 2 0 }t
-t{ 5 9 ' err99 catch nip ->  5 99 }t
+\ t{ 10 ' dup catch  -> 10 10 0 }t
+\ 
+\ : err99 ( x -- )  dup 9 = IF 99 throw THEN 1 + ;
+\ 
+\ t{ 1 ' err99 catch -> 2 0 }t
+\ t{ 5 9 ' err99 catch nip ->  5 99 }t
 
 
 \ Test for sp!

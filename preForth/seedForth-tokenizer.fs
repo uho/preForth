@@ -35,15 +35,18 @@ Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
 
 VARIABLE OUTFILE
 
-: SUBMIT ( c -- )
+: submit ( c -- )
     PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
+
+: submit-token ( x -- )
+    dup 255 > IF  dup 8 rshift  SUBMIT  THEN  SUBMIT ;
 
 : <name> ( -- c-addr u )  bl word count ;
 
 Variable #tokens  0 #tokens !
 : Token ( <name> -- )
    :noname  
-   #tokens @  postpone LITERAL  postpone SUBMIT  postpone ;  
+   #tokens @  postpone LITERAL  postpone SUBMIT-TOKEN  postpone ;  
    <name> 
    cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
    ?token ! 1 #tokens +! ;
@@ -59,21 +62,21 @@ Variable #tokens  0 #tokens !
     <name> token@ dup 0= Abort" is undefined"    postpone LITERAL   postpone EXECUTE ; immediate
 
 
-(  0 $00 ) Token bye       Token emit          Token key        Token dup
-(  4 $04 ) Token swap      Token drop          Token 0<         Token ?exit
-(  8 $08 ) Token >r        Token r>            Token -          Token exit
-( 12 $0C ) Token lit       Token @             Token c@         Token !
-( 16 $10 ) Token c!        Token execute       Token branch     Token ?branch
-( 20 $14 ) Token negate    Token +             Token 0=         Token ?dup
-( 24 $18 ) Token cells     Token +!            Token h@         Token h,
-( 28 $1C ) Token here      Token allot         Token ,          Token c,  
-( 32 $20 ) Token fun       Token interpreter   Token compiler   Token create
-( 36 $24 ) Token does>     Token cold          Token depth      Token compile,
-( 40 $28 ) Token new       Token couple        Token and        Token or
-( 44 $2C ) Token catch     Token throw         Token sp@        Token sp!
+(  0 $00 ) Token bye       Token prefix1       Token prefix2    Token emit          
+(  4 $04 ) Token key       Token dup           Token swap       Token drop          
+(  8 $08 ) Token 0<        Token ?exit         Token >r         Token r>
+( 12 $0C ) Token -         Token exit          Token lit        Token @             
+( 16 $10 ) Token c@        Token !             Token c!         Token execute       
+( 20 $14 ) Token branch    Token ?branch       Token negate     Token +             
+( 24 $18 ) Token 0=        Token ?dup          Token cells      Token +!            
+( 28 $1C ) Token h@        Token h,            Token here       Token allot         
+( 32 $20 ) Token ,         Token c,            Token fun        Token interpreter   
+( 36 $24 ) Token compiler  Token create        Token does>      Token cold          
+( 40 $28 ) Token depth     Token compile,      Token new        Token couple        
+( 44 $2C ) Token and       Token or            Token sp@        Token sp!           
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
-( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?
-( 53 $35 ) Token frame
+( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?          
+( 56 $38 ) Token token
 
 \ generate token sequences for numbers
 
@@ -105,8 +108,8 @@ Variable #tokens  0 #tokens !
 
 : seed-name ( c-addr u -- )
 	 2dup  token@ dup IF nip nip execute EXIT THEN drop
-	 2dup  char-lit? IF nip nip seed num  seed-number seed bye  EXIT THEN drop
-	 2dup  number? IF nip nip seed num  seed-number seed bye EXIT THEN drop
+	 2dup  char-lit? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
+	 2dup  number? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
 	 cr type ."  not found" abort ;
 
 : seed-line ( -- )
@@ -248,7 +251,7 @@ Macro Definer ( <name> -- )
       postpone Token
       #tokens @  1 #tokens +! 
       postpone Literal
-      postpone SUBMIT
+      postpone SUBMIT-TOKEN
       seed fun
    postpone end-macro
 end-macro

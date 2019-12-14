@@ -181,6 +181,7 @@ t{ 3 3 <> -> 0 }t
 t{ 'x' 'u' <> -> -1 }t
 
 
+
 : pick ( xn ... xi ... x0 i -- xn ... xi ... x0 xi )
     1+ cells sp@ + @ ;
 t{ 10 20 30 1 pick ->  10 20 30 20 }t
@@ -291,7 +292,6 @@ t{ 65535 dup * sqrt -> 65535 }t
 | : hidden-word ." still there - " ;
 
 : visible-word ( -- ) hidden-word hidden-word ;
-
 
 : save-mem ( c-addr1 u1 -- c-addr2 u2 )
     dup >r allocate throw swap over r@ cmove r> ;
@@ -479,6 +479,9 @@ Variable hld
 : scroll-up ( -- )
     esc ." [S" ;
 
+: white ( -- )  esc ." [37m" ;
+: blue-bg ( -- )  esc ." [44m" ;
+
 : save-cursor-position ( -- ) 27 emit '7' emit ;
 : restore-cursor-position  ( -- ) 27 emit '8' emit ;
 
@@ -487,7 +490,7 @@ Variable hld
 
 : show-status ( -- )
    status-line IF scroll-up THEN
-   save-cursor-position blue reverse
+   save-cursor-position blue-bg white
    base @ >r decimal
    0 status-line 1 max at-xy  ( clreol ) terminal-width spaces  
    0 status-line 1 max at-xy  
@@ -604,7 +607,7 @@ operator up!
     rp-save his  dup >r @  1 cells -  dup r> !  !
 ;
 
-: (activate) ( xt -- )
+| : (activate) ( xt -- )
     catch  error# !  stop ;
 
 : activate ( xt tid -- )
@@ -692,6 +695,6 @@ cr 916 pad u8!+ pad swap over - type
 t{ s( Δ) drop u8@+ nip -> 916 }t
 t{ 916 pad u8!+   pad -   pad c@  pad 1+ c@ -> 2 206 148 }t
 
-echo on
-input-echo on
++status
 
+echo on cr cr .( Welcome! ) input-echo on

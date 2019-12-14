@@ -29,8 +29,6 @@ stck:  DD 16 dup(0)
        DD 10000 dup(0)
 rstck: DD 16 dup(0)
   
-_fp:   DD 0 ; frame pointer for catch/throw
-
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
         ; free memory starts at _start
 
@@ -296,8 +294,10 @@ code c! ( c c-addr -- )
         next
 ;
 
-code invoke ( addr -- ) \ native code: >r ;
-        pop eax
+\ code invoke ( addr -- ) \ native code: >r ;
+code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
+        pop edx
+        mov dword eax, [_head+edx*4]
         jmp dword [eax]
 ;
 
@@ -374,8 +374,11 @@ code um/mod ( ud u1 -- u2 u3 )
 : ?dup ( x -- x x | 0 )
    dup 0= ?exit dup ;
 
+: 2* ( x1 -- x2 )
+   dup + ;
+
 : cells ( x1 -- x2 )
-   dup + dup + ;
+   2* 2* ;
 
 : +! ( x addr -- )
    swap >r  dup @ r> +  swap ! ;
@@ -404,23 +407,28 @@ code um/mod ( ud u1 -- u2 u3 )
 : compile, ( x -- )
    h@ , ;
 
-: execute ( x -- )
-   h@ invoke ;
+\ token are in the range 0 .. 767: 
+\   0, 3 .. 255 are single byte tokens
+\    256 .. 511 are double byte tokens of the form 01 xx
+\    511 .. 767 are double byte tokens of the form 02 xx
+: token ( -- x )
+   key dup 0= ?exit    \       0 -> single byte token
+   dup 3 - 0< 0= ?exit \ not 1 2 -> single byte token
+   key couple ;        \            double byte token
 
 : interpreter ( -- )
-   key ?dup 0= ?exit  execute   tail interpreter ;
+   token execute   tail interpreter ;  \ executing exit  will leave this loop
 
 : num ( -- x ) 
    tail interpreter ;
 
-: ?lit ( xt -- xt )  
-   h@ lit num - ?exit drop       \ not num token: exit i.e. normal compile action
+: ?lit ( xt -- xt | )  
+   dup h@ lit num - ?exit drop   \ not num token: exit i.e. normal compile action
    lit lit ,   num ,             \ generate  lit x   num call puts x on stack
    r> drop   tail compiler ;
 
 : compiler ( -- )
-   key ?dup 0= ?exit
-   dup ?lit 
+   token ?dup 0= ?exit  ?lit 
    compile, tail compiler ;
 
 : new ( -- xt )
@@ -428,9 +436,6 @@ code um/mod ( ud u1 -- u2 u3 )
 
 : fun ( -- )
    new drop  compiler ;
-
-: 2* ( x1 -- x2 )
-   dup + ;
 
 : couple ( hi lo -- hilo )
     >r  2* 2* 2* 2*   2* 2* 2* 2*   r> + ;
@@ -446,67 +451,57 @@ code um/mod ( ud u1 -- u2 u3 )
     r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
 ;
 
-: frame ( -- addr ) 
-    lit fp ;
-
-: catch ( i*x xt -- j*x 0 | i*x err )
-    frame @ >r  sp@ >r  rp@  frame !  execute    r> drop r> frame ! 0 ;
-
-: throw ( i*x 0 | i*x err -- j*x err )
-    ?dup 0= ?exit  frame @ rp!  r> swap >r  sp! drop  r> r> frame ! ;
-
-
 : unused ( -- u )  
     lit memtop  here - ;
 
 : cold ( -- )
    's' emit 'e' dup emit emit  'd' emit 10 emit
    lit bye         h, \ 0   00
-   lit emit        h, \ 1   01
-   lit key         h, \ 2   02
-   lit dup         h, \ 3   03
-   lit swap        h, \ 4   04
-   lit drop        h, \ 5   05
-   lit 0<          h, \ 6   06
-   lit ?exit       h, \ 7   07
-   lit >r          h, \ 8   08
-   lit r>          h, \ 9   09
-   lit -           h, \ 10  0A
-   lit exit        h, \ 11  0B
-   lit lit         h, \ 12  0C
-   lit @           h, \ 13  0D
-   lit c@          h, \ 14  0E
-   lit !           h, \ 15  0F
-   lit c!          h, \ 16  10
-   lit execute     h, \ 17  11
-   lit branch      h, \ 18  12
-   lit ?branch     h, \ 19  13
-   lit negate      h, \ 20  14
-   lit +           h, \ 21  15
-   lit 0=          h, \ 22  16
-   lit ?dup        h, \ 23  17
-   lit cells       h, \ 24  18
-   lit +!          h, \ 25  19
-   lit h@          h, \ 26  1A
-   lit h,          h, \ 27  1B
-   lit here        h, \ 28  1C
-   lit allot       h, \ 29  1D
-   lit ,           h, \ 30  1E
-   lit c,          h, \ 31  1F
-   lit fun         h, \ 32  20
-   lit interpreter h, \ 33  21
-   lit compiler    h, \ 34  22
-   lit create      h, \ 35  23
-   lit does>       h, \ 36  24
-   lit cold        h, \ 37  25
-   lit depth       h, \ 38  26
-   lit compile,    h, \ 39  27
-   lit new         h, \ 40  28
-   lit couple      h, \ 41  29
-   lit and         h, \ 42  2A
-   lit or          h, \ 43  2B
-   lit catch       h, \ 44  2C
-   lit throw       h, \ 45  2D
+   0               h, \ 1   01 prefix
+   0               h, \ 2   02 prefix
+   lit emit        h, \ 3   03
+   lit key         h, \ 4   04
+   lit dup         h, \ 5   05
+   lit swap        h, \ 6   06
+   lit drop        h, \ 7   07
+   lit 0<          h, \ 8   08
+   lit ?exit       h, \ 9   09
+   lit >r          h, \ 10  0A
+   lit r>          h, \ 11  0B
+   lit -           h, \ 12  0C
+   lit exit        h, \ 13  0D
+   lit lit         h, \ 14  0E
+   lit @           h, \ 15  0F
+   lit c@          h, \ 16  10
+   lit !           h, \ 17  11
+   lit c!          h, \ 18  12
+   lit execute     h, \ 19  13
+   lit branch      h, \ 20  14
+   lit ?branch     h, \ 21  15
+   lit negate      h, \ 22  16
+   lit +           h, \ 23  17
+   lit 0=          h, \ 24  18
+   lit ?dup        h, \ 25  19
+   lit cells       h, \ 26  1A
+   lit +!          h, \ 27  1B
+   lit h@          h, \ 28  1C
+   lit h,          h, \ 29  1D
+   lit here        h, \ 30  1E
+   lit allot       h, \ 31  1F
+   lit ,           h, \ 32  20
+   lit c,          h, \ 33  21
+   lit fun         h, \ 34  22
+   lit interpreter h, \ 35  23
+   lit compiler    h, \ 36  24
+   lit create      h, \ 37  25
+   lit does>       h, \ 38  26
+   lit cold        h, \ 39  27
+   lit depth       h, \ 40  28
+   lit compile,    h, \ 41  29
+   lit new         h, \ 42  2A
+   lit couple      h, \ 43  2B
+   lit and         h, \ 44  2C
+   lit or          h, \ 45  2D
    lit sp@         h, \ 46  2E
    lit sp!         h, \ 47  2F
    lit rp@         h, \ 48  30
@@ -517,7 +512,7 @@ code um/mod ( ud u1 -- u2 u3 )
    lit um/mod      h, \ 53  35
    lit unused      h, \ 54  36
    lit key?        h, \ 55  37
-   lit frame       h, \ 56  38
+   lit token       h, \ 56  38
    interpreter bye ;
 
 pre
