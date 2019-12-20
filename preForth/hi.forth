@@ -256,17 +256,20 @@ t{ 65535 dup * sqrt -> 65535 }t
 | : unlink-header ( addr name -- ) \ 2dup ." unlink " . .
      dup >r ( _link ) @ swap !  r> dispose ;
 
-: remove-headers ( -- )
+: remove-headers ( -- u )
+   0 >r
    context @ dup @ 
    BEGIN ( addr name )
       dup 
    WHILE ( addr name )
-      dup headerless? IF over >r unlink-header r> ELSE nip THEN ( addr )
+      dup headerless? IF over >r unlink-header r> r> 1+ >r ELSE nip THEN ( addr )
       dup @ 
    REPEAT
-   2drop ;
+   2drop r> ;
 
-: clear ( -- )  remove-headers ;
+| : .plural ( n c-addr u -- ) type 1 = ?exit ." s" ;
+
+: clear ( -- )  remove-headers dup . s" header" .plural ."  removed" ;
 
 | : hidden-word ." still there - " ;
 
@@ -574,9 +577,9 @@ operator up!
     allot              \ allocate stack and return stack
     r> ;
 
-: wake ( tid -- )   task-state his on ;
+: wake ( tid -- )   task-state his on  ;
 : sleep ( tid -- )  task-state his off ;
-: stop ( -- ) up@ sleep pause ;
+: stop ( -- )       up@ sleep pause ;
 
 : task-push ( x tid -- ) \ push x on tids stack
    sp-save his  dup >r @  1 cells -  dup r> !  !
@@ -698,7 +701,7 @@ t{ 916 pad u8!+   pad -   pad c@  pad 1+ c@ -> 2 206 148 }t
 : c ( adr - adr+1)  1 d ;                     \ character       
 : b ( adr - adr')   ?:@? dup @  2 ># cell+ ;  \ branch, could be relative
                                                                 
-cr .( Interactive decompiler: User single letter commands n d l c b s ) cr
+cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
 
 \ Dump utility
 
@@ -745,7 +748,43 @@ cr .( Interactive decompiler: User single letter commands n d l c b s ) cr
      cr dump-line 
    REPEAT 2drop ;  
                                   
+\ conditional compilation
 
+| : next-token ( -- c-addr u )
+    BEGIN 
+      parse-name dup 0= 
+    WHILE ( c-addr u )
+      2drop refill 0= -39 and throw
+    REPEAT ( c-addr u ) ;
+
+| : ([ELSE]) ( level c-addr u -- level' )
+        2dup s" [IF]" compare 0= IF 2drop 1+ exit THEN
+        2dup s" [ELSE]" compare 0= IF 2drop 1- dup IF 1+ THEN exit THEN
+             s" [THEN]" compare 0= IF 1- THEN ;
+
+: [ELSE] ( -- )
+    1 BEGIN ( level ) next-token ([ELSE]) ?dup 0= UNTIL ; immediate
+
+: [IF] ( f -- ) ?exit postpone [ELSE] ; immediate
+
+: [THEN] ; immediate
+
+
+1 [IF] cr .( ok: if line, )
+    .( ok: next line)
+[ELSE] cr .( fail: else line, )
+          .( fail: other line)
+[THEN]
+
+0 [IF] cr .( fail: if line, )
+    .( fail: next line)
+[ELSE] cr .( ok: else line, )
+       .( ok: other line)
+[THEN]
+
+cr .( ok: afterwords )
+
+cr .( How would conditional compilation work in tokenized form? )
 
 
 
