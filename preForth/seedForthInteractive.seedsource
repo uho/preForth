@@ -755,6 +755,10 @@ end-macro
 ' link-header has-header link-header
 ' _xt         has-header _xt
 
+
+' usleep has-header usleep
+
+
 Macro :noname
    seed new
    seed compiler
@@ -862,6 +866,36 @@ Variable heads -1 heads !
     2drop 2drop 0 ;
 
 ' find-name has-header find-name
+
+: find-xt-in ( xt wid -- header | 0 )
+    BEGIN
+       dup
+    WHILE ( xt wid )
+       2dup _xt @ = IF nip exit THEN
+       _link @
+    REPEAT ( xt wid )
+    2drop 0 ;
+
+: >name ( xt -- name | 0 )
+    get-order over >r set-order r> find-xt-in dup IF _name THEN ;
+
+' >name has-header >name
+
+: find-addr-in ( xt wid -- header | 0 )
+    BEGIN
+       dup
+    WHILE ( xt wid )
+       2dup _xt @ h@ = IF nip exit THEN
+       _link @
+    REPEAT ( xt wid )
+    2drop 0 ;
+
+: addr>name ( xt -- name | 0 )
+    get-order over >r set-order r> find-addr-in dup IF _name THEN ;
+
+' addr>name has-header addr>name
+
+
 
 : Alias ( xt <name> -- )
    parse-name "header dup link-header _xt ! ;
@@ -981,7 +1015,7 @@ Variable handlers        interpreters @ handlers !
 ' heads has-header heads
 
 : interpret ( -- )
-   BEGIN ( )
+   BEGIN ( ) 
       parse-name dup
    WHILE ( c-addr u )
       handlers @ execute 2drop  

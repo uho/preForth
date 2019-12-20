@@ -597,6 +597,8 @@ operator up!
     r> wake
 ;
 
+: ms ( u -- )  1000 * usleep ;
+
 100 cells 100 cells  task Constant t1
 
 Variable counter  0 counter !
@@ -607,7 +609,7 @@ Variable counter  0 counter !
 
 100 cells 100 cells task Constant counter-display
 
-: ctr ( -- x ) counter @ 13 rshift ;
+: ctr ( -- x ) counter @ 8 rshift ;
 
 : .emoji ( n -- )
     0 OF ." 😀" exit THEN
@@ -632,7 +634,9 @@ Variable counter  0 counter !
     AGAIN ;
 ' .counter counter-display activate
 
-: multikey ( -- c)  BEGIN pause key? UNTIL key ;
+1000 Value cycle-time
+
+: multikey ( -- c) BEGIN pause key? 0= WHILE  cycle-time usleep  REPEAT key ;
 
 : multi ( -- ) [ ' multikey ] Literal [ ' getkey >body ] Literal ! ;
 : single ( -- ) [ ' key ] Literal [ ' getkey >body ] Literal ! ;
@@ -672,5 +676,78 @@ t{ s( Δ) drop u8@+ nip -> 916 }t
 t{ 916 pad u8!+   pad -   pad c@  pad 1+ c@ -> 2 206 148 }t
 
 +status
+
+| : ?:     dup 4 u.r ." :" ;                                    
+| : @?     dup @ 6 u.r ;                                        
+| : c?     dup c@ 6 u.r ;
+| : ?:@?   ?: 4 spaces @? ;
+| : >#     spaces u. ;                                      
+                                                                
+: s ( adr - adr+1 ) \ string                                           
+    ?: 4 spaces c? 2 spaces  dup 1+ over c@ type  dup c@ + 1+ ; 
+                                                          
+: .name ( name -- ) ?dup IF count type exit THEN ." ???" ;
+
+: n ( adr - adr' )  \ name
+     ?:@? 2 spaces  dup @ addr>name .name cell+ ;
+
+: d ( adr n - adr+n )  \ dump                                        
+     2dup swap ?:  swap  FOR c? 1+ NEXT  2 spaces  -rot type ;     
+                                                                
+: l ( adr - adr' )  ?:   dup @ 12 ># cell+ ;  \ cell     
+: c ( adr - adr+1)  1 d ;                     \ character       
+: b ( adr - adr')   ?:@? dup @  2 ># cell+ ;  \ branch, could be relative
+                                                                
+cr .( Interactive decompiler: User single letter commands n d l c b s ) cr
+
+\ Dump utility
+
+| : .hexdigit ( x -- )
+     dup 10 < IF '0' + ELSE  10 - 'A' + THEN emit ;  
+
+| : .hex ( x -- )
+     dup 240 and  4 rshift .hexdigit   15 and .hexdigit ; 
+
+| : .addr ( x -- )
+     ?dup 0= ?exit dup 8 rshift  recurse  .hex ;
+
+| : b/line ( -- x )
+     16 ;
+
+| : .h ( addr len -- )
+   b/line min dup >r
+   BEGIN \ ( addr len )
+     dup
+   WHILE \ ( addr len )
+     over c@ .hex space  1 /string
+   REPEAT 2drop
+   b/line r> - 3 * spaces ; 
+
+| : .a ( addr1 len1 -- )
+     b/line min
+     BEGIN \ ( addr len )
+       dup
+     WHILE 
+       over c@ dup 32 < IF drop '.' THEN emit
+       1 /string
+     REPEAT 2drop ;
+
+| : dump-line ( addr len1 -- addr len2 )
+     over .addr ':' emit space   2dup .h space space  2dup .a 
+     dup  b/line  min /string 
+;
+
+
+: dump ( addr len -- )
+   BEGIN
+     dup
+   WHILE \ ( addr len )
+     cr dump-line 
+   REPEAT 2drop ;  
+                                  
+
+
+
+
 
 echo on cr cr .( Welcome! ) input-echo on

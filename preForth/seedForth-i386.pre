@@ -44,6 +44,7 @@ extrn fflush
 extrn exit
 extrn mprotect
 extrn ioctl
+extrn usleep
   
 macro next  {
        lodsd
@@ -362,6 +363,23 @@ code um/mod ( ud u1 -- u2 u3 )
         next
 ;
 
+code usleep ( c -- )
+    pop eax
+
+    push ebp  
+    mov  ebp, esp
+    push eax 
+    and  esp, 0xfffffff0
+
+    mov dword [esp], eax
+    call usleep
+
+    mov esp, ebp  
+    pop ebp  
+    next
+;
+
+
 : negate ( n1 -- n2 )
    0 swap - ;
 
@@ -513,6 +531,7 @@ code um/mod ( ud u1 -- u2 u3 )
    lit unused      h, \ 54  36
    lit key?        h, \ 55  37
    lit token       h, \ 56  38
+   lit usleep      h, \ 57  39
    interpreter bye ;
 
 pre
