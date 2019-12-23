@@ -45,7 +45,11 @@ Variable actual-depth  ( actual-results )  20 cells allot
 
 : }t ( i*x -- )
    depth actual-depth @ - IF  s" wrong number of results" error  exit THEN
-   BEGIN depth WHILE  depth nth-result @ - IF  s" incorrect result" error  exit THEN  REPEAT ;
+   BEGIN 
+     depth 
+   WHILE  
+      depth nth-result @ - IF  s" incorrect result" error  exit THEN
+   REPEAT ;
 
 \ Test basics
 t{ 10 '*' + ->  52 }t
@@ -94,7 +98,8 @@ t{ here 5 c, count -> here 5 }t
 
 \ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
 : u2/ ( x1 -- x2 )
-   0 8 cells 1-  BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;
+   0 8 cells 1-  
+   BEGIN ?dup WHILE  >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- REPEAT nip ;
 
 : odd? ( x1 -- f )  dup u2/ 2* = 0= ;
 
@@ -183,6 +188,7 @@ t{ d1 d1 d1 -> five five five }t
 t{ 3 4 + -> 7 }t
 
 
+
 \ Test for sp!
 
 : rot ( a b c -- b c a )  >r swap r> swap ;
@@ -226,7 +232,8 @@ t{ greeting nip -> 16 }t
     WHILE
       dup
     WHILE
-      >r >r  over c@ over c@ - ?dup IF 0< dup + 1  + nip nip r> drop r> drop exit THEN
+      >r >r  over c@ over c@ - 
+      ?dup IF 0< dup + 1  + nip nip r> drop r> drop exit THEN
       1+ swap 1+ swap
       r> 1- r> 1-
     REPEAT
@@ -304,7 +311,8 @@ t{ 1 5+ -> 6 }t
 
 \ Inlining Constant
 
-Definer iConstant ( x <name> -- )  create >r , ( immediate )  r> does> @  lit lit , , ;
+Definer iConstant ( x <name> -- )  
+  create >r , ( immediate )  r> does> @  lit lit , , ;
 
 \ improve: needs to define macro
 
@@ -394,3 +402,5 @@ t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
 
 \ hi
 END
+
+

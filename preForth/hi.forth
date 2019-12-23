@@ -626,8 +626,8 @@ Variable counter  0 counter !
 
 : .counter ( -- )  
     BEGIN 
-       ctr
-       BEGIN pause ctr  over - UNTIL drop
+       ctr BEGIN pause ctr  over - UNTIL drop
+       \ 100 FOR  pause  NEXT 
        save-cursor-position blue reverse   
        11 status-line dup 1 = IF 1- THEN at-xy
        ctr 3 rshift 7 and .emoji  
@@ -678,7 +678,7 @@ cr 916 pad u8!+ pad swap over - type
 t{ s( Δ) drop u8@+ nip -> 916 }t
 t{ 916 pad u8!+   pad -   pad c@  pad 1+ c@ -> 2 206 148 }t
 
-+status
+\ +status
 
 | : ?:     dup 4 u.r ." :" ;                                    
 | : @?     dup @ 6 u.r ;                                        
@@ -787,6 +787,49 @@ cr .( ok: afterwords )
 cr .( How would conditional compilation work in tokenized form? )
 
 
+: abort ( -- )  -1 throw ;
+
+| : (abort") ( f c-addr u -- )  rot IF  errormsg 2! -2 throw THEN 2drop ;
+
+: abort" ( f -- ) 
+    postpone s" 
+    postpone (abort") ; immediate
+
+: abort"test ( -- )   dup abort" abort" ;
+
+: chars ; immediate
+
+: char+ 1+ ;
+
+' exit Alias EXIT
+
+: bounds ( addr count -- limit addr)  over + swap ;
+
+: DO ( to from -- )
+     postpone swap
+     postpone BEGIN
+     postpone >r postpone >r ; immediate
+
+: LOOP ( -- )
+     postpone r> 
+     postpone 1+ 
+     postpone r> 
+     postpone 2dup postpone = postpone UNTIL 
+     postpone 2drop ; immediate
+
+: I ( -- )
+     postpone r@ ; immediate
+
+\ : ?DO ( to from -- )
+\     postpone 2dup
+\     postpone -
+\     postpone IF  postpone DO ; immediate
+
+t{ : dotest   10 0 DO I LOOP ;  dotest -> 0 1 2 3 4 5 6 7 8 9 }t
+
+: unloop ( -- )  
+   postpone r>  postpone drop 
+   postpone r>  postpone drop ; immediate
 
 
 echo on cr cr .( Welcome! ) input-echo on

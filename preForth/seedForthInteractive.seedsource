@@ -1116,7 +1116,14 @@ Defer .status   : noop ;  ' noop is .status
     cr ." ---------------------------" 
     cr unused . ." bytes free" cr ;
 
+Create errormsg  0 , 0 ,
+
+' errormsg has-header errormsg
+
 : .error# ( n -- )
+    dup  -1 = IF drop ." abort" exit THEN
+    dup  -2 = IF drop ." error: " 
+                 errormsg 2@ type 0 0 errormsg 2! exit THEN
     dup  -4 = IF drop ." stack underflow" exit THEN
     dup -13 = IF drop ." not found" exit THEN
     dup -16 = IF drop ." attempt to use zero-length string as a name" exit THEN
@@ -1152,6 +1159,7 @@ t{ -> }t
 
 
 0 echo !
+\ 0 input-echo !
 reveal
 boot
 END
