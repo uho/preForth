@@ -1068,10 +1068,13 @@ Variable echo  -1 echo !
 : green ( -- ) esc ." [32m" ;
 \ : yellow ( -- ) esc ." [33m" ;
 : blue ( -- ) esc ." [34m" ;
+: white ( -- ) esc ." [37m" ;
 : reset-colors ( -- ) esc ." [39;49m" ;
 : page ( -- ) esc ." [2J" esc ." [H" ;
 
+' bold has-header bold
 ' blue has-header blue
+' white has-header white
 ' page has-header page
 
 : compiling? ( -- f )

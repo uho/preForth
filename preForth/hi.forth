@@ -242,7 +242,7 @@ cr .( ② )
 t{ 6 fac -> 720 }t
 
 : fib ( n1 -- n2 ) recursive
-    dup 0=  IF exit THEN
+    dup 0=  IF drop 1 exit THEN
     dup 1 = IF exit THEN
     dup 1- fib  swap 2 - fib + ;
 
@@ -481,23 +481,25 @@ Variable hld
 
 : save-cursor-position ( -- ) 27 emit '7' emit ;
 : restore-cursor-position  ( -- ) 27 emit '8' emit ;
+: status-color ( -- )  esc ." [97;44m" ;
+: cursor-up ( -- ) esc ." [A" ;
 
 0 Value status-line
 132 Value terminal-width
 
 : show-status ( -- )
    status-line IF scroll-up THEN
-   save-cursor-position blue reverse
+   save-cursor-position status-color 
    base @ >r decimal
-   0 status-line 1 max at-xy  ( clreol ) terminal-width spaces  
-   0 status-line 1 max at-xy  
+   0 status-line 1 max at-xy ( clreol ) terminal-width spaces  
+   0 status-line 1 max at-xy 
      ."  seedForth 😉     "
      ." | free: " unused u.
      ." | order: " order  
      ." | base: "  r@ . 
      ." | " depth 0= IF ." ∅" ELSE .s THEN  
    r> base !
-   normal restore-cursor-position
+   normal restore-cursor-position \ cursor-up
    status-line 0= ?exit
    0 status-line 1 - at-xy clreol
    0 status-line 2 - at-xy 
@@ -638,7 +640,7 @@ Variable counter  0 counter !
     BEGIN 
        ctr
        BEGIN pause ctr  over - UNTIL drop
-       save-cursor-position blue reverse   
+       save-cursor-position status-color 
        11 status-line dup 1 = IF 1- THEN at-xy
        ctr 3 rshift 7 and .emoji  
        14 status-line dup 1 = IF 1- THEN at-xy 
@@ -654,7 +656,96 @@ Variable counter  0 counter !
 
 : stars ( n -- )  ?dup IF  1- FOR '*' emit NEXT  THEN ;
 
-26 to status-line
+\ 26 to status-line
+
++status
+
+: euler1a ( n1 -- n2 )
+   1- 0 max
+   0 
+   BEGIN ( n sum )
+     over
+   WHILE ( n sum )
+     over dup 3 mod 0=   swap 5 mod 0=  or  IF over + THEN 
+     swap 1- swap
+   REPEAT ( n sum ) 
+   nip ;
+
+: euler1 ( n1 -- n2 )
+   1- 0 max 0 swap FOR r@ 3 mod 0=   r@ 5 mod 0= or  r@ and + NEXT ;
+
+t{ 10 euler1 -> 23 }t
+t{ 1000 euler1 -> 233168 }t
+
+: fib1 ( n -- )  1- 0 max >r 0 1 r> FOR  swap over + NEXT nip ;
+
+: euler2 ( -- n )
+   0 >r 1 1
+   BEGIN ( fib1 fib2 )
+     swap over + dup 4000000 > 0=
+   WHILE ( fib2 fib3 )
+      dup  dup 1 and 0=  and r> + >r
+   REPEAT ( fib2 fib3 )
+   2drop r> ;
+
+t{ euler2 -> 4613732 }t
+
+\ Buffer: ( <name> u -- )  Create allot ;
+: Buffer: ( <name> u -- )
+   Create  allocate throw  ,  Does> @ ;
+
+
+\ quotations
+\ if code could be allocated then no jump around quotation would be needed.
+
+: [: ( comp: -- xt ) ( -- )
+    postpone AHEAD 
+    new ; immediate
+
+
+: ;] ( comp: xt -- ) ( -- xt ) 
+   postpone exit
+   >r  postpone THEN
+   r>  postpone Literal ; immediate
+
+
+: qtest ( -- )
+    [: ." called " ;]  dup execute execute ;
+
+\ methods>
+
+cr .( trying methods )
+
+: Method ( u -- ) Create cells , Does> ( i*x addr m -- j*x ) @ + @ execute ;
+
+: Methods> ( -- ) ( -- addr m )  
+   postpone Does>
+   postpone AHEAD
+   here >r
+   BEGIN ' dup [ ' ; ] Literal - WHILE , REPEAT drop
+   postpone THEN
+   r> postpone  Literal   
+   postpone ;
+; immediate
+
+0 Method get
+1 Method put    1 Method set
+2 Method add
+3 Method addr
+
+
+: Var ( -- )  Create 0 , Methods> @ ! +! noop ;
+
+Var v
+
+5 v put   7 v add   v get cr .( The result is ) .
+
+\ use prefix operators that store method number into the variable selector an let the object run the method
+
+\ 5 to v    7 +to v   v 
+
+
+
 
 echo on
 input-echo on
