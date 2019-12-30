@@ -1,0 +1,79 @@
+
+[0;2mDefinition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+
+[0;3mmod[0;2m u1 u2 -- u3
+  [0m0 swap um/mod drop ;
+
+[0;3mdivides? [0;2mu i -- f
+  [0mmod 0= ;
+
+[0;3msquare [0;2mu -- u*u
+  [0mdup * ;
+
+[0;3m-divisor? [0;2mu i -- f
+  [0m2dup square < [0;1mIF[0m  2drop true ;  [0;1mTHEN
+  [0m2dup divides? [0;1mIF[0m  2drop false ; [0;1mTHEN
+  [0m2+ -divisor? ;
+
+[0;3mprime? [0;2mu -- f
+  [0mdup 2 = [0;1mIF [0mdrop true ; [0;1mTHEN
+  [0mdup 2 mod 0= [0;1mIF  [0mdrop false ; [0;1mTHEN
+  [0m3 -divisor? ;
+
+[0;3mnextprime [0;2mu -- p
+  [0m1+ dup prime? [0;1mIF [0m; [0;1mTHEN
+  [0mnextprime ;
+
+[0;3mth.prime [0;2mu -- p
+  [0m1  swap 1- [0;1mFOR  [0mnextprime  [0;1mNEXT [0m;
+
+[0;4mThe[0;1m type  1000 dup . [0;4mth prime number is[0;1m type  th.prime .
+
+[0;1m
+
+[0;2m
+
+Shadow Screen for Definition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+
+[0;3mmod[0;2m u1 u2 -- u3
+
+   calculate remainder u3 of dividing u1 by u2
+  
+
+[0;3mdivides? [0;2mu i -- f
+
+   check wheter or not u can be evenly devided by i
+
+[0;3msquare [0;2mu -- u*u
+
+   take u to the power of two
+
+[0;3m-divisor? [0;2mu i -- f
+
+   check if u has no divisor (i is assumed to be odd)
+
+   no divisor if i is large than square root of u
+
+   divisor i if it divides u
+
+   else keep on searching with next divider
+  
+
+[0;3mprime? [0;2mu -- f
+
+  check whether or not u is a prime number
+  
+
+[0;3mnextprime [0;2mu -- p
+
+  calculate the next prime p that is greater than u
+
+[0;3mth.prime [0;2mu -- p
+
+  get the u.th prime number
+
+try this out to get the  1000th prime number: 7919
+
+[0;2m
+
+[0;1m

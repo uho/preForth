@@ -162,6 +162,10 @@ end-macro
 : place ( c-addr1 u c-addr2 -- )
     2dup >r >r 1+ swap cmove  r> r> c! ;
 
+: +place ( c-addr1 u1 c-addr2 -- )
+   \ Append the string given by C-ADDR1 u1 to the counted string at C-ADDR2
+    dup >r  count swap over + rot rot over + >r cmove r> r> c! ;
+
 \ Exception handling 
 
 Variable frame ( -- addr ) 
@@ -416,7 +420,7 @@ maxint  Constant #max
     dup r> 7 cells -  release  above 1 cells -  0 swap ! ;
 
 : init ( -- )
-    here 10000  ( chars ) dup allot empty-memory ;
+    here 30000  ( chars ) dup allot empty-memory ;
 
 init
 
@@ -711,6 +715,7 @@ end-macro
 ' cell+       has-header cell+
 ' cell-       has-header cell-   
 ' place       has-header place     
+' +place      has-header +place     
 ' compare     has-header compare   
 ' 2@          has-header 2@        
 ' 2!          has-header 2!        
@@ -944,10 +949,15 @@ Variable heads -1 heads !
     REPEAT
     2drop 2drop r>  r> IF negate THEN 0 0 ;
 
+' ?# has-header ?#
+
 : ,# ( c-addr u -- 0 0 | c-addr u )
     dup 0= ?exit
     ?# dup ?exit
     lit [ ' lit , ] compile, rot , ;
+
+' ,# has-header ,#
+
 
 :  ?'x' ( c-addr u -- x 0 0 | c-addr u )
     dup 0= ?exit

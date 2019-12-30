@@ -1,0 +1,79 @@
+
+[40m[37mDefinition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+
+[91mmod[37m u1 u2 -- u3
+  [32m0 swap um/mod drop ;
+
+[91mdivides? [37mu i -- f
+  [32mmod 0= ;
+
+[91msquare [37mu -- u*u
+  [32mdup * ;
+
+[91m-divisor? [37mu i -- f
+  [32m2dup square < [93mIF[32m  2drop true ;  [93mTHEN
+  [32m2dup divides? [93mIF[32m  2drop false ; [93mTHEN
+  [32m2+ -divisor? ;
+
+[91mprime? [37mu -- f
+  [32mdup 2 = [93mIF [32mdrop true ; [93mTHEN
+  [32mdup 2 mod 0= [93mIF  [32mdrop false ; [93mTHEN
+  [32m3 -divisor? ;
+
+[91mnextprime [37mu -- p
+  [32m1+ dup prime? [93mIF [32m; [93mTHEN
+  [32mnextprime ;
+
+[91mth.prime [37mu -- p
+  [32m1  swap 1- [93mFOR  [32mnextprime  [93mNEXT [32m;
+
+[96mThe[93m type  1000 dup . [96mth prime number is[93m type  th.prime .
+
+[93m
+
+[37m
+
+Shadow Screen for Definition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+
+[91mmod[37m u1 u2 -- u3
+
+   calculate remainder u3 of dividing u1 by u2
+  
+
+[91mdivides? [37mu i -- f
+
+   check wheter or not u can be evenly devided by i
+
+[91msquare [37mu -- u*u
+
+   take u to the power of two
+
+[91m-divisor? [37mu i -- f
+
+   check if u has no divisor (i is assumed to be odd)
+
+   no divisor if i is large than square root of u
+
+   divisor i if it divides u
+
+   else keep on searching with next divider
+  
+
+[91mprime? [37mu -- f
+
+  check whether or not u is a prime number
+  
+
+[91mnextprime [37mu -- p
+
+  calculate the next prime p that is greater than u
+
+[91mth.prime [37mu -- p
+
+  get the u.th prime number
+
+try this out to get the  1000th prime number: 7919
+
+[37m
+
+[93m

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+stty raw -echo
+cat seedForthInteractive.seed hi.forth color.forth primes.color - | ./seedForth
+# cat seedForthInteractive.seed hi.forth - | ./seedForth
+stty cooked
+

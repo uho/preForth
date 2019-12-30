@@ -372,9 +372,15 @@ Variable ∆t
 
 Variable voc-link  0 voc-link !
 
+| : !order ( wid -- )  >r get-order nip r> swap set-order ;
+| : @order ( -- wid )  get-order over >r set-order r> ;
+
 : Vocabulary ( <name> -- )  
-   wordlist Create here voc-link @ , voc-link ! last @ , , 
-   Does> 2 cells +  @  >r get-order nip r> swap set-order ;
+   wordlist Create here voc-link @ , voc-link ! last @ , , \ { voc-link | header | wid }
+   Does> 2 cells +  @ !order ;
+
+| : >header ( body.vocabulary -- 'xt ) cell+ ; 
+| : >wordlist ( body.vocabulary -- 'wid )  2 cells + ;
 
 : .voc ( wid -- ) 
    dup forth-wordlist = IF drop ." Forth " exit THEN
@@ -382,7 +388,7 @@ Variable voc-link  0 voc-link !
    BEGIN ( wid link )
      dup
    WHILE ( wid link )
-     2dup  2 cells + @ = IF  nip cell+ @ _name count type space exit THEN
+     2dup  >wordlist @ = IF  nip >header @ _name count type space exit THEN
      @ 
    REPEAT ( wid 0 )
    drop u. ;
@@ -488,8 +494,8 @@ Variable hld
    0 status-line 2 - at-xy 
 ;
 
-: +status ( -- ) [ ' show-status ] Literal  [ ' .status >body ] Literal ! ;
-: -status ( -- ) [ ' noop ] Literal  [ ' .status >body ] Literal ! ;
+: +status ( -- ) ['] show-status  BEGIN ['] .status >body ! ;
+: -status ( -- ) ['] noop         AGAIN [ reveal
 
 
 only Forth also definitions
@@ -611,6 +617,7 @@ Variable counter  0 counter !
 ' do-counter  t1 activate
 
 100 cells 100 cells task Constant counter-display
+
 
 : ctr ( -- x ) counter @ 8 rshift ;
 
@@ -750,7 +757,7 @@ cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
                                   
 \ conditional compilation
 
-| : next-token ( -- c-addr u )
+: next-token ( -- c-addr u )
     BEGIN 
       parse-name dup 0= 
     WHILE ( c-addr u )
@@ -832,4 +839,18 @@ t{ : dotest   10 0 DO I LOOP ;  dotest -> 0 1 2 3 4 5 6 7 8 9 }t
    postpone r>  postpone drop ; immediate
 
 
-echo on cr cr .( Welcome! ) input-echo on
+: show-screen ( c-addr )
+    16 0 DO  I 2 .r space  dup I 64 * + 64 type cr LOOP drop ;
+
+Variable addr  1024 allocate throw addr !  addr @ 1024 bl fill
+: .hexdump ( -- )
+    0 0 at-xy clreol
+    0 1 at-xy 
+    addr @ show-screen
+    0 0 at-xy ;
+
+\ ' .hexdump ' .status >body !
+\ page
+' cr ' .status >body !
+
+\ echo on cr cr .( Welcome! ) input-echo on

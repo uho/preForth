@@ -1,0 +1,48 @@
+
+ColorForth
+
+ WHITE{ Definition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+ }COLOR 
+ RED{ mod }COLOR  WHITE{  u1 u2 -- u3 }COLOR 
+   GREEN{ 0 swap um/mod drop ; }COLOR 
+
+
+ RED{ divides? }COLOR   WHITE{ u i -- f }COLOR 
+   GREEN{ mod 0= ; }COLOR 
+
+
+ RED{ square }COLOR   WHITE{ u -- u*u }COLOR 
+   GREEN{ dup * ; }COLOR 
+
+
+ RED{ -divisor? }COLOR   WHITE{ u i -- f }COLOR 
+   GREEN{ 2dup square < }COLOR   YELLOW{ IF }COLOR  
+   GREEN{   2drop true ; }COLOR    YELLOW{ THEN }COLOR 
+   GREEN{ 2dup divides? }COLOR   YELLOW{ IF }COLOR  
+   GREEN{   2drop false ; }COLOR   YELLOW{ THEN }COLOR 
+   GREEN{ 2+ -divisor? ; }COLOR 
+
+
+ RED{ prime? }COLOR   WHITE{ u -- f }COLOR 
+   GREEN{ dup 2 = }COLOR   YELLOW{ IF }COLOR   
+   GREEN{ drop true ; }COLOR   YELLOW{ THEN }COLOR 
+   GREEN{ dup 2 mod 0= }COLOR   YELLOW{ IF }COLOR    
+   GREEN{ drop false ; }COLOR   YELLOW{ THEN }COLOR 
+   GREEN{ 3 -divisor? ; }COLOR 
+
+
+ RED{ nextprime }COLOR   WHITE{ u -- p }COLOR 
+   GREEN{ 1+ dup prime? }COLOR   YELLOW{ IF }COLOR   GREEN{ ; }COLOR   
+   YELLOW{ THEN }COLOR 
+   GREEN{ nextprime ; }COLOR 
+
+
+ RED{ th.prime }COLOR   WHITE{ u -- p }COLOR 
+   GREEN{ 1  swap 1- }COLOR   YELLOW{ FOR }COLOR    GREEN{ nextprime }COLOR    
+   YELLOW{ NEXT }COLOR   GREEN{ ; }COLOR 
+
+
+ CYAN{ The }COLOR  YELLOW{  type  1000 dup .  }COLOR  
+ CYAN{ th prime number is }COLOR  YELLOW{  type  th.prime . }COLOR 
+
+END

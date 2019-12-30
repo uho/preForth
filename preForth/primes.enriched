@@ -1,0 +1,95 @@
+Content-Type: text/enriched
+Text-Width: 70
+
+<x-bg-color><param>black</param><x-color><param>white</param>Definition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+</x-color>
+<x-color><param>red</param>mod</x-color><x-color><param>white</param> u1 u2 -- u3</x-color>
+  <x-color><param>green</param>0 swap um/mod drop ;</x-color>
+
+
+<x-color><param>red</param>divides?</x-color> <x-color><param>white</param>u i -- f</x-color>
+  <x-color><param>green</param>mod 0= ;</x-color>
+
+
+<x-color><param>red</param>square</x-color> <x-color><param>white</param>u -- u*u</x-color>
+  <x-color><param>green</param>dup * ;</x-color>
+
+
+<x-color><param>red</param>-divisor?</x-color> <x-color><param>white</param>u i -- f</x-color>
+  <x-color><param>green</param>2dup square <<</x-color> <x-color><param>yellow</param>IF</x-color><x-color><param>green</param>  2drop true ;</x-color>  <x-color><param>yellow</param>THEN</x-color>
+  <x-color><param>green</param>2dup divides?</x-color> <x-color><param>yellow</param>IF</x-color><x-color><param>green</param>  2drop false ;</x-color> <x-color><param>yellow</param>THEN</x-color>
+  <x-color><param>green</param>2+ -divisor? ;</x-color>
+
+
+<x-color><param>red</param>prime?</x-color> <x-color><param>white</param>u -- f</x-color>
+  <x-color><param>green</param>dup 2 =</x-color> <x-color><param>yellow</param>IF</x-color> <x-color><param>green</param>drop true ;</x-color> <x-color><param>yellow</param>THEN</x-color>
+  <x-color><param>green</param>dup 2 mod 0=</x-color> <x-color><param>yellow</param>IF</x-color>  <x-color><param>green</param>drop false ;</x-color> <x-color><param>yellow</param>THEN</x-color>
+  <x-color><param>green</param>3 -divisor? ;</x-color>
+
+
+<x-color><param>red</param>nextprime</x-color> <x-color><param>white</param>u -- p</x-color>
+  <x-color><param>green</param>1+ dup prime?</x-color> <x-color><param>yellow</param>IF</x-color> <x-color><param>green</param>;</x-color> <x-color><param>yellow</param>THEN</x-color>
+  <x-color><param>green</param>nextprime ;</x-color>
+
+
+<x-color><param>red</param>th.prime</x-color> <x-color><param>white</param>u -- p</x-color>
+  <x-color><param>green</param>1  swap 1-</x-color> <x-color><param>yellow</param>FOR</x-color>  <x-color><param>green</param>nextprime</x-color>  <x-color><param>yellow</param>NEXT</x-color> <x-color><param>green</param>;</x-color>
+
+
+<x-color><param>cyan</param>The</x-color><x-color><param>yellow</param> type  1000 dup . </x-color><x-color><param>cyan</param>th prime number is</x-color><x-color><param>yellow</param> type  th.prime .</x-color>
+
+
+<x-color><param>yellow</param>
+
+</x-color><x-color><param>white</param>
+
+Shadow Screen for Definition of prime number detection in EMACS enriched mode for colorForth syntax uh 2019-12-28
+</x-color>
+<x-color><param>red</param>mod</x-color><x-color><param>white</param> u1 u2 -- u3
+
+  calculate remainder u3 of dividing u1 by u2</x-color>
+  
+
+<x-color><param>red</param>divides?</x-color> <x-color><param>white</param>u i -- f
+
+  check wheter or not u can be evenly devided by i</x-color>
+
+
+<x-color><param>red</param>square</x-color> <x-color><param>white</param>u -- u*u
+
+  take u to the power of two</x-color>
+
+
+<x-color><param>red</param>-divisor?</x-color> <x-color><param>white</param>u i -- f
+
+  check if u has no divisor (i is assumed to be odd)
+
+  no divisor if i is large than square root of u
+
+  divisor i if it divides u else keep on searching with next divider</x-color>
+  
+
+<x-color><param>red</param>prime?</x-color> <x-color><param>white</param>u -- f
+
+  check whether or not u is a prime number</x-color>
+
+
+
+
+<x-color><param>red</param>nextprime</x-color> <x-color><param>white</param>u -- p
+
+  calculate the next prime p that is greater than u</x-color>
+
+
+
+<x-color><param>red</param>th.prime</x-color> <x-color><param>white</param>u -- p
+
+  get the u.th prime number
+
+
+try this out to get the 1000th prime number: 7919</x-color>
+
+
+<x-color><param>white</param>
+
+</x-color></x-bg-color>
