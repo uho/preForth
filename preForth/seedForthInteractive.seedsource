@@ -660,6 +660,13 @@ end-macro
 ' rp!         has-header rp!         \ 49  31
 ' $lit        has-header $lit        \ 50  32
 ' num         has-header num         \ 51  33
+' um*         has-header um*
+' um/mod      has-header um/mod       
+' unused      has-header unused
+' key?        has-header key?
+\ ' token has-header token
+' usleep      has-header usleep
+' hp          has-header hp
 
 ' over        has-header over
 ' rot         has-header rot
@@ -678,7 +685,6 @@ end-macro
 ' dispose     has-header dispose
 ' alloc       has-header alloc
 
-' unused      has-header unused
 
 ' cr          has-header cr        
 ' .s          has-header .s        
@@ -701,8 +707,6 @@ end-macro
 ' =           has-header =         
 ' count       has-header count     
 ' 2*          has-header 2*
-' um*         has-header um*
-' um/mod      has-header um/mod       
 
 ' abs         has-header abs
 ' r@          has-header r@
@@ -749,7 +753,6 @@ end-macro
 ' only        has-header only
 \ ' OnlyForth   has-header OnlyForth
 ' .wordlist   has-header .wordlist
-' key?        has-header key?
 ' getkey      has-header getkey
 ' frame       has-header frame
 
@@ -759,7 +762,6 @@ end-macro
 
 
 
-' usleep has-header usleep
 
 
 Macro :noname
@@ -1152,7 +1154,6 @@ here swap - swap c!
  colored-header count "header dup link-header
 \ --------
 
-\ ' token has-header token
 
 cr
 t{ -> }t

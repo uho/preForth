@@ -32,7 +32,7 @@ rstck: DD 16 dup(0)
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
         ; free memory starts at _start
 
-_hp:    DD 0       ; head pointer: index of first unused head
+__hp:   DD 0       ; head pointer: index of first unused head
 _head:  DD 10000 dup (0)
 
 section '.text' executable writable align 4096
@@ -401,6 +401,9 @@ code usleep ( c -- )
 : +! ( x addr -- )
    swap >r  dup @ r> +  swap ! ;
 
+: hp ( -- addr )
+   lit _hp ;
+
 : h@ ( i -- addr )
    cells lit head + @ ;
 
@@ -408,7 +411,7 @@ code usleep ( c -- )
    cells lit head + ! ;
 
 : h, ( x -- )
-   lit hp @  h!   1 lit hp +! ;
+   hp @  h!   1 hp +! ;
 
 : here ( -- addr )
    lit dp @ ;
@@ -450,7 +453,7 @@ code usleep ( c -- )
    compile, tail compiler ;
 
 : new ( -- xt )
-   lit hp @   here h,  lit enter , ;
+   hp @   here h,  lit enter , ;
 
 : fun ( -- )
    new drop  compiler ;
@@ -463,7 +466,7 @@ code usleep ( c -- )
 
 : create ( -- xt )
    0 , \ dummy does> field
-   lit hp @  here h, lit dovar , ;
+   hp @  here h, lit dovar , ;
 
 : does> ( xt -- ) \ set code field of last defined word
     r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
@@ -532,6 +535,7 @@ code usleep ( c -- )
    lit key?        h, \ 55  37
    lit token       h, \ 56  38
    lit usleep      h, \ 57  39  code
+   lit hp          h, \ 58  40
    interpreter bye ;
 
 pre

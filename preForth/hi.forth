@@ -831,5 +831,22 @@ t{ : dotest   10 0 DO I LOOP ;  dotest -> 0 1 2 3 4 5 6 7 8 9 }t
    postpone r>  postpone drop 
    postpone r>  postpone drop ; immediate
 
+\ save and empty (need HP)  single wordlist only no string header reclaim
+\ not really valid in seedForth as the tokenizer would not know how to reset 
+\ token indices. Make SAVE and EMPTY special in the tokenizer?
+\ HEAD the start of seedForth header table is not required. 
+\ DP is not required as it can be read via HERE and set via ALLOT (see DP!) 
+
+: !+ ( x addr -- addr' )  swap over ! cell+ ;
+: @+ ( addr -- x addr' )  dup @ swap cell+ ;
+
+| Create savearea  0 , 0 , 0 ,
+
+: save ( -- )  here  hp @   forth-wordlist @   savearea !+ !+ ! ;
+: empty ( -- )  savearea @+ @+ @ dp! hp ! forth-wordlist ! ;
+
+save
+
+: remove-with-empty ; \ remove with empty
 
 echo on cr cr .( Welcome! ) input-echo on
