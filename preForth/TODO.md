@@ -24,7 +24,9 @@
 
 - umbilical Block-Interface
 
-- file interface open-file read read-line write close-file
+- file interface open-file read read-line write close-file, mmap
+
+- file i/o and include, savesystem
 
 - interleaved tokenizer and token-interpreting seedForth (another flavor of interactivity)
 
@@ -78,8 +80,6 @@
 
 - and XCHARS wordset and support for unicode characters such as '∆' -> U+0394
 
-- file i/o and include, savesystem
-
 + interactive decompiler
 
 + dump
@@ -120,7 +120,7 @@
 
 - interned strings
 
-- screens - disk i/o and block interface or in memory à la colorForth
+- screens - disk i/o and block interface or in memory à la colorForth, mmap
 
 + Manfred Mahlow's VOCS with ITEM and STICKY
    - non-nested Vocs could be implemented by parsing the input-stream for the next token an EVALUATEing it. 
@@ -129,6 +129,9 @@
      ITEM words set the context to the voc that was active when ITEM was executed.
      STICKY words extend the context one more parsed word.
 
-- Charles Moore's screen setup (uhdForth) with command line at the top and screens below.
++ Charles Moore's screen setup (uhdForth) with command line at the top and screens below.
 
-- ColorForth/uhdForth like experiments
++ ColorForth/uhdForth like experiments
+
+- Structure preForth, seedForth and seedForth/interactive in Emacs pages.
+

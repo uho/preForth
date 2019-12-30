@@ -1,0 +1,6 @@
+#!/bin/bash
+
+stty raw -echo
+cat seedForthInteractive.seed hi.forth - | ./seedForth
+stty cooked
+
