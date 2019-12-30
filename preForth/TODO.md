@@ -14,6 +14,10 @@
 
 + high level multi tasker definitions
 
+   : (activate) ( xt -- )
+        pause execute stop ; \ is pause neccesary?  use catch?  store error in status variable
+
+
 - more Standard words (at least CORE words w/ exceptions such as BASE STATE)
 
 - Divison SM/REM FM/MOD ...
@@ -24,7 +28,7 @@
 
 - interleaved tokenizer and token-interpreting seedForth (another flavor of interactivity)
 
-- extension tokens 01 - 0F
++ extension tokens 01 - 0F,  currently using only 01 and 02 for a total of 768-2 tokens.
 
 - relative branches
 
@@ -45,9 +49,9 @@
 
 - interpretive conditionals
 
-- conditional compilation
++ conditional compilation ( how would this work with tokens? )
 
-- source code library WANT
+- source code library WANT REQUIRE (maybe also on tokens)
 
 - intermediate definitions (forgettable)
 
@@ -62,7 +66,7 @@
 
 - Recognizers based text interpreter/compiler (based on new terms)
 
-- marker
+- marker, save, empty
 
 + Prefix Bit and Prefix Dictionary Search  -> needs to adjust intput stream... not just find prefix words in dict...
 
@@ -74,13 +78,13 @@
 
 - and XCHARS wordset and support for unicode characters such as '∆' -> U+0394
 
-- file i/o and include
+- file i/o and include, savesystem
 
-- (interactive) decompiler
++ interactive decompiler
 
-- dump
++ dump
 
-- State machine / decision table using graphics characters
+* State machine / decision table using graphics characters
 
 + Cursor positioning AT-XY
 
@@ -96,4 +100,35 @@
 
 + key? and raw-terminal
 
+- Mark Humphrey style interpreter
 
+- can Macro be use in seedForth/Interactive
+
+- native code (with peephole optimization) compile,
+
+- implementing the tokenizer in seedForth
+
++ remove CATCH and THROW and fp from simplify seedForth kernel
+
++ simplify seedForth kernel: interpret loop does not special case 0 but executes EXIT to break the loop
+
+- move seedForth to HolonTalk
+
+- random number generator
+
++ hash function
+
+- interned strings
+
+- screens - disk i/o and block interface or in memory à la colorForth
+
++ Manfred Mahlow's VOCS with ITEM and STICKY
+   - non-nested Vocs could be implemented by parsing the input-stream for the next token an EVALUATEing it. 
+     Nesting however would require that the rest of the input-stream would be available so that a Voc following a voc can still parse...
+   - ITEM and STICKY requires changes in the outer interpreter and the header structure.
+     ITEM words set the context to the voc that was active when ITEM was executed.
+     STICKY words extend the context one more parsed word.
+
+- Charles Moore's screen setup (uhdForth) with command line at the top and screens below.
+
+- ColorForth/uhdForth like experiments
