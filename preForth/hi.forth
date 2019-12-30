@@ -372,9 +372,26 @@ Variable ∆t
 
 Variable voc-link  0 voc-link !
 
+| : !order ( wid -- )  >r get-order nip r> swap set-order ;
+| : @order ( -- wid )  get-order over >r set-order r> ;
+
 : Vocabulary ( <name> -- )  
-   wordlist Create here voc-link @ , voc-link ! last @ , , 
-   Does> 2 cells +  @  >r get-order nip r> swap set-order ;
+   wordlist Create here voc-link @ , voc-link ! last @ , , \ { voc-link | header | wid }
+   Does> 2 cells +  @ !order ;
+
+| : >header ( body.vocabulary -- 'xt ) cell+ ; 
+| : >wordlist ( body.vocabulary -- 'wid )  2 cells + ;
+
+: wid>xt ( wid -- xt|0 )
+   dup forth-wordlist = IF drop ['] Forth exit THEN
+   voc-link @
+   BEGIN ( wid link )
+     dup
+   WHILE ( wid link )
+     2dup  >wordlist @ = IF  nip >header @ _xt @ exit THEN
+     @
+   REPEAT ( wid link )
+   2drop 0 ;
 
 : .voc ( wid -- ) 
    dup forth-wordlist = IF drop ." Forth " exit THEN
@@ -382,12 +399,112 @@ Variable voc-link  0 voc-link !
    BEGIN ( wid link )
      dup
    WHILE ( wid link )
-     2dup  2 cells + @ = IF  nip cell+ @ _name count type space exit THEN
+     2dup  >wordlist @ = IF  nip >header @ _name count type space exit THEN
      @ 
    REPEAT ( wid 0 )
    drop u. ;
 
 ' .voc ' .wordlist backpatch
+
+: vocs ( -- ) 
+    voc-link BEGIN @ ?dup WHILE ( link ) dup 2 cells + @ .voc REPEAT
+    forth-wordlist .voc ;
+
+: >order ( wid -- )  >r get-order r> swap 1+ set-order ;
+
+\ Manfred Mahlow's VOCs
+
+Vocabulary voc-root
+
+| Create temporary-search-order  2 , ' voc-root >body >wordlist @ dup , , 
+
+\ must also compile. Evaluate does not allow to parse beyond the given string so nesting of vocs
+\ is not possible
+| : exec-name ( -- ) 
+     parse-name  cr ." eval-name: '" 2dup type ." ' "
+     dup IF find-name dup 0= -13 and throw 
+            dup >r _xt @ execute 
+                r> _cxt @ ?dup IF execute THEN exit THEN
+     2drop ;
+
+: Voc ( <name> -- )
+    Vocabulary immediate
+    Does> ( i*x -- j*x )
+      >wordlist @  temporary-search-order cell+ ! 
+      temporary-search-order 'search-order !
+      1 #temp-search-order ! ;
+
+
+get-current voc-root definitions
+
+: words words ;
+: definitions definitions ;
+: also ( -- ) \ add voc to permanent search order 
+    'search-order @ >r  @order >r
+    permanent-search-order 'search-order !
+    get-order r> swap 1+ set-order
+    r> 'search-order ! ;
+
+: first ( -- ) \ set voc to be the first in the permanent search order
+    'search-order @ >r  @order >r
+    permanent-search-order 'search-order !
+    get-order  nip r> swap set-order
+    r> 'search-order ! ;
+
+: .. ( -- ) 
+    reset-search-order ;
+
+: order order ;
+
+: .s .s ;
+
+: ' ' ;
+
+: item ( -- )  
+    @order wid>xt cxt !
+;
+
+| : (sticky) ( -- )  1 #temp-search-order ! ;
+: sticky ( -- )
+    ['] (sticky) cxt ! ;
+
+sticky : ?? ( -- )
+    cr order cr .s cr words ;
+
+set-current
+
+Voc v1
+
+v1 definitions  
+: test ." v1 test" ;
+
+Forth definitions 
+: test ." Forth test" ;
+
+: abc 1 2 3 ;
+' test n' abc _cxt !
+
+Voc DS1621
+
+DS1621 definitions
+
+: read  ." DS1621 read" ;
+: write ." DS1621 write" ;
+
+
+Voc TR16   DS1621 TR16 definitions
+
+: read  ." TR16 read"  space DS1621 read ;
+: write ." TR16 write" space DS1621 write ;
+: ? DS1621 TR16 read ." 22.0" ;
+
+DS1621 definitions
+
+DS1621 TR16 item 170 Constant T
+DS1621 TR16 item 161 Constant TH
+DS1621 TR16 item 162 Constant TL
+
+only Forth also definitions
 
 
 : recurse ( -- )  last @ _xt @ compile, ; immediate
@@ -488,8 +605,8 @@ Variable hld
    0 status-line 2 - at-xy 
 ;
 
-: +status ( -- ) [ ' show-status ] Literal  [ ' .status >body ] Literal ! ;
-: -status ( -- ) [ ' noop ] Literal  [ ' .status >body ] Literal ! ;
+: +status ( -- ) ['] show-status  BEGIN ['] .status >body ! ;
+: -status ( -- ) ['] noop         AGAIN [ reveal
 
 
 only Forth also definitions
@@ -750,7 +867,7 @@ cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
                                   
 \ conditional compilation
 
-| : next-token ( -- c-addr u )
+: next-token ( -- c-addr u )
     BEGIN 
       parse-name dup 0= 
     WHILE ( c-addr u )

@@ -162,6 +162,11 @@ end-macro
 : place ( c-addr1 u c-addr2 -- )
     2dup >r >r 1+ swap cmove  r> r> c! ;
 
+
+: +place ( c-addr1 u1 c-addr2 -- )
+   \ Append the string given by C-ADDR1 u1 to the counted string at C-ADDR2
+    dup >r  count swap over + rot rot over + >r cmove r> r> c! ;
+
 \ Exception handling 
 
 Variable frame ( -- addr ) 
@@ -416,7 +421,7 @@ maxint  Constant #max
     dup r> 7 cells -  release  above 1 cells -  0 swap ! ;
 
 : init ( -- )
-    here 10000  ( chars ) dup allot empty-memory ;
+    here 30000  ( chars ) dup allot empty-memory ;
 
 init
 
@@ -477,10 +482,13 @@ Variable input-echo -1 input-echo !
 1 cells Field _link
 1       Field _flags
 1 cells Field _xt
+1 cells Field _cxt
 0       Field _name
 
 Constant #header
 
+
+Variable cxt
 
 Variable last
 
@@ -490,6 +498,7 @@ Variable last
     0 r@ _link !
     0 r@ _flags c!
     0 r@ _xt !
+    cxt @   r@ _cxt !  0 cxt ! 
     r@ _name place 
     r> ;
 
@@ -521,7 +530,11 @@ Definer Header-flag? ( x <name> -- )
 
 : wordlist ( -- wid )  here 0 , ;
 
-Create search-order  0 , 10 cells allot
+Create permanent-search-order  0 , 10 cells allot
+
+Variable 'search-order  permanent-search-order 'search-order !
+
+: search-order ( -- addr ) 'search-order @ ;
 
 : get-order ( -- wid0 wid1 wid2 ... widn n )
    search-order dup @ dup >r cells + r@
@@ -711,6 +724,7 @@ end-macro
 ' cell+       has-header cell+
 ' cell-       has-header cell-   
 ' place       has-header place     
+' +place      has-header +place     
 ' compare     has-header compare   
 ' 2@          has-header 2@        
 ' 2!          has-header 2!        
@@ -756,8 +770,10 @@ end-macro
 ' "header     has-header "header
 ' link-header has-header link-header
 ' _xt         has-header _xt
-
-
+' _cxt        has-header _cxt
+' cxt         has-header cxt
+' 'search-order has-header 'search-order
+' permanent-search-order has-header permanent-search-order
 
 ' usleep has-header usleep
 
@@ -944,10 +960,14 @@ Variable heads -1 heads !
     REPEAT
     2drop 2drop r>  r> IF negate THEN 0 0 ;
 
+' ?# has-header ?#
+
 : ,# ( c-addr u -- 0 0 | c-addr u )
     dup 0= ?exit
     ?# dup ?exit
     lit [ ' lit , ] compile, rot , ;
+
+' ,# has-header ,#
 
 :  ?'x' ( c-addr u -- x 0 0 | c-addr u )
     dup 0= ?exit
@@ -964,7 +984,10 @@ Variable heads -1 heads !
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
    2dup find-name ?dup IF 
-     nip nip _xt @ execute 0 0 
+     nip nip 
+     dup >r  _xt @ execute 
+     r>      _cxt @ ?dup IF execute THEN
+     0 0
    THEN
 ;
 
@@ -979,7 +1002,10 @@ Variable heads -1 heads !
    dup 0= ?exit
    2dup find-name ?dup
    IF 
-      nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
+      nip nip 
+      dup >r dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN
+      r> _cxt @ ?dup IF execute THEN
+      0 0 
    THEN 
 ;
 
@@ -1017,12 +1043,29 @@ Variable handlers        interpreters @ handlers !
 ' |     has-header |
 ' heads has-header heads
 
+Variable #temp-search-order
+
+' #temp-search-order has-header #temp-search-order
+
+: reset-search-order ( -- )
+   permanent-search-order 'search-order ! 
+   0 #temp-search-order ! ;
+
+' reset-search-order has-header reset-search-order
+
+
+: ?reset-search-order ( -- )
+    #temp-search-order @ IF -1 #temp-search-order +! exit THEN
+    reset-search-order ;
+
 : interpret ( -- )
    BEGIN ( ) 
       parse-name dup
    WHILE ( c-addr u )
-      handlers @ execute 2drop  
-   REPEAT 
+      handlers @ execute 2drop
+      ?reset-search-order
+   REPEAT
+   \ reset-search-order
    2drop ;
 
 : evaluate ( c-addr u -- )
@@ -1099,7 +1142,7 @@ Defer .status   : noop ;  ' noop is .status
 
 : warm ( -- )
    \ [ ' [ compile, ] 
-   empty-stack restart ;
+   empty-stack reset-search-order restart ;
 
 
 2 Constant major ( -- x )
