@@ -9,6 +9,23 @@ cr .( ⓪ )
 : \ 
    source nip >in ! ; immediate
 
+
+\ save and empty (need HP)  single wordlist only no string header reclaim
+\ HEAD, the start of seedForth header table is not required. 
+\ DP is not required as it can be read via HERE and set via ALLOT (see DP!) 
+
+: !+ ( x addr -- addr' )  swap over ! cell+ ;
+: @+ ( addr -- x addr' )  dup @ swap cell+ ;
+: dp! ( addr -- )  here - allot ;
+
+| Create savearea  0 , 0 , 0 , \ { hp | dp | forth-wordlist }
+
+: save ( -- )  forth-wordlist @  here  hp @  savearea !+ !+ ! ;
+: empty ( -- )  savearea @+ @+ @ forth-wordlist ! dp! hp ! ;
+
+' save Alias begin-tests 
+' empty Alias end-tests
+
 \ cr .( hi - doing some test )
 \ t{ 3 4 + -> 7 }t   \ pass
 \ t{ 3 -> }t         \ wrong number of results
@@ -84,9 +101,13 @@ false invert Constant true
 
 : 0> ( n -- f )  0 > ;
 
+begin-tests
+
 t{  10 0> -> -1 }t
 t{   0 0> ->  0 }t
 t{ -10 0> ->  0 }t
+
+end-tests
 
 : 2>r ( x1 x2 -- r:x1 r:x2 ) 
    swap r> swap >r swap >r >r ;
@@ -97,6 +118,8 @@ t{ -10 0> ->  0 }t
 : 2r@ ( r:x1 r:x2 -- r:x1 r:x2 x1 x2 )
    r>   r> r> 2dup >r >r swap  rot >r ;
 
+begin-tests 
+
 : 2>r-test ( x1 x2 -- x1 x2 )  2>r r> r> swap ;
 t{ 3 4 2>r-test -> 3 4 }t
 
@@ -105,6 +128,8 @@ t{ 3 4 2r>-test -> 3 4 }t
 
 : 2r@-test ( x1 x2 -- x1 x2 )  2>r  2r@  2r> 2drop ;
 t{ 3 4 2r@-test -> 3 4 }t
+
+end-tests
 
 
 : n>r ( x1 ... xn -- r: xn ... x1 n )
@@ -127,6 +152,8 @@ t{ 3 4 2r@-test -> 3 4 }t
       1-
    REPEAT ;
 
+begin-tests
+
 : n>r-test ( x1 x2 -- n x1 x2 )  2 n>r r> r> r> ;
 t{ 3 4 n>r-test -> 2 3 4 }t
 
@@ -137,6 +164,7 @@ t{ 3 4 nr>-test -> 3 4 2 }t
     2>r 2swap 2r> 2swap ;
 
 t{ 1 2 3 4 5 6 2rot -> 3 4 5 6 1 2 }t
+end-tests
 
 
 : lshift ( x u -- ) BEGIN ?dup WHILE swap 2* swap 1-  REPEAT ;
@@ -151,9 +179,12 @@ t{ 1 2 3 4 5 6 2rot -> 3 4 5 6 1 2 }t
    REPEAT ( x q n )
    nip ;
 
+begin-tests
+
 t{ -1 u2/  dup 1+ u< -> -1 }t
 t{ -1 u2/  10 +  dup 10 + u< -> -1 }t
 
+end-tests
 
 : rshift ( x u -- ) BEGIN ?dup WHILE swap u2/ swap 1-  REPEAT ;
 
@@ -163,20 +194,27 @@ t{ 1 3 lshift -> 8 }t
 \ t{ 48 3 rshift -> 6 }t
 
 : <> ( x1 x2 -- f ) = 0= ;
+
+begin-tests
 t{ 3 3 <> -> 0 }t
 t{ 'x' 'u' <> -> -1 }t
-
+end-tests
 
 : pick ( xn ... xi ... x0 i -- xn ... xi ... x0 xi )
     1+ cells sp@ + @ ;
+
+begin-tests
 t{ 10 20 30 1 pick ->  10 20 30 20 }t
+end-tests
 
 : recursive ( -- )  reveal ; immediate
 
 : roll ( xn-1 ... x0 i -- xn-1 ... xi-1 xi+1 ... x0 xi )
     recursive ?dup IF swap >r 1- roll r> swap THEN ;
 
+begin-tests
 t{ 10 20 30 1 roll ->  10 30 20 }t
+end-tests
 
 | Variable (to) (to) off
 
@@ -187,12 +225,17 @@ t{ 10 20 30 1 roll ->  10 30 20 }t
 
 : to ( x <name> -- )  (to) on ;
 
+begin-tests
+
 5 Value val
 t{ val  42 to val  val -> 5 42 }t
 
+end-tests
 
 :  within ( test low high -- flag ) 
      over - >r - r>  u<  ;
+
+begin-tests
 
 t{ 2 3 5 within -> false }t
 t{ 3 3 5 within -> true }t
@@ -200,6 +243,7 @@ t{ 4 3 5 within -> true }t
 t{ 5 3 5 within -> false }t
 t{ 6 3 5 within -> false }t
 
+end-tests
 
 : n' parse-name find-name ;
 
@@ -217,14 +261,22 @@ cr .( ② )
     dup 0= IF drop 1 exit THEN
     dup 1- fac * ;
 
+begin-tests
+
 t{ 6 fac -> 720 }t
+
+end-tests
 
 : fib ( n1 -- n2 ) recursive
     dup 0=  IF exit THEN
     dup 1 = IF exit THEN
     dup 1- fib  swap 2 - fib + ;
 
+begin-tests
+
 t{ 10 fib -> 55 }t
+
+end-tests
 
 : sqr ( u -- u^2 )  dup * ;
 
@@ -241,15 +293,22 @@ t{ 10 fib -> 55 }t
     UNTIL ( xi xi+1 )
     drop r> drop ;
 
+begin-tests
+
 t{ 15 sqrt -> 3 }t
 t{ 16 sqrt -> 4 }t
+
+end-tests
 
 : pyth ( a b -- c )
     swap sqr  swap sqr  + sqrt ;
 
+begin-tests
+
 t{ 3 4 pyth -> 5 }t
 t{ 65535 dup * sqrt -> 65535 }t
 
+end-tests
 
 
 \ remove headers from dictionary
@@ -294,6 +353,7 @@ cr .( ③ )
 : public ( -- ) heads on ;
 : end-package ( -- ) remove-headers ;
 
+begin-tests
 
 package test
   : a ." a" ;
@@ -309,6 +369,8 @@ t{ s( ab)  s( abc) compare -> -1 }t
 t{ s( abc) s( def)  compare -> -1 }t
 t{ s( def) s( abc)  compare -> 1 }t
 
+end-tests
+
 : Defer ( <name> -- )
     Create 0 , Does> @ execute ;
 
@@ -321,10 +383,10 @@ Defer %defer  ' %defer >body 2 cells -  @  Constant dodefer
     >body 1 cells -  r@ !
     [ ' exit ] Literal >body 1 cells - r> cell+ ! ;
 
-: dp! ( addr -- )  here - allot ;
-
 : backpatch ( xt1 xt2 -- ) 
     here >r  >body dp!  compile,  postpone exit  r> dp! ;
+
+begin-tests
 
 : hallo ." original" ;
 : moin hallo hallo ;
@@ -333,7 +395,7 @@ Defer %defer  ' %defer >body 2 cells -  @  Constant dodefer
 
 ' abc ' hallo backpatch
 
-
+end-tests
 
 
 : FOR ( n -- )
@@ -825,28 +887,21 @@ cr .( How would conditional compilation work in tokenized form? )
 \     postpone -
 \     postpone IF  postpone DO ; immediate
 
+begin-tests
+
 t{ : dotest   10 0 DO I LOOP ;  dotest -> 0 1 2 3 4 5 6 7 8 9 }t
+
+end-tests
 
 : unloop ( -- )  
    postpone r>  postpone drop 
    postpone r>  postpone drop ; immediate
 
-\ save and empty (need HP)  single wordlist only no string header reclaim
-\ not really valid in seedForth as the tokenizer would not know how to reset 
-\ token indices. Make SAVE and EMPTY special in the tokenizer?
-\ HEAD the start of seedForth header table is not required. 
-\ DP is not required as it can be read via HERE and set via ALLOT (see DP!) 
-
-: !+ ( x addr -- addr' )  swap over ! cell+ ;
-: @+ ( addr -- x addr' )  dup @ swap cell+ ;
-
-| Create savearea  0 , 0 , 0 ,
-
-: save ( -- )  here  hp @   forth-wordlist @   savearea !+ !+ ! ;
-: empty ( -- )  savearea @+ @+ @ dp! hp ! forth-wordlist ! ;
-
 save
 
 : remove-with-empty ; \ remove with empty
+
+cr 
+empty clear
 
 echo on cr cr .( Welcome! ) input-echo on

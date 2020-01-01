@@ -176,6 +176,33 @@ Variable frame ( -- addr )
 
 \ tests: see later when ' is defined
 
+\ save and empty
+
+Create savearea 0 , 0 ,  \ { hp | dp }
+
+: (save) ( -- )
+    here  hp @  savearea 2! ;
+
+Macro save ( -- )
+  seed (save)
+  save-#tokens
+end-macro
+
+: (empty) ( -- )
+    savearea 2@  hp !  here - allot ( aka dp! ) ; 
+
+Macro empty ( -- )
+  seed (empty)
+  restore-#tokens
+end-macro
+
+save
+
+: three 3 ;
+
+empty
+
+
 \ Tester 
 : empty-stack ( i*x -- )
     BEGIN depth 0< WHILE  0    REPEAT
@@ -200,6 +227,16 @@ Variable actual-depth  ( actual-results )  20 cells allot
    depth actual-depth @ - IF  s" wrong number of results" error  exit THEN
    BEGIN depth WHILE  depth nth-result @ - IF  s" incorrect result" error  exit THEN  REPEAT ;
 
+Macro begin-tests 
+   seed save
+end-macro
+
+Macro end-tests
+   seed empty
+end-macro
+
+
+begin-tests
 \ Test basics
 t{ 10 '*' + ->  52 }t
 t{ 0 0< -> 0 }t
@@ -261,10 +298,14 @@ t{ 10 -10 < -> 0 }t
 t{ 10 -1000 < -> 0 }t
 t{ 1000 -10 < ->  0 }t
 
+end-tests
+
 : minint ( -- n )
    1 BEGIN dup 2* dup WHILE nip REPEAT drop ;
 
 minint 1- Constant maxint
+
+begin-tests
 
 t{ minint negate -> minint }t
 t{ minint maxint < -> -1 }t
@@ -274,6 +315,8 @@ t{ 0 1 u< -> -1 }t
 t{ 1 0 u< -> 0 }t
 t{ -1 0 u< -> 0 }t
 t{ 0 -1 u< -> -1 }t
+
+end-tests
 
 : skip ( c-addr1 u1 c -- c-addr2 u2 )
    BEGIN
@@ -307,6 +350,7 @@ t{ 0 -1 u< -> -1 }t
 : .s ( i*x -- i*x )  
     depth 0= ?exit  >r .s r> dup . ;
 
+
 \ Deferred words
 
 : ' ( --  x )  token ;
@@ -324,6 +368,7 @@ Definer Defer ( <name> -- )
     ' >body ! ;
 
 \ catch and throw tests
+begin-tests
 
 t{ 10 ' dup catch  -> 10 10 0 }t
  
@@ -332,6 +377,7 @@ t{ 10 ' dup catch  -> 10 10 0 }t
 t{ 1 ' err99 catch -> 2 0 }t
 t{ 5 9 ' err99 catch nip ->  5 99 }t
 
+end-tests
 
 \ String comparison
 : compare ( c-addr1 u1 c-addr2 u2 -- n )
@@ -759,9 +805,6 @@ end-macro
 ' "header     has-header "header
 ' link-header has-header link-header
 ' _xt         has-header _xt
-
-
-
 
 
 Macro :noname

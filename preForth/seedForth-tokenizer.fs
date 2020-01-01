@@ -268,3 +268,13 @@ end-macro
 Macro seed ( <name> -- )
    postpone seed
 end-macro
+
+Macro save-#tokens
+   postpone #tokens
+   postpone @
+end-macro
+
+Macro restore-#tokens
+   postpone #tokens
+   postpone !
+end-macro
