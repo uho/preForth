@@ -123,7 +123,7 @@
 - screens - disk i/o and block interface or in memory à la colorForth, mmap
 
 + Manfred Mahlow's VOCS with ITEM and STICKY
-   - non-nested Vocs could be implemented by parsing the input-stream for the next token an EVALUATEing it. 
+   - non-nested Vocs could be implemented by parsing the input-stream for the next token and EVALUATEing it. 
      Nesting however would require that the rest of the input-stream would be available so that a Voc following a voc can still parse...
    - ITEM and STICKY requires changes in the outer interpreter and the header structure.
      ITEM words set the context to the voc that was active when ITEM was executed.
@@ -132,6 +132,8 @@
 + Charles Moore's screen setup (uhdForth) with command line at the top and screens below.
 
 + ColorForth/uhdForth like experiments
+
+- two thread structure: like colorForth, would let the user type (steer) while processing in the background (chipchuck)
 
 - Structure preForth, seedForth and seedForth/interactive in Emacs pages.
 
