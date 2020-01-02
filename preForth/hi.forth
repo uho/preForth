@@ -857,7 +857,7 @@ cr .( How would conditional compilation work in tokenized form? )
     postpone s" 
     postpone (abort") ; immediate
 
-: abort"test ( -- )   dup abort" abort" ;
+\ : abort"test ( -- )   dup abort" abort" ;
 
 : chars ; immediate
 
