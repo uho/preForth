@@ -24,9 +24,9 @@ Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
 : 'token ( c-addr u -- addr )
     fnv1a fold  cells tokens + ;
 
-: token@ ( c-addr u -- x )  'token @ ;
+: token@ ( c-addr u -- x )  'token @ ; \ lookup hash value for existing symbol
 
-: ?token ( c-addr u -- x )  
+: ?token ( c-addr u -- x )  \ lookup hash value for new symbol 
     2dup 'token dup @ 
     IF  
        >r cr type ."  collides with another token " 
@@ -62,8 +62,8 @@ Variable #tokens  0 #tokens !
     <name> token@ dup 0= Abort" is undefined"    postpone LITERAL   postpone EXECUTE ; immediate
 
 
-(  0 $00 ) Token bye       Token prefix1       Token prefix2    Token emit          
-(  4 $04 ) Token key       Token dup           Token swap       Token drop          
+(  0 $00 ) Token bye       Token prefix1       Token prefix2    Token tx          
+(  4 $04 ) Token rx        Token dup           Token swap       Token drop          
 (  8 $08 ) Token 0<        Token ?exit         Token >r         Token r>
 ( 12 $0C ) Token -         Token exit          Token lit        Token @             
 ( 16 $10 ) Token c@        Token !             Token c!         Token execute       
@@ -75,13 +75,13 @@ Variable #tokens  0 #tokens !
 ( 40 $28 ) Token depth     Token compile,      Token new        Token couple        
 ( 44 $2C ) Token and       Token or            Token sp@        Token sp!           
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
-( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?          
-( 56 $38 ) Token token     Token usleep        Token hp
+( 52 $34 ) Token um*       Token um/mod        Token unused     Token rx?          
+( 56 $38 ) Token token     Token usleep        Token hp         Token errtx
 
 \ generate token sequences for numbers
 
 : seed-byte ( c -- )
-   seed key   SUBMIT ;
+   seed rx   SUBMIT ;
 
 : seed-number ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
    dup 0<    IF  0 seed-byte   negate recurse  seed -   EXIT THEN

@@ -19,6 +19,8 @@ Definer Variable create ( x ) drop 0 , ;
 : 2drop ( x1 x2 -- )  drop drop ;
 
 \ output utilities
+: key  ( -- x ) rx ;
+: emit ( x -- )  tx ;
 : cr    ( -- ) 10 emit ;
 : type ( c-addr u -- )
     BEGIN dup WHILE  over c@ emit  1  /string  REPEAT  2drop ;

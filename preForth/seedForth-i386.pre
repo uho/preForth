@@ -45,6 +45,7 @@ extrn exit
 extrn mprotect
 extrn ioctl
 extrn usleep
+extrn write
   
 macro next  {
        lodsd
@@ -118,7 +119,7 @@ code bye ( -- )
     call exit
 ;
     
-code emit ( c -- )
+code tx ( c -- )
     pop eax
 
     push ebp  
@@ -138,7 +139,32 @@ code emit ( c -- )
     next
 ;
 
-code key ( -- c )
+code errtx ( c -- )
+    pop eax
+
+    push ebp  
+    mov  ebp, esp
+    and  esp, 0xfffffff0
+    sub  esp, 32
+   
+    mov dword [esp+12], eax ; store c in frame
+    lea dword eax, [esp+12] ; get address of c 
+    mov dword [esp+8], 0x1
+    mov dword [esp+4], eax
+    mov dword [esp], 0x2 ; stderr
+    call write
+
+    ; mov eax, 0
+    ; mov [esp], eax
+    ; call fflush   ; flush all output streams
+
+    mov esp, ebp  
+    pop ebp  
+    next
+;
+
+
+code rx ( -- c )
         push ebp  
         mov  ebp, esp
         and  esp, 0xfffffff0
@@ -147,13 +173,13 @@ code key ( -- c )
         mov esp, ebp
         pop ebp
         cmp eax,-1
-        jnz key1
+        jnz rx1
         mov eax,4   ; eof: return Ctrl-D 
-key1:   push eax
+rx1:    push eax
         next
 ;
 
-code key? ( -- f )
+code rx? ( -- f )
        push ebp  
        mov  ebp, esp
        and  esp, 0xfffffff0
@@ -171,9 +197,9 @@ code key? ( -- f )
        pop ebp
 
        cmp eax, 0
-       jz keyq1
+       jz rxq1
        mov eax, -1
-keyq1: push eax
+rxq1:  push eax
        next
 ;
 
@@ -433,9 +459,9 @@ code usleep ( c -- )
 \    256 .. 511 are double byte tokens of the form 01 xx
 \    511 .. 767 are double byte tokens of the form 02 xx
 : token ( -- x )
-   key dup 0= ?exit    \       0 -> single byte token
+   rx dup 0= ?exit    \       0 -> single byte token
    dup 3 - 0< 0= ?exit \ not 1 2 -> single byte token
-   key couple ;        \            double byte token
+   rx couple ;        \            double byte token
 
 : interpreter ( -- )
    token execute   tail interpreter ;  \ executing exit  will leave this loop
@@ -476,12 +502,12 @@ code usleep ( c -- )
     lit memtop  here - ;
 
 : cold ( -- )
-   \ 's' emit 'e' dup emit emit  'd' emit 10 emit
+   \ 's' tx 'e' dup tx tx  'd' tx 10 tx
    lit bye         h, \ 0   00  code
    0               h, \ 1   01  prefix
    0               h, \ 2   02  prefix
-   lit emit        h, \ 3   03  code
-   lit key         h, \ 4   04  code
+   lit tx          h, \ 3   03  code
+   lit rx          h, \ 4   04  code
    lit dup         h, \ 5   05  code
    lit swap        h, \ 6   06  code
    lit drop        h, \ 7   07  code
@@ -532,10 +558,11 @@ code usleep ( c -- )
    lit um*         h, \ 52  34  code
    lit um/mod      h, \ 53  35  code
    lit unused      h, \ 54  36
-   lit key?        h, \ 55  37
+   lit rx?         h, \ 55  37
    lit token       h, \ 56  38
    lit usleep      h, \ 57  39  code
    lit hp          h, \ 58  40
+   lit errtx       h, \ 59  41  code
    interpreter bye ;
 
 pre

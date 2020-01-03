@@ -137,3 +137,7 @@
 
 - Structure preForth, seedForth and seedForth/interactive in Emacs pages.
 
+- output on standard error
+
+- input/output on predefined files
+
