@@ -114,8 +114,10 @@ Definer Field ( offset size <name> -- offset' )
 : cr ( -- ) 
     10 emit 13 emit ;
 
+: emitt ( x -- )  dup bl < IF '^' emit '@' + THEN emit ;
+
 : type ( c-addr u -- )
-    BEGIN dup WHILE  over c@ emit  1  /string  REPEAT  2drop ;
+    BEGIN dup WHILE  over c@ emitt  1  /string  REPEAT  2drop ;
 
 : space ( -- ) 
     bl emit ;
