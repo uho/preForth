@@ -286,6 +286,13 @@ t{ 0 -1 u< -> -1 }t
      >r  1 /string  r> 
    REPEAT THEN drop ;
 
+: skip-whitespace ( c-addr1 u1 -- c-addr2 u2 )
+   BEGIN
+     dup
+   WHILE
+     over c@ bl > ?exit   1 /string 
+   REPEAT ;   
+
 : scan ( c-addr u1 c -- c-addr2 u2 )
    BEGIN
      over
@@ -789,7 +796,7 @@ Variable >in ( -- addr )
 
 : parse-name ( -- c-addr u )
    source >in @ /string
-   bl skip  2dup bl scan  source nip  2dup swap - 1+ min >in !    nip - ;
+   skip-whitespace  2dup bl scan  source nip  2dup swap - 1+ min >in !    nip - ;
 
 ' parse        has-header parse     
 ' parse-name   has-header parse-name 

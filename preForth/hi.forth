@@ -784,15 +784,11 @@ cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
 
 cr .( ok: afterwords )
 
-:  cr ." I'm a forth words with form feed as name " ;
-
- \ form feed word is invoked here
-
 cr .( How would conditional compilation work in tokenized form? )
 
 
-: [32m  ." green" ;
+\ :  cr ." I'm a forth words with form feed as name " ;
 
-
+ \ form feed is ignored
 
 echo on cr cr .( Welcome! ) input-echo on
