@@ -94,6 +94,25 @@ Variable #tokens  0 #tokens !
    dup 2 chars + c@ [char] ' -  IF  drop 0 false EXIT THEN
    char+ c@ true ;
 
+: process-hexdigit? ( x c -- x' flag )
+   dup '0' - dup 10 u< IF  nip      swap 16 * + true EXIT THEN drop
+   dup 'a' - dup  6 u< IF  nip 10 + swap 16 * + true EXIT THEN drop
+   dup 'A' - dup  6 u< IF  nip 10 + swap 16 * + true EXIT THEN
+   2drop false ;
+
+: hexnumber? ( c-addr u -- x flag )
+    dup 2 u<      IF  2drop 0 false EXIT THEN
+    over c@ '$' - IF  2drop 0 false EXIT THEN
+    >r >r 0 r> r>
+    BEGIN ( x c-addr u )
+      1 /string dup
+    WHILE ( x c-addr u )
+      >r dup >r c@ ( x d ) 
+      process-hexdigit? 0= IF r> drop r> drop false EXIT THEN ( x' )
+      r> r>
+    REPEAT ( x c-addr 0 )
+    2drop true ;
+
 : process-digit? ( x c -- x' flag )
    '0' - dup 10 u< IF  swap 10 * + true EXIT THEN  drop false ;
 
@@ -109,6 +128,7 @@ Variable #tokens  0 #tokens !
 : seed-name ( c-addr u -- )
 	 2dup  token@ dup IF nip nip execute EXIT THEN drop
 	 2dup  char-lit? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
+   2dup  hexnumber? IF nip nip seed num  seed-number  seed exit  EXIT THEN drop
 	 2dup  number? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
 	 cr type ."  not found" abort ;
 

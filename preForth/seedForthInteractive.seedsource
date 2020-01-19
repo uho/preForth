@@ -994,6 +994,32 @@ Variable heads -1 heads !
     ?# dup ?exit
     lit [ ' lit , ] compile, rot , ;
 
+
+: hexdigit? ( c -- x t | f )
+    dup '0' - dup 10 u< IF nip      -1 exit THEN drop
+    dup 'a' - dup  6 u< IF nip 10 + -1 exit THEN drop
+        'A' - dup  6 u< IF     10 + -1 exit THEN drop
+    0 ;
+
+: ?hex# ( c-addr u -- x 0 0 | c-addr u ) \ ?$#
+    dup 0= ?exit
+    over c@ '$' - ?exit 1 /string
+    dup 0= ?exit
+    2dup 0 >r 
+    BEGIN ( c-addr u c-addr u ) ( R: x )
+       dup
+    WHILE ( c-addr u c-addr u ) ( R: x )
+       over c@ hexdigit? 0= IF drop  r> drop   2drop ( c-addr u ) exit THEN
+       r> 16 um* drop + >r 
+       1 /string
+    REPEAT ( c-addr u c-addr u ) ( R: x )
+    2drop 2drop r> 0 0 ;
+
+: ,$# ( c-addr u -- 0 0 | c-addr u )
+    dup 0= ?exit
+    ?hex# dup ?exit
+    lit [ ' lit , ] compile, rot , ;
+
 :  ?'x' ( c-addr u -- x 0 0 | c-addr u )
     dup 0= ?exit
     dup 3 =
@@ -1016,6 +1042,7 @@ Variable heads -1 heads !
 : (interpreters ( c-addr1 u1 | i*x c-addr2 u2 )
    ?word
    ?#
+   ?hex#
    ?'x'
    over IF space type ( '?' emit ) space -13 throw THEN 
 ;
@@ -1031,6 +1058,7 @@ Variable heads -1 heads !
 : (compilers ( c-addr u1 | i*x c-addr2 u2 )
     ,word
     ,#
+    ,$#
     ,'x'
     over IF space type '?' emit  space -13 throw THEN 
 ;
@@ -1159,7 +1187,7 @@ Defer .status   : noop ;  ' noop is .status
 : .banner ( -- )
     cr ." seedForth/interactive " .version
     cr ." ---------------------------" 
-    cr unused . ." bytes free" cr ;
+    cr unused . ." bytes free" cr  $100 . $2A . ;
 
 Create errormsg  0 , 0 ,
 
