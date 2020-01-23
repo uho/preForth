@@ -897,19 +897,42 @@ end-tests
    postpone r>  postpone drop 
    postpone r>  postpone drop ; immediate
 
+: [: ( c: -- quotation-sys colon-sys )
+    compiling? IF 
+      postpone AHEAD 
+    THEN
+    compiling?
+    :noname ; immediate
+
+: ;] ( c: quotation-sys colon-sys -- ) ( s: -- xt )
+  postpone ;  >r  
+  ( state ) IF ] 
+     postpone THEN 
+     r> postpone Literal exit THEN
+  r> ; immediate
+
+cr .( quotations)
+
 save
+
+[: cr ." interpretive quotations work" ;] execute
+
+: quot  [: cr ." quotations in definitions work" ;] ;  quot execute
+
 
 : remove-with-empty ; \ remove with empty
 
 cr 
 empty clear
 
-: abc  10 20 2dup ;
+: optimizes ( xt <name> -- ) ' !optimizer ;
 
-: 2dup, ( -- )  postpone over  postpone over ;
+: unoptimized ( -- x x x x )  10 20 2dup ; \ 2dup compiles a reference to its definition
 
-' 2dup,  ' 2dup !optimizer
+[: ( -- )  postpone over  postpone over ;] optimizes 2dup
 
-: def 30 40 2dup ;  \ 2dup now compiles over over
+: optimized ( -- x x x x ) 10 20 2dup ;  \ 2dup now compiles over over
+
+t{ unoptimized -> optimized }t
 
 echo on cr cr .( Welcome! ) input-echo on
