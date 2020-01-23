@@ -19,15 +19,18 @@ HOSTFORTH=gforth
 # ------------------------------------------------------------------------
 
 .PHONY=all
-all: preForth simpleForth forth runforth
+# all: preForth simpleForth forth runforth
+# all: runseedforth
+all: runseedforth
 
 .PHONY=runforth
 runforth: ./forth hi.forth
 	cat hi.forth - | ./forth
 
 .PHONY=runseedforth
-runseedforth: seedForth seedForthDemo.seed
-	cat seedForthDemo.seed | ./seedForth
+runseedforth: seedForth seedForthDemo.seed seed seedForthInteractive.seed
+	# cat seedForthDemo.seed - | ./seedForth
+	rlwrap ./seed
 
 
 .PHONY=test
@@ -79,10 +82,11 @@ preForth: preForth.$(UNIXFLAVOUR)
 
 # assemble and link executable on MacOS
 %.Darwin: %.asm
-	fasm $< $@.o
-	objconv -fmacho32 -nu $@.o $@_m.o
+	/Users/uho/Projects/fasm-osx/fasm $< $@.o
+	/Users/uho/Projects/fasm-osx/objconv -fmacho32 -nu $@.o $@_m.o
 	ld -arch i386 -macosx_version_min 10.6 -o $@ \
-	  $@_m.o /usr/lib/crt1.o /usr/lib/libc.dylib
+	  $@_m.o /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/crt1.o /usr/lib/libc.dylib
+	#  $@_m.o /usr/lib/crt1.o /usr/lib/libc.dylib
 	# rm $@.o $@_m.o
 
 # run preForth on its own source code to perform a bootstrap 
@@ -153,4 +157,4 @@ seedForth: seedForth.$(UNIXFLAVOUR)
 
 .PHONY=clean
 clean:
-	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo simpleForthDemo simpleForth preForth forth seedForth seedForthDemo.seed
+	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo simpleForthDemo simpleForth preForth forth seedForth seedForthDemo.seed seedForthInteractive.seed seedForth-tokenizer.seed

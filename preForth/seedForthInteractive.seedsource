@@ -462,7 +462,7 @@ maxint  Constant #max
     dup r> 7 cells -  release  above 1 cells -  0 swap ! ;
 
 : init ( -- )
-    here 10000  ( chars ) dup allot empty-memory ;
+    here 30000  ( chars ) dup allot empty-memory ;
 
 init
 
@@ -523,6 +523,7 @@ Variable input-echo -1 input-echo !
 1 cells Field _link
 1       Field _flags
 1 cells Field _xt
+1 cells Field _opt
 0       Field _name
 
 Constant #header
@@ -536,6 +537,7 @@ Variable last
     0 r@ _link !
     0 r@ _flags c!
     0 r@ _xt !
+    0 r@ _opt !
     r@ _name place 
     r> ;
 
@@ -693,7 +695,7 @@ end-macro
 ' does>       has-header does>       \ 36  24
 ' cold        has-header cold        \ 37  25
 ' depth       has-header depth       \ 38  26
-' compile,    has-header compile,    \ 39  26
+\ ' compile,    has-header compile,    \ 39  26
 ' new         has-header new         \ 40  28
 ' couple      has-header couple      \ 41  29
 ' and         has-header and         \ 42  2A
@@ -805,6 +807,7 @@ end-macro
 ' "header     has-header "header
 ' link-header has-header link-header
 ' _xt         has-header _xt
+' _opt        has-header _opt
 
 
 Macro :noname
@@ -943,7 +946,20 @@ Variable heads -1 heads !
 
 ' addr>name has-header addr>name
 
+: @optimizer ( xt1 -- xt2 )
+    get-current find-xt-in dup IF _opt @ THEN ;
 
+: !optimizer ( xt1 xt2 -- )
+    get-current find-xt-in dup IF _opt ! exit THEN 2drop ;
+
+' @optimizer  has-header @optimizer
+' !optimizer  has-header !optimizer
+
+: optimize, ( xt -- )
+   dup @optimizer ?dup IF  nip execute exit THEN
+   compile, ;
+
+' optimize, has-header compile,
 
 : Alias ( xt <name> -- )
    parse-name "header dup link-header _xt ! ;
@@ -1024,7 +1040,7 @@ Variable heads -1 heads !
    dup 0= ?exit
    2dup find-name ?dup
    IF 
-      nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
+      nip nip dup immediate? IF _xt @ execute ELSE _xt @ optimize, THEN 0 0 
    THEN 
 ;
 

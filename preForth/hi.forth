@@ -904,4 +904,12 @@ save
 cr 
 empty clear
 
+: abc  10 20 2dup ;
+
+: 2dup, ( -- )  postpone over  postpone over ;
+
+' 2dup,  ' 2dup !optimizer
+
+: def 30 40 2dup ;  \ 2dup now compiles over over
+
 echo on cr cr .( Welcome! ) input-echo on
