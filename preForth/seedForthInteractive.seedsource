@@ -524,6 +524,7 @@ Variable input-echo -1 input-echo !
 1       Field _flags
 1 cells Field _xt
 1 cells Field _opt
+1 cells Field _foldable
 0       Field _name
 
 Constant #header
@@ -538,6 +539,7 @@ Variable last
     0 r@ _flags c!
     0 r@ _xt !
     0 r@ _opt !
+    -1 r@ _foldable !
     r@ _name place 
     r> ;
 
@@ -562,6 +564,8 @@ Definer Header-flag? ( x <name> -- )
 
 128 dup Header-flag immediate  Header-flag? immediate?
  64 dup Header-flag headerless Header-flag? headerless?
+
+: foldable ( u -- ) last @ _foldable ! ;
 
 : pad ( -- addr )
    here 100 + ;
@@ -808,7 +812,8 @@ end-macro
 ' link-header has-header link-header
 ' _xt         has-header _xt
 ' _opt        has-header _opt
-
+' _foldable   has-header _foldable
+' foldable    has-header foldable
 
 Macro :noname
    seed new
@@ -840,6 +845,63 @@ Variable >in ( -- addr )
 ' parse        has-header parse     
 ' parse-name   has-header parse-name 
 
+\ Constants folding
+
+Defer optimize,   ' compile, is optimize,
+
+\ begin a basic block and provide an empty stack of processed literals
+: fold{ ( -- fold ) 0 ;
+
+' fold{ has-header fold{
+
+: literal, ( x -- )  [ ' lit ] Literal compile,  , ;
+
+\ put literal x in fold c0 ... cu-1 u  ( fold x -- fold' )
+: fold-literal ( c0 ... cu-1 u x -- c0 ... cu-1 x u+1 )
+    swap 1+ ;
+
+\ compile all literals c0 ... cu-1
+: literals ( c0 ... cu-1 u -- )
+    ?dup 0= ?exit
+    swap >r 1- literals
+    r> 
+    \ cr ." compile literal " dup .
+    literal, ;
+
+\ execute xt leaving its stack depth effect on the stack, 
+\ ie. dup    :  1
+\     drop   : -1
+\     swap   :  0
+\     +      : -1
+\     1+     :  0
+\     um/mod : -1 
+: effect-execute ( i*x xt -- j*x n )
+   \ cr .s ." effect-execute -> " 
+   >r depth r> swap >r execute depth r> - ;
+
+\ : compile, ( xt -- ) 
+\   cr ." compiling xt " . compile, ;
+
+\ handle the processing of xt which is a u2-foldable word
+\ c0 c1 ... cu1-1 are accumulated constants to be folded
+\ c0 c1 ... u3-1 are the remaining constants after xt has been processed
+: fold ( i*x c0 c1 ... cu1-1 u1 xt u2 -- i*x c0 ... cu3-1 u3 )
+   swap >r ( ... u1 u2 )
+   over swap u< IF \ not enough constants: compile constants and xt
+                   literals  r>   ( compile, )  optimize,   fold{  exit THEN
+   r> swap >r  effect-execute  r> + ;
+
+\ end basic block compiling all outstanding listerals of the fold c0..cu-1 u
+: }fold ( c0 c1 ... cu-1 u -- )
+   \ cr source type 
+   \ cr >in @ spaces ." ^"
+   \ cr .s ." literals"  
+   literals ;
+
+' }fold has-header }fold
+' fold        has-header fold
+
+
 Variable heads -1 heads !
 
 : | ( -- ) 1 heads ! ;
@@ -849,8 +911,8 @@ Variable heads -1 heads !
 
 
 : (Create) ( <name> -- )
-    parse-name "header  dup link-header create  swap _xt ! reveal 
-    head? ?exit headerless
+    parse-name "header  dup link-header create  swap _xt ! reveal 0 foldable 
+    head? ?exit headerless  
 ;
 
 ' (Create)    has-header Create
@@ -858,9 +920,11 @@ Variable heads -1 heads !
 : last-xt ( -- xt )
      last @ _xt @ ;
 
-: (Does>) ( -- )
+: (Does>) ( fold -- fold' )
+     }fold
      [ ' last-xt ] Literal compile,
-     [ ' does> ] Literal compile, ; 
+     [ ' does> ] Literal compile,
+     fold{ ; 
 
 ' (Does>) has-header Does> immediate
 ' last has-header last
@@ -955,9 +1019,11 @@ Variable heads -1 heads !
 ' @optimizer  has-header @optimizer
 ' !optimizer  has-header !optimizer
 
-: optimize, ( xt -- )
+: (optimize, ( xt -- )
    dup @optimizer ?dup IF  nip execute exit THEN
    compile, ;
+
+' (optimize, is optimize,
 
 ' optimize, has-header compile,
 
@@ -983,8 +1049,8 @@ Variable heads -1 heads !
 
 ' tick        has-header '
 
-: ([']) ( <name> -- xt )
-    tick  [ ' lit ] Literal compile,  , ;
+: ([']) ( <name> fold -- fold' )
+    tick  fold-literal ;
 
 ' ([']) has-header ['] immediate
 
@@ -1005,10 +1071,13 @@ Variable heads -1 heads !
     REPEAT
     2drop 2drop r>  r> IF negate THEN 0 0 ;
 
-: ,# ( c-addr u -- 0 0 | c-addr u )
+: ,# ( fold c-addr u -- fold' 0 0 | c-addr u )
     dup 0= ?exit
     ?# dup ?exit
-    lit [ ' lit , ] compile, rot , ;
+     >r >r fold-literal r> r> ;
+\    cr .s ." -> " 
+\    lit [ ' lit , ] compile, rot , ;
+\    .s ;
 
 :  ?'x' ( c-addr u -- x 0 0 | c-addr u )
     dup 0= ?exit
@@ -1020,7 +1089,8 @@ Variable heads -1 heads !
 : ,'x' ( c-addr u -- 0 0 | c-addr u )
     dup 0= ?exit
     ?'x' dup ?exit
-    lit [ ' lit , ] compile, rot , ;
+    >r >r fold-literal r> r> ;
+ \   lit [ ' lit , ] compile, rot , ;
 
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
@@ -1040,7 +1110,11 @@ Variable heads -1 heads !
    dup 0= ?exit
    2dup find-name ?dup
    IF 
-      nip nip dup immediate? IF _xt @ execute ELSE _xt @ optimize, THEN 0 0 
+      nip nip dup 
+      immediate? IF 
+        _xt @ execute 
+      ELSE 
+        dup _xt @ swap _foldable @ fold THEN 0 0 
    THEN 
 ;
 
@@ -1065,10 +1139,11 @@ Variable handlers        interpreters @ handlers !
     parse-name "header dup link-header reveal 
     head? ?exit headerless ;
 
-: (:) ( <name> -- )
-    Header new swap _xt !  hide  (]) ;
+: (:) ( <name> -- fold )
+    Header new swap _xt !  hide  (]) fold{ ;
 
-: (;) ( -- )
+: (;) ( -- fold )
+   }fold
    lit [ ' exit , ] compile,  reveal ([) ;
 
 ' (])   has-header ] 

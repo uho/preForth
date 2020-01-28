@@ -31,35 +31,36 @@ cr .( ⓪ )
 \ t{ 3 -> }t         \ wrong number of results
 \ t{ 3 4 + -> 8 }t   \ incorrect result
 
-: AHEAD  ( -- c:orig )
-    postpone branch  here 0 , ; immediate
+: AHEAD  ( fold -- c:orig fold )
+    }fold postpone branch  here 0 , fold{ ; immediate
 
-: IF ( -- c:orig )
-    postpone ?branch here 0 , ; immediate
+: IF ( fold -- c:orig fold )
+     }fold  postpone ?branch here 0 ,  fold{ ; immediate
 
-: THEN ( c:orig -- )
-    here swap ! ; immediate
+: THEN ( c:orig fold -- fold' )
+    }fold here swap ! fold{ ; immediate
 
-: ELSE ( c:orig1 -- c:orig2 )
-    postpone AHEAD  swap  postpone THEN ; immediate
+: ELSE ( c:orig1 fold -- c:orig2 fold' )
+    postpone AHEAD  }fold  swap  fold{  postpone THEN ; immediate
 
-: BEGIN ( -- c:dest )
-    here ; immediate
+: BEGIN ( fold -- c:dest fold' )
+    }fold here fold{ ; immediate
 
-: WHILE ( c: orig -- c:dest c:orig )
-    postpone IF swap ; immediate
+: WHILE ( c: orig fold -- c:dest c:orig fold' )
+    postpone IF }fold swap fold{ ; immediate
 
-: AGAIN ( c:orig -- )
-    postpone branch , ; immediate
+: AGAIN ( c:orig fold -- fold' )
+    }fold postpone branch , fold{ ; immediate
 
-: UNTIL ( c:orig -- )
-    postpone ?branch , ; immediate
+: UNTIL ( c:orig fold -- fold' )
+    }fold postpone ?branch , fold{ ; immediate
 
-: REPEAT ( c:orig c:dest -- )
-    postpone AGAIN   postpone THEN ; immediate
+: REPEAT ( c:orig c:dest fold -- )
+    postpone AGAIN  postpone THEN ; immediate
 
 \ are these necessary? 
-\ you can use the phrase  dup x = IF drop  instead of   x case? IF  or  x OF 
+\ you can use the phrase  dup x = IF drop  instead of   x case? IF  or  x OF
+
 : case? ( n1 n2 -- true | n1 false )
     over = dup IF nip THEN ;
 
@@ -69,14 +70,17 @@ cr .( ⓪ )
 cr .( ① )
 cr
 
-: :noname ( -- xt ) 
-    new ] ;
+: :noname ( -- xt fold ) 
+    new ] fold{ ;
 
 : Variable ( <name> )
     Create 0 , ;
 
 : Constant ( x <name> -- )
     Create , Does> @ ;
+
+: Field ( offset size <name> -- offset' )
+    Create over , +  1 foldable Does> ( addr -- addr' ) @ + ;
 
 0 Constant false
 false invert Constant true
@@ -261,9 +265,18 @@ cr .( ② )
     dup 0= IF drop 1 exit THEN
     dup 1- fac * ;
 
+: faciter ( n -- )
+    1 swap
+    BEGIN ( f n )
+      ?dup
+    WHILE ( f n )
+      dup >r * r> 1-
+    REPEAT ( f ) ;
+
 begin-tests
 
-t{ 6 fac -> 720 }t
+t{ 6 fac     -> 720 }t
+t{ 6 faciter -> 720 }t
 
 end-tests
 
@@ -867,7 +880,8 @@ cr .( How would conditional compilation work in tokenized form? )
 
 : bounds ( addr count -- limit addr)  over + swap ;
 
-: DO ( to from -- )
+: DO ( to from -- ) ( fold -- dosys fold' )
+     }fold
      postpone swap
      postpone BEGIN
      postpone >r postpone >r ; immediate
@@ -877,7 +891,8 @@ cr .( How would conditional compilation work in tokenized form? )
      postpone 1+ 
      postpone r> 
      postpone 2dup postpone = postpone UNTIL 
-     postpone 2drop ; immediate
+     postpone 2drop 
+     fold{ ; immediate
 
 : I ( -- )
      postpone r@ ; immediate
@@ -897,14 +912,14 @@ end-tests
    postpone r>  postpone drop 
    postpone r>  postpone drop ; immediate
 
-: [: ( c: -- quotation-sys colon-sys )
+: [: ( c: -- quotation-sys colon-sys fold )
     compiling? IF 
       postpone AHEAD 
     THEN
     compiling?
     :noname ; immediate
 
-: ;] ( c: quotation-sys colon-sys -- ) ( s: -- xt )
+: ;] ( c: quotation-sys colon-sys fold -- ) ( s: -- xt )
   postpone ;  >r  
   ( state ) IF ] 
      postpone THEN 
@@ -935,4 +950,132 @@ empty clear
 
 t{ unoptimized -> optimized }t
 
+
+: plus ( x1 x2 -- x3 )  + ; 2 foldable
+
+: abc ( -- u ) 3 4 plus ;
+
+
+0 n' minint _foldable !
+0 n' maxint _foldable !
+0 n' true   _foldable !
+0 n' false  _foldable !
+
+1 n' dup    _foldable !
+1 n' drop   _foldable !
+1 n' 0=     _foldable !
+1 n' 1+     _foldable !
+1 n' 1+     _foldable !
+1 n' 2+     _foldable !
+1 n' 1-     _foldable !
+1 n' invert _foldable !
+1 n' 2*     _foldable !
+1 n' abs    _foldable !
+1 n' cell+  _foldable !
+1 n' cell-  _foldable !
+1 n' 0>     _foldable !
+1 n' u2/    _foldable !
+1 n' s>d    _foldable !
+1 n' fac    _foldable !
+1 n' fib    _foldable !
+1 n' sqr    _foldable !
+1 n' sqrt   _foldable !
+1 n' u2/    _foldable !
+1 n' negate _foldable !
+1 n' >body  _foldable !
+
+2 n' swap    _foldable !
+2 n' over    _foldable !
+2 n' nip     _foldable !
+2 n' couple  _foldable !
+2 n' -       _foldable !
+2 n' +       _foldable !
+2 n' and     _foldable !
+2 n' or      _foldable !
+2 n' xor     _foldable !
+2 n' min     _foldable !
+2 n' max     _foldable !
+2 n' /string _foldable !
+2 n' 2drop   _foldable !
+2 n' 2dup    _foldable !
+2 n' u<      _foldable !
+2 n' <       _foldable !
+2 n' >       _foldable !
+2 n' =       _foldable !
+2 n' lshift  _foldable !
+2 n' rshift  _foldable !
+2 n' <>      _foldable !
+2 n' *       _foldable !
+2 n' pyth    _foldable !
+
+3 n' third  _foldable !
+3 n' -rot   _foldable !
+3 n' rot    _foldable !
+3 n' um*    _foldable !
+3 n' um/mod _foldable !
+3 n' within _foldable !
+
+4 n' 2over  _foldable !
+
+
+
 echo on cr cr .( Welcome! ) input-echo on
+
+' abc >body  
+n 
+l 
+n 
+drop
+
+: demo ( x -- x 10 x 10 ) 7 3 + 2dup ;
+
+' demo >body
+n
+l
+n
+n
+drop
+
+
+Create buf 10 allot 
+
+: buf1 ( -- x )  buf cell+ ;
+
+' buf1 >body
+n
+l
+n
+drop
+buf . buf1 .
+
+
+: Array ( u -- ) 
+    Create allot 1 foldable  Does> ( u -- addr ) swap cells + ;
+
+
+10 Array arr
+
+: aaa ( -- addr )  5 arr ;
+
+' aaa >body
+n
+l
+n
+drop
+
+
+0
+1 cells Field _x
+1 cells Field _y
+Constant point
+
+Create p1  point allot
+
+: p1y ( -- y )  p1 _y @ ;
+
+' p1y >body
+n
+l
+n
+n
+drop
