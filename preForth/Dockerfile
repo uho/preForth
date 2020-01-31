@@ -28,5 +28,5 @@ copy hi.forth /preForth/hi.forth
 
 run make bootstrap
 run make
-run ./seed
+
 

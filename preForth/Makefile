@@ -83,7 +83,7 @@ docker-image: Dockerfile
 # run the docker image
 .PHONY=run
 rundocker: docker-image
-	docker run -i -t --rm preforth	
+	docker run -i -t --rm preforth /preForth/seed
 # ------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------
