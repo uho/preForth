@@ -18,14 +18,15 @@ copy borrow.fs /preForth/borrow.fs
 copy load-preForth.fs /preForth/load-preForth.fs
 copy load-i386-preForth.fs /preForth/load-i386-preForth.fs
 
-copy simpleForth.pre /preForth/simpleForth.pre
-copy simpleForth-i386-backend.pre /preForth/simpleForth-i386-backend.pre
-copy simpleForth-i386-rts.simple /preForth/simpleForth-i386-rts.simple
-copy simpleForth-rts.simple /preForth/simpleForth-rts.simple
+copy seed /preForth/seed
+copy seedForthDemo.seedsource /preForth/seedForthDemo.seedsource
+copy seedForth-i386.pre /preForth/seedForth-i386.pre
+copy seedForthInteractive.seedsource /preForth/seedForthInteractive.seedsource 
+copy seedForth-tokenizer.fs /preForth/seedForth-tokenizer.fs
 
-copy simpleForthDemo.simple /preForth/simpleForthDemo.simple
+copy hi.forth /preForth/hi.forth
 
 run make bootstrap
-run make simpleForthDemo
-run ./simpleForthDemo
+run make
+run ./seed
 
