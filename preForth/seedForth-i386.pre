@@ -25,19 +25,15 @@ section '.bss' executable writable
 
        DD 10000 dup(0)
 stck:  DD 16 dup(0)
-  
+
        DD 10000 dup(0)
 rstck: DD 16 dup(0)
-
-_frame: DD 0 ; frame pointer for catch/throw
-
+  
 _dp:    DD _start  ; dictionary pointer: points to next free location in memory
         ; free memory starts at _start
 
-_hp:    DD 0       ; head pointer: points to first unused head
+__hp:   DD 0       ; head pointer: index of first unused head
 _head:  DD 10000 dup (0)
-
-
 
 section '.text' executable writable align 4096
 
@@ -47,6 +43,8 @@ extrn getchar
 extrn fflush
 extrn exit
 extrn mprotect
+extrn ioctl
+extrn usleep
   
 macro next  {
        lodsd
@@ -65,7 +63,7 @@ main:  cld
        sub esp, 16
        and esp, 0xfffffff0
        mov dword [esp+8], 7  ; rwx
-       mov eax, memtop
+       mov eax, _memtop
        sub eax, origin
        mov dword [esp+4], eax
        mov dword [esp], origin
@@ -150,9 +148,33 @@ code key ( -- c )
         pop ebp
         cmp eax,-1
         jnz key1
-        mov eax,4
+        mov eax,4   ; eof: return Ctrl-D 
 key1:   push eax
         next
+;
+
+code key? ( -- f )
+       push ebp  
+       mov  ebp, esp
+       and  esp, 0xfffffff0
+       sub  esp, 32
+
+       mov dword [esp], 0
+       mov dword [esp+4], 1074030207 ; FIONREAD
+       lea dword eax, [esp+24]
+       mov dword [esp+8], eax
+
+       call ioctl
+       mov dword eax, [esp+24]
+
+       mov esp, ebp
+       pop ebp
+
+       cmp eax, 0
+       jz keyq1
+       mov eax, -1
+keyq1: push eax
+       next
 ;
 
 code dup ( x -- x x )
@@ -229,7 +251,10 @@ code and ( x1 x2 -- x3 )
         next
 ;
 
-code unnest ( -- )
+pre 
+_unnest:
+;
+code exit ( -- )
         mov esi,[ebp]
         lea ebp,[ebp+4]
         next
@@ -270,8 +295,10 @@ code c! ( c c-addr -- )
         next
 ;
 
-code invoke ( addr -- ) \ native code: >r ;
-        pop eax
+\ code invoke ( addr -- ) \ native code: >r ;
+code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
+        pop edx
+        mov dword eax, [_head+edx*4]
         jmp dword [eax]
 ;
 
@@ -285,7 +312,7 @@ code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
         pop eax
         or eax,eax
         jz _branchX
-	lea esi,[esi+4]
+	      lea esi,[esi+4]
         next
 ;
 
@@ -317,6 +344,42 @@ code rp! ( x -- )
         next
 ;
 
+code um* ( u1 u2 -- ud )
+        pop edx
+        pop eax
+        mul edx
+        push eax
+        push edx
+        next
+;
+
+code um/mod ( ud u1 -- u2 u3 )
+        pop ebx
+        pop edx
+        pop eax
+        div ebx
+        push edx
+        push eax
+        next
+;
+
+code usleep ( c -- )
+    pop eax
+
+    push ebp  
+    mov  ebp, esp
+    push eax 
+    and  esp, 0xfffffff0
+
+    mov dword [esp], eax
+    call usleep
+
+    mov esp, ebp  
+    pop ebp  
+    next
+;
+
+
 : negate ( n1 -- n2 )
    0 swap - ;
 
@@ -329,11 +392,17 @@ code rp! ( x -- )
 : ?dup ( x -- x x | 0 )
    dup 0= ?exit dup ;
 
+: 2* ( x1 -- x2 )
+   dup + ;
+
 : cells ( x1 -- x2 )
-   dup + dup + ;
+   2* 2* ;
 
 : +! ( x addr -- )
    swap >r  dup @ r> +  swap ! ;
+
+: hp ( -- addr )
+   lit _hp ;
 
 : h@ ( i -- addr )
    cells lit head + @ ;
@@ -342,7 +411,7 @@ code rp! ( x -- )
    cells lit head + ! ;
 
 : h, ( x -- )
-   lit hp @  h!   1 lit hp +! ;
+   hp @  h!   1 hp +! ;
 
 : here ( -- addr )
    lit dp @ ;
@@ -359,23 +428,35 @@ code rp! ( x -- )
 : compile, ( x -- )
    h@ , ;
 
-: execute ( x -- )
-   h@ invoke ;
+\ token are in the range 0 .. 767: 
+\   0, 3 .. 255 are single byte tokens
+\    256 .. 511 are double byte tokens of the form 01 xx
+\    511 .. 767 are double byte tokens of the form 02 xx
+: token ( -- x )
+   key dup 0= ?exit    \       0 -> single byte token
+   dup 3 - 0< 0= ?exit \ not 1 2 -> single byte token
+   key couple ;        \            double byte token
 
 : interpreter ( -- )
-   key execute   tail interpreter ;
+   token execute   tail interpreter ;  \ executing exit  will leave this loop
+
+: num ( -- x ) 
+   tail interpreter ;
+
+: ?lit ( xt -- xt | )  
+   dup h@ lit num - ?exit drop   \ not num token: exit i.e. normal compile action
+   lit lit ,   num ,             \ generate  lit x   num call puts x on stack
+   r> drop   tail compiler ;
 
 : compiler ( -- )
-   key ?dup 0= ?exit compile, tail compiler ;
+   token ?dup 0= ?exit  ?lit 
+   compile, tail compiler ;
 
-: new ( -- )
-   here h,  lit enter , ;
+: new ( -- xt )
+   hp @   here h,  lit enter , ;
 
 : fun ( -- )
-   new compiler ;
-
-: 2* ( x1 -- x2 )
-   dup + ;
+   new drop  compiler ;
 
 : couple ( hi lo -- hilo )
     >r  2* 2* 2* 2*   2* 2* 2* 2*   r> + ;
@@ -383,78 +464,82 @@ code rp! ( x -- )
 : $lit ( -- addr u )
     r>  dup   1 +   dup >r  swap c@  dup r> + >r ;
 
-: create ( -- )
+: create ( -- xt )
    0 , \ dummy does> field
-   here h, lit dovar , ;
+   hp @  here h, lit dovar , ;
 
-: does> ( -- ) \ set code field of last defined word
-    r>   lit hp @ 1 - h@  dup >r 1 cells - !   lit dodoes r> !
+: does> ( xt -- ) \ set code field of last defined word
+    r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
 ;
 
-: catch ( i*x xt -- j*x 0 | i*x err )
-    lit frame @ >r  sp@ >r  rp@  lit frame !  execute    r> drop r> lit frame ! 0 ;
-
-: throw ( i*x 0 | i*x err -- j*x err )
-    ?dup 0= ?exit  lit frame @ rp!  r> swap >r  sp! drop  r> r> lit frame ! ;
-
+: unused ( -- u )  
+    lit memtop  here - ;
 
 : cold ( -- )
-   's' emit 'e' dup emit emit  'd' emit 10 emit
-   lit bye         h, \ 0   00
-   lit emit        h, \ 1   01
-   lit key         h, \ 2   02
-   lit dup         h, \ 3   03
-   lit swap        h, \ 4   04
-   lit drop        h, \ 5   05
-   lit 0<          h, \ 6   06
-   lit ?exit       h, \ 7   07
-   lit >r          h, \ 8   08
-   lit r>          h, \ 9   09
-   lit -           h, \ 10  0A
-   lit unnest      h, \ 11  0B
-   lit lit         h, \ 12  0C
-   lit @           h, \ 13  0D
-   lit c@          h, \ 14  0E
-   lit !           h, \ 15  0F
-   lit c!          h, \ 16  10
-   lit execute     h, \ 17  11
-   lit branch      h, \ 18  12
-   lit ?branch     h, \ 19  13
-   lit negate      h, \ 20  14
-   lit +           h, \ 21  15
-   lit 0=          h, \ 22  16
-   lit ?dup        h, \ 23  17
-   lit cells       h, \ 24  18
-   lit +!          h, \ 25  19
-   lit h@          h, \ 26  1A
-   lit h,          h, \ 27  1B
-   lit here        h, \ 28  1C
-   lit allot       h, \ 29  1D
-   lit ,           h, \ 30  1E
-   lit c,          h, \ 31  1F
-   lit fun         h, \ 32  20
-   lit interpreter h, \ 33  21
-   lit compiler    h, \ 34  22
-   lit create      h, \ 35  23
-   lit does>       h, \ 36  24
-   lit cold        h, \ 37  25
-   lit depth       h, \ 38  26
-   lit compile,    h, \ 39  27
-   lit new         h, \ 40  28
-   lit couple      h, \ 41  29
-   lit and         h, \ 42  2A
-   lit or          h, \ 43  2B
-   lit catch       h, \ 44  2C
-   lit throw       h, \ 45  2D
-   lit sp@         h, \ 46  2E
-   lit sp!         h, \ 47  2F
-   lit rp@         h, \ 48  30
-   lit rp!         h, \ 49  31
+   \ 's' emit 'e' dup emit emit  'd' emit 10 emit
+   lit bye         h, \ 0   00  code
+   0               h, \ 1   01  prefix
+   0               h, \ 2   02  prefix
+   lit emit        h, \ 3   03  code
+   lit key         h, \ 4   04  code
+   lit dup         h, \ 5   05  code
+   lit swap        h, \ 6   06  code
+   lit drop        h, \ 7   07  code
+   lit 0<          h, \ 8   08  code
+   lit ?exit       h, \ 9   09  code
+   lit >r          h, \ 10  0A  code
+   lit r>          h, \ 11  0B  code
+   lit -           h, \ 12  0C  code
+   lit exit        h, \ 13  0D  code
+   lit lit         h, \ 14  0E  code
+   lit @           h, \ 15  0F  code
+   lit c@          h, \ 16  10  code
+   lit !           h, \ 17  11  code
+   lit c!          h, \ 18  12  code
+   lit execute     h, \ 19  13  code
+   lit branch      h, \ 20  14  code
+   lit ?branch     h, \ 21  15  code
+   lit negate      h, \ 22  16
+   lit +           h, \ 23  17
+   lit 0=          h, \ 24  18
+   lit ?dup        h, \ 25  19
+   lit cells       h, \ 26  1A
+   lit +!          h, \ 27  1B
+   lit h@          h, \ 28  1C
+   lit h,          h, \ 29  1D
+   lit here        h, \ 30  1E
+   lit allot       h, \ 31  1F
+   lit ,           h, \ 32  20
+   lit c,          h, \ 33  21
+   lit fun         h, \ 34  22
+   lit interpreter h, \ 35  23
+   lit compiler    h, \ 36  24
+   lit create      h, \ 37  25
+   lit does>       h, \ 38  26
+   lit cold        h, \ 39  27
+   lit depth       h, \ 40  28  code
+   lit compile,    h, \ 41  29
+   lit new         h, \ 42  2A
+   lit couple      h, \ 43  2B
+   lit and         h, \ 44  2C  code
+   lit or          h, \ 45  2D  code
+   lit sp@         h, \ 46  2E  code
+   lit sp!         h, \ 47  2F  code
+   lit rp@         h, \ 48  30  code
+   lit rp!         h, \ 49  31  code
    lit $lit        h, \ 50  32
-   tail interpreter ;
+   lit num         h, \ 51  33
+   lit um*         h, \ 52  34  code
+   lit um/mod      h, \ 53  35  code
+   lit unused      h, \ 54  36
+   lit key?        h, \ 55  37
+   lit token       h, \ 56  38
+   lit usleep      h, \ 57  39  code
+   lit hp          h, \ 58  40
+   interpreter bye ;
 
 pre
  _start: DB 43
-	 DD 10000 dup (0)
- memtop: DD 0
+	 DD 100000 dup (0)
+ _memtop: DD 0
 ;

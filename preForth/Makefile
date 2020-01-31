@@ -9,11 +9,18 @@ HOSTFORTH=gforth
 # ------------------------------------------------------------------------
 
 .PHONY=all
-all: preForth runseedforthdemo
+all: preForth seedForth seedForthDemo.seed seedForthInteractive.seed
+
+.PHONY=test
+test: runseedforthdemo runseedforthinteractive
 
 .PHONY=runseedforthdemo
 runseedforthdemo: seedForth seedForthDemo.seed
 	cat seedForthDemo.seed | ./seedForth
+
+.PHONY=runseedfortinteractive
+runseedforthinteractive: seedForth seedForthInteractive.seed
+	./seed
 
 UNIXFLAVOUR=$(shell uname -s)
 EXT=asm
@@ -94,4 +101,4 @@ seedForth: seedForth.$(UNIXFLAVOUR)
 
 .PHONY=clean
 clean:
-	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo preForth forth seedForth seedForthDemo.seed
+	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo preForth forth seedForth seedForthDemo.seed seedForthInteractive.seed
