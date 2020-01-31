@@ -19,20 +19,11 @@ HOSTFORTH=gforth
 # ------------------------------------------------------------------------
 
 .PHONY=all
-all: preForth simpleForth forth runforth
+all: preForth runseedforthdemo
 
-.PHONY=runforth
-runforth: ./forth hi.forth
-	cat hi.forth - | ./forth
-
-.PHONY=runseedforth
-runseedforth: seedForth seedForthDemo.seed
+.PHONY=runseedforthdemo
+runseedforthdemo: seedForth seedForthDemo.seed
 	cat seedForthDemo.seed | ./seedForth
-
-
-.PHONY=test
-test: preForth.pre preForth-$(PLATFORM)-backend.pre load-$(PLATFORM)-preForth.fs 
-	cat preForth-$(PLATFORM)-backend.pre simpleForth.pre | $(HOSTFORTH) load-$(PLATFORM)-preForth.fs 
 
 # preForth connected to stdin - output to stdout
 .PHONY=visible-bootstrap
@@ -82,7 +73,7 @@ preForth: preForth.$(UNIXFLAVOUR)
 	fasm $< $@.o
 	objconv -fmacho32 -nu $@.o $@_m.o
 	ld -arch i386 -macosx_version_min 10.6 -o $@ \
-	  $@_m.o /usr/lib/crt1.o /usr/lib/libc.dylib
+	  $@_m.o /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/crt1.o /usr/lib/libc.dylib
 	# rm $@.o $@_m.o
 
 # run preForth on its own source code to perform a bootstrap 
@@ -126,19 +117,6 @@ rundocker: docker-image
 # ------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------
-# simpleForth
-# ------------------------------------------------------------------------
-simpleForth.$(EXT): simpleForth.pre simpleForth-$(PLATFORM)-backend.pre preForth-$(PLATFORM)-rts.pre preForth-rts.pre preForth
-	cat preForth-$(PLATFORM)-rts.pre preForth-rts.pre simpleForth-$(PLATFORM)-backend.pre simpleForth.pre \
-            | ./preForth >simpleForth.$(EXT)
-
-simpleForth: simpleForth.$(UNIXFLAVOUR)
-	cp simpleForth.$(UNIXFLAVOUR) simpleForth
-
-%.asm: %.simple simpleForth simpleForth-$(PLATFORM)-rts.simple simpleForth-rts.simple
-	cat simpleForth-$(PLATFORM)-rts.simple simpleForth-rts.simple $< | ./simpleForth >$@
-
-# ------------------------------------------------------------------------
 # seedForth
 # ------------------------------------------------------------------------
 seedForth.$(EXT): seedForth-$(PLATFORM).pre preForth
@@ -153,4 +131,4 @@ seedForth: seedForth.$(UNIXFLAVOUR)
 
 .PHONY=clean
 clean:
-	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo simpleForthDemo simpleForth preForth forth seedForth seedForthDemo.seed
+	rm -f *.asm *.o *.fas *.s *.c *.Darwin *.Linux preForthdemo preForth forth seedForth seedForthDemo.seed
