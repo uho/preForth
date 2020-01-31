@@ -1,16 +1,6 @@
-# Makefile for preForth
+# Makefile for preForth and seedForth
 #
 # make bootstrap should produce two identical files: preForth1.asm and preForth.asm 
-# or preForth1.c and preForth.c
-
-
-# Set PLATFORM to the intended preForth platform
-# ------------------------------------------------------------------------
-# PLATFORM=symbolic
-PLATFORM=i386
-# PLATFORM=C
-# ------------------------------------------------------------------------
-
 
 # Set HOSTFORTH to the Forth system that generates the initial preForth
 # ------------------------------------------------------------------------
@@ -25,35 +15,22 @@ all: preForth runseedforthdemo
 runseedforthdemo: seedForth seedForthDemo.seed
 	cat seedForthDemo.seed | ./seedForth
 
-# preForth connected to stdin - output to stdout
-.PHONY=visible-bootstrap
-visible-bootstrap: preForth preForth-$(PLATFORM)-backend.pre preForth.pre 
-	cat preForth-$(PLATFORM)-backend.pre preForth.pre | ./preForth
-
-# ------------------------------------------------------------------------
-# i386 version MacOS and Linux
-# ------------------------------------------------------------------------
-ifeq ($(PLATFORM),C)
-  UNIXFLAVOUR=stdC
-  EXT=c
-else
-  UNIXFLAVOUR=$(shell uname -s)
-  EXT=asm
-endif
+UNIXFLAVOUR=$(shell uname -s)
+EXT=asm
 
 seedForth-i386.asm: seedForth-i386.pre preForth
 	cat seedForth-i386.pre | ./preForth >seedForth-i386.asm
 
 # preForth connected to stdin - output to preForth.asm
-preForth.asm: preForth.pre preForth-$(PLATFORM)-backend.pre load-$(PLATFORM)-preForth.fs
-	cat preForth-$(PLATFORM)-rts.pre preForth-rts.pre preForth-$(PLATFORM)-backend.pre preForth.pre \
-	    | $(HOSTFORTH) load-$(PLATFORM)-preForth.fs >preForth.asm
+preForth.asm: preForth.pre preForth-i386-backend.pre load-i386-preForth.fs
+	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre \
+	    | $(HOSTFORTH) load-i386-preForth.fs >preForth.asm
 
 preForth: preForth.$(UNIXFLAVOUR)
 	cp preForth.$(UNIXFLAVOUR) preForth
 
-%.asm: %.pre preForth preForth-$(PLATFORM)-rts.pre preForth-rts.pre
-	cat preForth-$(PLATFORM)-rts.pre preForth-rts.pre $< | ./preForth >$@
+%.asm: %.pre preForth preForth-i386-rts.pre preForth-rts.pre
+	cat preForth-i386-rts.pre preForth-rts.pre $< | ./preForth >$@
 
 %: %.$(UNIXFLAVOUR)
 	cp $< $@
@@ -78,29 +55,15 @@ preForth: preForth.$(UNIXFLAVOUR)
 
 # run preForth on its own source code to perform a bootstrap 
 # should produce identical results
-bootstrap: preForth preForth-$(PLATFORM)-backend.pre preForth.pre preForth.$(EXT)
-	cat preForth-$(PLATFORM)-rts.pre preForth-rts.pre preForth-$(PLATFORM)-backend.pre preForth.pre\
+bootstrap: preForth preForth-i386-backend.pre preForth.pre preForth.$(EXT)
+	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre\
            | ./preForth >preForth1.$(EXT)
 	cmp preForth.$(EXT) preForth1.$(EXT)
 
-# ------------------------------------------------------------------------
-# C version
-# ------------------------------------------------------------------------
-# preForth connected to stdin - output to preForth.c
-preForth.c: preForth.pre preForth-C-backend.pre load-C-preForth.fs
-	cat preForth-C-rts.pre preForth-rts.pre preForth-C-backend.pre preForth.pre \
-	   | $(HOSTFORTH) load-C-preForth.fs >preForth.c
-
-%.c: %.pre preForth preForth-C-rts.pre preForth-rts.pre
-	cat preForth-C-rts.pre preForth-rts.pre $< | ./preForth >$@
-
-%.stdC: %.c
-	gcc -O3 -Wno-implicit-function-declaration -o $@ $<
-
-# get C version assembly listing
-preForth.s: preForth.c
-	gcc -S -O3 -Wno-implicit-function-declaration -o preForth.s preForth.c
-
+# preForth connected to stdin - output to stdout
+.PHONY=visible-bootstrap
+visible-bootstrap: preForth preForth-i386-backend.pre preForth.pre 
+	cat preForth-i386-backend.pre preForth.pre | ./preForth
 
 # ------------------------------------------------------------------------
 # Docker support (for Linux version)
@@ -119,8 +82,8 @@ rundocker: docker-image
 # ------------------------------------------------------------------------
 # seedForth
 # ------------------------------------------------------------------------
-seedForth.$(EXT): seedForth-$(PLATFORM).pre preForth
-	cat seedForth-$(PLATFORM).pre | ./preForth >seedForth.$(EXT)
+seedForth.$(EXT): seedForth-i386.pre preForth
+	cat seedForth-i386.pre | ./preForth >seedForth.$(EXT)
 
 seedForth: seedForth.$(UNIXFLAVOUR)
 	cp seedForth.$(UNIXFLAVOUR) seedForth
