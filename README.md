@@ -39,22 +39,20 @@ and
 
   Just 13 primitives: emit key dup swap drop 0< ?exit >r r> - nest unnest lit
 
-## simpleForth
+## seedForth
 
-simpleForth is an extension to preForth built using preForth. It is still non-interactive but adds 
+seedForth is an extended system with random access memory, control structures, compiling and defining words. Its kernel the so called *seedForth bed* is built using preForth. Seed Forth bed has about 30 primitives as well as a compiler and interpreter. 
 
-- control structures IF ELSE THEN BEGIN WHILE REPEAT UNTIL
-- definitions with and without headers in generated code
-- memory: @ ! c@ c! allot c, , 
-- variable, constants
-- ['] execute
-- immediate definitions
+seedForth accepts source code in tokenized source code form (.seed files). the seedForth tokenizer reads text source code (.seedsource files) and converts them to token form. 
 
-## Forth
+You can create applications by writing the appropriate seedForth text source code, tokenize it using the tokenizer (`make xxx.seed`) and then feed the token source code into the seedForth bet (`cat xxx.seed | ./seedForth`) in order to let the application grow.
 
-Forth is a simple interactive Forth system built using simpleForth.
-Forth is open ended and has a yet incomplete set of features. Work in progress.
+On of these applications is seedForth/interactive.
 
+## seedForth/interactive
+
+seedForth/interactive extends seedForth to become a full featured interactive Forth system. For this it defines a searchable dictionary of (text based) headers and a text based interpreter and compiler.
+On startup seedForth/interactive accepts Forth source code in text form.
 
 # How to use:
 
@@ -65,22 +63,21 @@ You'll need one of these for the first bootstrap.
     cd preForth
     make
 
-This will successively compile preForth, simpleForth, then Forth.
+This will successively compile preForth, seedForth then seedForth/interactive.
 
 If successful issue
 
-    $ ./Forth
-
-    Forth 1.2.0
-
-    last * warm cold empty patch minor major banner quit restart REPEAT WHILE AGAIN 
-    UNTIL BEGIN THEN ELSE IF ; : constant variable header cmove compile, , allot here 
-    dp +! clearstack interpret parse-name \ .( ( parse (interpreters ?word (compilers ,word 
-    immediate !flags @flags or and #immediate ] [ interpreters compilers handlers ,'x' ?'x' 
-    ,# ?# scan skip source /string >in query #tib tib accept min words .name l>interp l>name 
-    l>flags type count cell+ cells find-name .s prefix? compare 2dup 2drop rot off on ?dup + 
-    space bl cr . u. negate > 1- nip = 0= pick 1+ < over depth execute c! ! c@ @ ?branch 
-    branch lit exit unnest - r> >r ?exit 0< drop swap dup key emit bye 
+    $ ./seed
+    
+and seedForth/interactive will start up showing
+    
+    ..................................................
+    .
+    seedForth/interactive 2.2.0
+    ---------------------------
+    380005 bytes free
+ 
+and more test output. Tweek `hi.forth` as desired.
 
 Inspect sources and generated files.
 

@@ -460,15 +460,15 @@ Variable voc-link  0 voc-link !
 
 : s>d ( n -- d )  dup 0< ;
 
-: dnegate ( d1 -- d2 )  ;   \ define w/o carry
-
-: sm/rem ( d1 n1 -- n2 n3 ) ;
-    
-
-t{  10 s>d  3  sm/rem ->   1  3 }t
-t{ -10 s>d  3  sm/rem ->  -1 -3 }t
-t{  10 s>d -3  sm/rem ->   1 -3 }t
-t{ -10 s>d -3  sm/rem ->  -1  3 }t
+\ : dnegate ( d1 -- d2 )  ;   \ define w/o carry
+\
+\ : sm/rem ( d1 n1 -- n2 n3 ) ;
+\     
+\
+\ t{  10 s>d  3  sm/rem ->   1  3 }t
+\ t{ -10 s>d  3  sm/rem ->  -1 -3 }t
+\ t{  10 s>d -3  sm/rem ->   1 -3 }t
+\ t{ -10 s>d -3  sm/rem ->  -1  3 }t
 
 
 \ number output:  <# # #s #> sign hold holds base . u. .r u.r
@@ -845,9 +845,6 @@ cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
 [THEN]
 
 cr .( ok: afterwords )
-
-cr .( How would conditional compilation work in tokenized form? )
-
 
 : abort ( -- )  -1 throw ;
 
