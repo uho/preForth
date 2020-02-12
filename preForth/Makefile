@@ -8,6 +8,12 @@ HOSTFORTH=gforth
 # HOSTFORTH=sf   # SwiftForth >3.7
 # ------------------------------------------------------------------------
 
+# select path for linker
+# TODO: auto-detect linker
+#LINKER=/lib32/ld-linux.so.2
+# Linker for Debian based Linux
+LINKER=/lib/ld-linux.so.2
+
 .PHONY=all
 all: preForth seedForth seedForthDemo.seed seedForthInteractive.seed
 
@@ -46,7 +52,7 @@ preForth: preForth.$(UNIXFLAVOUR)
 %.Linux: %.asm
 	fasm $< $@.o
 	ld -arch i386 -o $@ \
-	   -dynamic-linker /lib32/ld-linux.so.2 \
+	   -dynamic-linker $(LINKER) \
 	   /usr/lib/i386-linux-gnu/crt1.o /usr/lib/i386-linux-gnu/crti.o \
 	   $@.o \
 	   -lc /usr/lib/i386-linux-gnu/crtn.o
