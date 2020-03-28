@@ -45,7 +45,7 @@ preForth: preForth.$(UNIXFLAVOUR)
 # assemble and link executable on linux
 %.Linux: %.asm
 	fasm $< $@.o
-	ld -arch i386 -o $@ \
+	LDEMULATION=elf_i386 ld -arch i386 -o $@ \
 	   -dynamic-linker /lib32/ld-linux.so.2 \
 	   /usr/lib/i386-linux-gnu/crt1.o /usr/lib/i386-linux-gnu/crti.o \
 	   $@.o \
