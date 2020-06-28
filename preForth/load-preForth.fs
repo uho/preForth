@@ -1,11 +1,12 @@
 \ Load preForth on GForth or SwiftForth connected to stdin and stdout.
 
+\ : [DEFINED] BL WORD FIND NIP 0<> ; IMMEDIATE
 
-defined warnings [IF] \ e.g. gforth
+[DEFINED] warnings [IF] \ e.g. gforth
  warnings off
 [THEN]
 
-defined warning [IF] \ e.g. SwiftForth
+[DEFINED] warning [IF] \ e.g. SwiftForth
  warning off
 [THEN]
 
@@ -18,11 +19,11 @@ Variable ch
     ; \ dup emit ;
 
 \ This : allows for recursion by using a word's name.
-defined -smudge [IF] \ SwiftForth
+[defined] -smudge [IF] \ SwiftForth
 : : : -smudge ;
 [THEN]
 
-defined reveal [IF] \ gforth
+[defined] reveal [IF] \ gforth
 : : : reveal ;
 [THEN]
 
