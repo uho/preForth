@@ -23,7 +23,7 @@
     'Q' swap '?' case? ?exit nip
     'R' swap '"' case? ?exit nip
 \   'S' swap '!' case? ?exit nip
-    'T' swap '*' case? ?exit nip   
+    'T' swap '*' case? ?exit nip
     'U' swap '(' case? ?exit nip
     'V' swap '|' case? ?exit nip
     'W' swap ',' case? ?exit nip
@@ -42,22 +42,13 @@
 \ output words
 \ ------------
 \ Output is done by emit.
-\ We define convenience words of the form ."xxx" to output xxx and >"xxx" to output xxx on a new line indented by a tab.
+\ We define convenience words of the form ."xxx" to output xxx (maybe tabbed)
 
 : ."dd" ( -- )
-    'D' emit 'D' emit space ;
-
-: >"dd" ( -- )
-    cr tab ."dd" ;
+    tab 'd' emit 'd' emit tab ;
 
 : ."db" ( -- )
-    'D' emit 'B' emit space ;
-
-: >"db" ( -- )
-    cr tab ."db" ;
-
-: >"ds" ( -- )
-    cr tab 'D' emit 'S' emit space ;
+    tab 'd' emit 'b' emit tab ;
 
 : ."nest" ( -- )
     'n' 'e' 's' 't' 4 alter show ;
@@ -74,55 +65,50 @@
 
 \ ,string compiles the topmost string as a sequence of numeric DB values.
 : ,string ( S -- )
-    \ ."ds" show ;
     ?dup 0= ?exit
-    dup roll >"db" u.  \ 1st char
+    dup roll ."db" u. cr \ 1st char
     1- ,string ;
 
 \ reproduce a verbatim line
 : ,line ( x1 ...cn n -- )
     show ;
 
-\ compile a reference to an invoked word 
+\ compile a reference to an invoked word
 : ,word ( S -- )
-   ."dd" alter show ;
-
-\ compile a reference to an invoked word on a new line
-: ,>word ( S -- )
-    >"dd" alter show ;
+   ."dd" alter show cr ;
 
 \ compile reference to nest primitive
 : ,nest ( -- )
-    ."dd" ."nest" ;
+    ."dd" ."nest" cr ;
 
 \ compile reference to unnest primitive
 : ,unnest ( -- )
-    >"dd" ."unnest"
-    cr ;
+    ."dd" ."unnest" cr cr ;
 
 \ compile signed number
 : ,n ( n -- )
-    >"dd" . ; 
+    ."dd" . cr ;
 
 \ compile unsigned number
 : ,u ( u -- )
-    >"dd" u. ;
+    ."dd" u. cr ;
 
 \ compile literal
 : ,_lit ( S -- )
-    >"dd" ."lit"  ,>word ;
+    ."dd" ."lit" cr  ,word ;
 
 \ compile literal
 : ,lit ( x -- )
-    >"dd" ."lit"  ,n ;
+    ."dd" ."lit" cr  ,n ;
 
 \ output string as comment
 : ,comment ( S -- )
-    cr tab ';' emit  space show ;
+    tab ';' emit space show cr ;
 
 \ create a new symbolic label
+\ if label is 6 characters or less, stay on same line for following code
 : label ( S -- )
-    cr alter show ':' emit tab ;
+    alter dup >r show ':' emit r> 7 - 0< ?exit cr ;
 
 \ body calculates the name of the body from a token
 : body ( S1 -- S2 )
@@ -138,7 +124,7 @@
 
 : ,end-code ( -- )
   cr ;
- 
+
 \ -----------------------------------
 \ tail call optimization    tail word ;  ->  [ ' word >body ] literal >r ;
 
@@ -148,19 +134,20 @@
 \ ,tail compiles a tail call
 : ,tail  ( S -- )
    body ,_lit
-   '>' 'r' 2 ,>word ;
+   '>' 'r' 2 ,word ;
 
-: ."done" ( -- )
-    ';' emit space 'd' emit 'o' emit 'n' emit 'e' emit ;
-
-: ."last:" ( -- )
-    ';' emit space 'l' emit 'a' emit 's' emit 't' emit ':' emit space ;
+\ : ."done" ( -- )
+\     ';' emit space 'd' emit 'o' emit 'n' emit 'e' emit ;
+\
+\ : ."last:" ( -- )
+\     ';' emit space 'l' emit 'a' emit 's' emit 't' emit ':' emit space ;
 
 : ,end ( S -- )
-    cr ."last:" alter show
-    cr ."done" cr ;
+    \ cr ."last:" alter show
+    \ cr ."done" cr
+    ;
 
-\ create a new header with given name S2 and flags - do nothing
-: header ( S1 S2 flags -- S3 S2 )
-   drop ;
+\ \ create a new header with given name S2 and flags - do nothing
+\ : header ( S1 S2 flags -- S3 S2 )
+\    drop ;
 

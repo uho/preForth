@@ -7,169 +7,169 @@
 \      EBP  return stack pointer
 \      ESP  data stack pointer
 
-prelude
+pre
 ;;; This is a preForth generated file using preForth-i386-backend.
 ;;; Only modify it, if you know what you are doing.
- 
-;
 
-prefix
-format ELF 
+DATA_STACK_SIZE = 40000
+RETURN_STACK_SIZE = 40000
 
-section '.bss' writeable executable
+format ELF
 
-       DD 10000 dup (0)
-stck:  DD 16 dup(0)
-  
-       DD 10000 dup(0)
-rstck: DD 16 dup(0)
+section '.text' executable
 
-
-section '.text' executable writeable
-public main 
+public main
 extrn putchar
 extrn getchar
 extrn fflush
 extrn exit
-  
+
 macro next  {
-       lodsd
-       jmp dword [eax]
+	lodsd
+	jmp	dword [eax]
 }
 
+main:	cld
+	mov	esp,data_stack + DATA_STACK_SIZE
+	mov	ebp,return_stack + RETURN_STACK_SIZE
+	mov	esi,main1
+	next
 
-main:  cld
-       mov esp, dword stck
-       mov ebp, dword rstck
-       mov esi, main1
-       next
+main1:	dd	_cold
+	dd	_bye
 
-main1: DD _cold
-       DD _bye  
-  
-  
-_nest:  lea ebp, [ebp-4]
-        mov [ebp], esi
-        lea esi, [eax+4]
-        next
-
-_O = 0
-  
+_nest:	lea	ebp,[ebp-4]
+	mov	[ebp],esi
+	lea	esi,[eax+4]
+	next
 ;
 
 code bye ( -- )
-    push ebp  
-    mov ebp, esp  
-    and esp, 0xfffffff0
-    mov eax, 0
-    mov [esp], eax
-    call exit
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	mov	eax,0
+	mov	[esp],eax
+	call	exit
 ;
-    
+
 code emit ( c -- )
-    pop eax
+	pop	eax
 
-    push ebp  
-    mov  ebp, esp
-    push eax 
-    and  esp, 0xfffffff0
+	push	ebp
+	mov	ebp,esp
+	push	eax
+	and	esp,0xfffffff0
 
-    mov dword [esp], eax
-    call putchar
+	mov	dword [esp],eax
+	call	putchar
 
-    mov eax, 0
-    mov [esp], eax
-    call fflush   ; flush all output streams
+	mov	eax,0
+	mov	[esp],eax
+	call	fflush   ; flush all output streams
 
-    mov esp, ebp  
-    pop ebp  
-    next
+	mov	esp,ebp
+	pop	ebp
+	next
 ;
 
 code key ( -- c )
-        push ebp  
-        mov  ebp, esp
-        and  esp, 0xfffffff0
-        
-        call getchar
-        mov esp, ebp
-        pop ebp
-        cmp eax,-1
-        jnz key1
-        mov eax,4
-key1:   push eax
-        next
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+
+	call	getchar
+	mov	esp,ebp
+	pop	ebp
+	cmp	eax,-1
+	jnz	key1
+	mov	eax,4   ; eof: return Ctrl-D
+key1:	push	eax
+	next
 ;
 
 code dup ( x -- x x )
-        pop eax
-        push eax
-        push eax
-        next
+	pop	eax
+	push	eax
+	push	eax
+	next
 ;
 
 code swap ( x y -- y x )
-        pop edx
-        pop eax
-        push edx
-        push eax
-        next
+	pop	edx
+	pop	eax
+	push	edx
+	push	eax
+	next
 ;
 
 code drop ( x -- )
-        pop eax
-        next
+	pop	eax
+	next
 ;
 
 code 0< ( x -- flag )
-        pop eax
-        or eax, eax
-        mov eax, 0
-        jns zless1
-        dec eax
-zless1: push eax
-        next
+	pop	eax
+	sar	eax,31
+	push	eax
+	next
 ;
 
-code ?exit ( f -- )
-        pop eax
-        or eax, eax
-        jz qexit1
-        mov esi, [ebp]
-        lea ebp,[ebp+4]
-qexit1: next
+code ?exit ( f -- ) \  high level:  IF exit THEN
+	pop	eax
+	or	eax,eax
+	jz	qexit1
+	mov	esi,[ebp]
+	lea	ebp,[ebp+4]
+qexit1:	next
 ;
 
 code >r ( x -- ) ( R -- x )
-        pop ebx
-        lea ebp,[ebp-4]
-        mov [ebp], ebx
-        next
+	pop	ebx
+	lea	ebp,[ebp-4]
+	mov	[ebp],ebx
+	next
 ;
 
 code r> ( R x -- ) ( -- x )
-        mov eax,[ebp]
-        lea ebp, [ebp+4]
-        push eax
-        next
+	mov	eax,[ebp]
+	lea	ebp,[ebp+4]
+	push	eax
+	next
 ;
 
 code - ( x1 x2 -- x3 )
-        pop edx
-        pop eax
-        sub eax, edx
-        push eax
-        next
+	pop	edx
+	pop	eax
+	sub	eax,edx
+	push	eax
+	next
 ;
 
 code unnest ( -- )
-        mov esi,[ebp]
-        lea ebp,[ebp+4]
-        next
+	mov	esi,[ebp]
+	lea	ebp,[ebp+4]
+	next
 ;
 
 code lit ( -- )
-        lodsd
-        push eax
-        next
+	lodsd
+	push	eax
+	next
+;
+
+\ we want the text section to be first and bss last (for linkers that output
+\ sections in definition order), so it would be good to have the bss section
+\ be output by the ",end" hook, but at present we cannot call "pre" from a
+\ defined word, so we make do by switching to bss and then back to text again
+pre
+section '.bss' writeable
+
+data_stack:
+	db	DATA_STACK_SIZE dup (0)
+return_stack:
+	db	RETURN_STACK_SIZE dup (0)
+
+section '.text' executable
+
 ;

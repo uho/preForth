@@ -97,7 +97,7 @@ Variable #tokens  0 #tokens !
 : process-digit? ( x c -- x' flag )
    '0' - dup 10 u< IF  swap 10 * + true EXIT THEN  drop false ;
 
-: number? ( c-addr u -- x flag )
+: process-number? ( c-addr u -- x flag )
 	 dup 0= IF 2drop 0 false EXIT THEN
  	 over c@ '-' = dup >r IF 1 /string THEN
      >r >r 0 r> r> bounds 
@@ -109,7 +109,7 @@ Variable #tokens  0 #tokens !
 : seed-name ( c-addr u -- )
 	 2dup  token@ dup IF nip nip execute EXIT THEN drop
 	 2dup  char-lit? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
-	 2dup  number? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
+	 2dup  process-number? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
 	 cr type ."  not found" abort ;
 
 : seed-line ( -- )
