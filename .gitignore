@@ -1,0 +1,9 @@
+*.Darwin
+*.Linux
+*.asm
+*.o
+*.seed
+/preForth/preForthdemo
+/preForth/preForth
+/preForth/forth
+/preForth/seedForth
