@@ -29,21 +29,16 @@ seedForth-i386.asm: seedForth-i386.pre preForth
 	cat seedForth-i386.pre | ./preForth >seedForth-i386.asm
 
 # preForth connected to stdin - output to preForth.asm
-preForth.asm: preForth.pre preForth-i386-backend.pre load-i386-preForth.fs
+preForth.asm: preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre load-i386-preForth.fs
 	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre \
 	    | $(HOSTFORTH) load-i386-preForth.fs >preForth.asm
-
-preForth: preForth.$(UNIXFLAVOUR)
-	cp preForth.$(UNIXFLAVOUR) preForth
 
 %.asm: %.pre preForth preForth-i386-rts.pre preForth-rts.pre
 	cat preForth-i386-rts.pre preForth-rts.pre $< | ./preForth >$@
 
-%: %.$(UNIXFLAVOUR)
-	cp $< $@
-
+ifeq ($(UNIXFLAVOUR),Linux)
 # assemble and link executable on linux
-%.Linux: %.asm
+%: %.asm
 	fasm $< $@.o
 	LDEMULATION=elf_i386 ld -arch i386 -o $@ \
 	   -dynamic-linker /lib32/ld-linux.so.2 \
@@ -51,19 +46,22 @@ preForth: preForth.$(UNIXFLAVOUR)
 	   $@.o \
 	   -lc /usr/lib/i386-linux-gnu/crtn.o
 	# rm $@.o
-
+else
+ifeq ($(UNIXFLAVOUR),Darwin)
 # assemble and link executable on MacOS
-%.Darwin: %.asm
+%: %.asm
 	fasm $< $@.o
 	objconv -fmacho32 -nu $@.o $@_m.o
 	ld -arch i386 -macosx_version_min 10.6 -o $@ \
 	  $@_m.o /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/crt1.o /usr/lib/libc.dylib
 	# rm $@.o $@_m.o
+endif
+endif
 
 # run preForth on its own source code to perform a bootstrap 
 # should produce identical results
-bootstrap: preForth preForth-i386-backend.pre preForth.pre preForth.$(EXT)
-	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre\
+bootstrap: preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre preForth preForth.$(EXT)
+	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre \
            | ./preForth >preForth1.$(EXT)
 	cmp preForth.$(EXT) preForth1.$(EXT)
 
@@ -92,13 +90,10 @@ rundocker: docker-image
 seedForth.$(EXT): seedForth-i386.pre preForth
 	cat seedForth-i386.pre | ./preForth >seedForth.$(EXT)
 
-seedForth: seedForth.$(UNIXFLAVOUR)
-	cp seedForth.$(UNIXFLAVOUR) seedForth
-
 %.seed: %.seedsource seedForth-tokenizer.fs
 	gforth seedForth-tokenizer.fs $<
 
 
 .PHONY=clean
 clean:
-	rm -f *.Darwin *.Linux *.asm *.o *.seed preForthdemo preForth seedForth
+	rm -f *.asm *.o *.seed preForthdemo preForth seedForth

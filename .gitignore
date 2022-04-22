@@ -1,5 +1,3 @@
-*.Darwin
-*.Linux
 *.asm
 *.o
 *.seed
