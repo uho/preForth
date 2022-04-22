@@ -7,8 +7,8 @@
 \      EBP  return stack pointer
 \      ESP  data stack pointer
 
-prelude
-;;; This is seedForth - a small, potentially interactive Forth, that dynamically
+pre
+;;; This is seedForth - a small,potentially interactive Forth, that dynamically
 ;;; bootstraps from a minimal kernel.
 ;;;
 ;;;    cat seedForth.seed - | ./seedForth
@@ -16,28 +16,26 @@ prelude
 ;;; .seed-files are in byte-tokenized source code format.
 ;;;
 ;;; Use the seedForth tokenizer to convert human readable source code to byte-token form.
-;
 
-prefix
-format ELF 
+format ELF
 
-section '.bss' executable writable
+section '.bss' executable writeable
 
-       DD 10000 dup(0)
-stck:  DD 16 dup(0)
+	DD	10000 dup(0)
+stck:	DD	16 dup(0)
 
-       DD 10000 dup(0)
-rstck: DD 16 dup(0)
-  
-_dp:    DD _start  ; dictionary pointer: points to next free location in memory
+	DD	10000 dup(0)
+rstck:	DD	16 dup(0)
+
+_dp:	DD	_start  ; dictionary pointer: points to	next free location in memory
         ; free memory starts at _start
 
-__hp:   DD 0       ; head pointer: index of first unused head
-_head:  DD 10000 dup (0)
+__hp:	DD	0       ; head pointer: index of first unused head
+_head:	DD	10000 dup (0)
 
-section '.text' executable writable align 4096
+section '.text' executable writeable align 4096
 
-public main 
+public main
 extrn putchar
 extrn getchar
 extrn fflush
@@ -45,336 +43,334 @@ extrn exit
 extrn mprotect
 extrn ioctl
 extrn usleep
-  
+
 macro next  {
-       lodsd
-       jmp dword [eax]
+	lodsd
+	jmp	dword [eax]
 }
 
 origin:
 
-main:  cld
-       mov esp, dword stck
-       mov ebp, dword rstck
+main:	cld
+	mov	esp,dword stck
+	mov	ebp,dword rstck
 
-       ; make section writable
-       push ebp
-       mov ebp, esp
-       sub esp, 16
-       and esp, 0xfffffff0
-       mov dword [esp+8], 7  ; rwx
-       mov eax, _memtop
-       sub eax, origin
-       mov dword [esp+4], eax
-       mov dword [esp], origin
-       call mprotect
-       mov esp, ebp
-       pop ebp
-       or eax, eax     ; error?   
-       jz main0
-       push ebp  
-       mov ebp, esp
-       push eax
-       and esp, 0xfffffff0
-       ; call __error    ; get error code on Mac OS
-       ; mov eax, [eax]
-       ; call __errno_location ; get error on Linux
-       ; mov eax, [eax]
-       mov [esp], eax
-       call exit
+	; make section writeable
+	push	ebp
+	mov	ebp,esp
+	sub	esp,16
+	and	esp,0xfffffff0
+	mov	dword [esp+8],7  ; rwx
+	mov	eax,_memtop
+	sub	eax,origin
+	mov	dword [esp+4],eax
+	mov	dword [esp],origin
+	call	mprotect
+	mov	esp,ebp
+	pop	ebp
+	or	eax,eax     ; error?
+	jz	main0
+	push	ebp
+	mov	ebp,esp
+	push	eax
+	and	esp,0xfffffff0
+	;call	__error    ; get error code on Mac OS
+	;mov	eax,[eax]
+	;call	__errno_location ; get error on Linux
+	;mov	eax,[eax]
+	mov	[esp],eax
+	call	exit
 
-main0: mov esi, main1
-       next
+main0:	mov	esi,main1
+	next
 
-main1: DD _cold
-       DD _bye  
+main1:	DD	_cold
+	DD	_bye
 
 _nest:
-_enter:  lea ebp, [ebp-4]
-        mov [ebp], esi
-        lea esi, [eax+4]
-        next
+_enter:	lea	ebp,[ebp-4]
+	mov	[ebp],esi
+	lea	esi,[eax+4]
+	next
 
 _dodoes: ; ( -- addr )
-        lea ebp, [ebp-4]  ; push IP
-        mov [ebp], esi
-        mov esi,[eax-4]   ; set IP
+	lea	ebp,[ebp-4]  ;	push	IP
+	mov	[ebp],esi
+	mov	esi,[eax-4]   ; set IP
 _dovar: ; ( -- addr )
-        lea eax,[eax+4] ; to parameter field
-        push eax
-        next
-
+	lea	eax,[eax+4] ; to parameter field
+	push	eax
+	next
 ;
-
 
 code bye ( -- )
-    push ebp  
-    mov ebp, esp  
-    and esp, 0xfffffff0
-    mov eax, 0
-    mov [esp], eax
-    call exit
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	mov	eax,0
+	mov	[esp],eax
+	call	exit
 ;
-    
+
 code emit ( c -- )
-    pop eax
+	pop	eax
 
-    push ebp  
-    mov  ebp, esp
-    push eax 
-    and  esp, 0xfffffff0
+	push	ebp
+	mov	ebp,esp
+	push	eax
+	and	esp,0xfffffff0
 
-    mov dword [esp], eax
-    call putchar
+	mov	dword [esp],eax
+	call	putchar
 
-    mov eax, 0
-    mov [esp], eax
-    call fflush   ; flush all output streams
+	mov	eax,0
+	mov	[esp],eax
+	call	fflush   ; flush all output streams
 
-    mov esp, ebp  
-    pop ebp  
-    next
+	mov	esp,ebp
+	pop	ebp
+	next
 ;
 
 code key ( -- c )
-        push ebp  
-        mov  ebp, esp
-        and  esp, 0xfffffff0
-        
-        call getchar
-        mov esp, ebp
-        pop ebp
-        cmp eax,-1
-        jnz key1
-        mov eax,4   ; eof: return Ctrl-D 
-key1:   push eax
-        next
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+
+	call	getchar
+	mov	esp,ebp
+	pop	ebp
+	cmp	eax,-1
+	jnz	key1
+	mov	eax,4   ; eof: return Ctrl-D
+key1:	push	eax
+	next
 ;
 
 code key? ( -- f )
-       push ebp  
-       mov  ebp, esp
-       and  esp, 0xfffffff0
-       sub  esp, 32
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	sub	esp,32
 
-       mov dword [esp], 0
-       mov dword [esp+4], 1074030207 ; FIONREAD
-       lea dword eax, [esp+24]
-       mov dword [esp+8], eax
+	mov	dword [esp],0
+	mov	dword [esp+4],1074030207 ; FIONREAD
+	lea	dword eax,[esp+24]
+	mov	dword [esp+8],eax
 
-       call ioctl
-       mov dword eax, [esp+24]
+	call	ioctl
+	mov	dword eax,[esp+24]
 
-       mov esp, ebp
-       pop ebp
+	mov	esp,ebp
+	pop	ebp
 
-       cmp eax, 0
-       jz keyq1
-       mov eax, -1
-keyq1: push eax
-       next
+	cmp	eax,0
+	jz	keyq1
+	mov	eax,-1
+keyq1:	push	eax
+	next
 ;
 
 code dup ( x -- x x )
-        pop eax
-        push eax
-        push eax
-        next
+	pop	eax
+	push	eax
+	push	eax
+	next
 ;
 
 code swap ( x y -- y x )
-        pop edx
-        pop eax
-        push edx
-        push eax
-        next
+	pop	edx
+	pop	eax
+	push	edx
+	push	eax
+	next
 ;
 
 code drop ( x -- )
-        pop eax
-        next
+	pop	eax
+	next
 ;
 
 code 0< ( x -- flag )
-        pop eax
-        sar eax,31
-        push eax
-        next
+	pop	eax
+	sar	eax,31
+	push	eax
+	next
 ;
 
 code ?exit ( f -- ) \  high level:  IF exit THEN
-        pop eax
-        or eax, eax
-        jz qexit1
-        mov esi, [ebp]
-        lea ebp,[ebp+4]
-qexit1: next
+	pop	eax
+	or	eax,eax
+	jz	qexit1
+	mov	esi,[ebp]
+	lea	ebp,[ebp+4]
+qexit1:	next
 ;
 
 code >r ( x -- ) ( R -- x )
-        pop ebx
-        lea ebp,[ebp-4]
-        mov [ebp], ebx
-        next
+	pop	ebx
+	lea	ebp,[ebp-4]
+	mov	[ebp],ebx
+	next
 ;
 
 code r> ( R x -- ) ( -- x )
-        mov eax,[ebp]
-        lea ebp, [ebp+4]
-        push eax
-        next
+	mov	eax,[ebp]
+	lea	ebp,[ebp+4]
+	push	eax
+	next
 ;
 
 code - ( x1 x2 -- x3 )
-        pop edx
-        pop eax
-        sub eax, edx
-        push eax
-        next
+	pop	edx
+	pop	eax
+	sub	eax,edx
+	push	eax
+	next
 ;
 
-code or ( x1 x2 -- x3 )
-        pop edx
-        pop eax
-        or eax, edx
-        push eax
-        next
+code	or	( x1 x2 -- x3 )
+	pop	edx
+	pop	eax
+	or	eax,edx
+	push	eax
+	next
 ;
 
-code and ( x1 x2 -- x3 )
-        pop edx
-        pop eax
-        and eax, edx
-        push eax
-        next
+code	and	( x1 x2 -- x3 )
+	pop	edx
+	pop	eax
+	and	eax,edx
+	push	eax
+	next
 ;
 
-pre 
+pre
 _unnest:
 ;
 code exit ( -- )
-        mov esi,[ebp]
-        lea ebp,[ebp+4]
-        next
+	mov	esi,[ebp]
+	lea	ebp,[ebp+4]
+	next
 ;
 
 code lit ( -- )
-        lodsd
-        push eax
-        next
+	lodsd
+	push	eax
+	next
 ;
 
 code @ ( addr -- x )
-        pop eax
-        mov eax,[eax]
-	push eax
-        next
+	pop	eax
+	mov	eax,[eax]
+	push	eax
+	next
 ;
 
 code c@ ( c-addr -- c )
-        pop edx
-        xor eax, eax
-        mov al,byte [edx]
-        push eax
-        next
+	pop	edx
+        xor	eax,eax
+	mov	al,byte [edx]
+	push	eax
+	next
 ;
 
 code ! ( x addr -- )
-        pop edx
-        pop eax
-        mov dword [edx],eax
-        next    
+	pop	edx
+	pop	eax
+	mov	dword [edx],eax
+	next
 ;
 
 code c! ( c c-addr -- )
-        pop edx
-        pop eax
-        mov byte [edx], al
-        next
+	pop	edx
+	pop	eax
+	mov	byte [edx],al
+	next
 ;
 
 \ code invoke ( addr -- ) \ native code: >r ;
-code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
-        pop edx
-        mov dword eax, [_head+edx*4]
-        jmp dword [eax]
+code execute ( addr -- ) \ this version uses token numbers as execution tokens	and	finds their code address via the headers table
+	pop	edx
+	mov	dword eax,[_head+edx*4]
+	jmp	dword [eax]
 ;
 
 code branch ( -- )  \ threaded code: r>  @ >r ;
-        lodsd
-        mov esi,eax
-        next
+	lodsd
+	mov	esi,eax
+	next
 ;
 
 code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
-        pop eax
-        or eax,eax
-        jz _branchX
-	      lea esi,[esi+4]
-        next
+	pop	eax
+	or	eax,eax
+	jz	_branchX
+	lea	esi,[esi+4]
+	next
 ;
 
 code depth ( -- n )
-        mov eax, stck
-        sub eax, esp
-        sar eax,2
-        push eax
-        next
+	mov	eax,stck
+	sub	eax,esp
+	sar	eax,2
+	push	eax
+	next
 ;
 
 code sp@ ( -- x )
-        push esp
-        next
+	push	esp
+	next
 ;
 
 code sp! ( x -- )
-        pop esp
-        next
+	pop	esp
+	next
 ;
 
 code rp@ ( -- x )
-        push ebp
-        next
+	push	ebp
+	next
 ;
 
 code rp! ( x -- )
-        pop ebp
-        next
+	pop	ebp
+	next
 ;
 
 code um* ( u1 u2 -- ud )
-        pop edx
-        pop eax
-        mul edx
-        push eax
-        push edx
-        next
+	pop	edx
+	pop	eax
+	mul	edx
+	push	eax
+	push	edx
+	next
 ;
 
 code um/mod ( ud u1 -- u2 u3 )
-        pop ebx
-        pop edx
-        pop eax
-        div ebx
-        push edx
-        push eax
-        next
+	pop	ebx
+	pop	edx
+	pop	eax
+	div	ebx
+	push	edx
+	push	eax
+	next
 ;
 
 code usleep ( c -- )
-    pop eax
+	pop	eax
 
-    push ebp  
-    mov  ebp, esp
-    push eax 
-    and  esp, 0xfffffff0
+	push	ebp
+	mov	ebp,esp
+	push	eax
+	and	esp,0xfffffff0
 
-    mov dword [esp], eax
-    call usleep
+	mov	dword [esp],eax
+	call	usleep
 
-    mov esp, ebp  
-    pop ebp  
-    next
+	mov	esp,ebp
+	pop	ebp
+	next
 ;
 
 
@@ -426,7 +422,7 @@ code usleep ( c -- )
 : compile, ( x -- )
    h@ , ;
 
-\ token are in the range 0 .. 767: 
+\ token are in the range 0 .. 767:
 \   0, 3 .. 255 are single byte tokens
 \    256 .. 511 are double byte tokens of the form 01 xx
 \    511 .. 767 are double byte tokens of the form 02 xx
@@ -438,16 +434,16 @@ code usleep ( c -- )
 : interpreter ( -- )
    token execute   tail interpreter ;  \ executing exit  will leave this loop
 
-: num ( -- x ) 
+: num ( -- x )
    tail interpreter ;
 
-: ?lit ( xt -- xt | )  
+: ?lit ( xt -- xt | )
    dup h@ lit num - ?exit drop   \ not num token: exit i.e. normal compile action
    lit lit ,   num ,             \ generate  lit x   num call puts x on stack
    r> drop   tail compiler ;
 
 : compiler ( -- )
-   token ?dup 0= ?exit  ?lit 
+   token ?dup 0= ?exit  ?lit
    compile, tail compiler ;
 
 : new ( -- xt )
@@ -470,7 +466,7 @@ code usleep ( c -- )
     r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
 ;
 
-: unused ( -- u )  
+: unused ( -- u )
     lit memtop  here - ;
 
 : cold ( -- )
@@ -537,7 +533,8 @@ code usleep ( c -- )
    interpreter bye ;
 
 pre
- _start: DB 43
-	 DD 100000 dup (0)
- _memtop: DD 0
+_start:	DB	43
+	DD	100000 dup (0)
+_memtop:
+	DD	0
 ;
