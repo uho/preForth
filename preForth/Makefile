@@ -103,8 +103,8 @@ rundocker: docker-image
 # ------------------------------------------------------------------------
 # seedForth
 # ------------------------------------------------------------------------
-seedForth.$(EXT): seedForth-i386.pre seedForth.pre preForth
-	cat seedForth-i386.pre seedForth.pre |./preForth >seedForth.$(EXT)
+seedForth.$(EXT): seedForth-i386-header.pre seedForth-i386.pre seedForth.pre preForth
+	cat seedForth-i386-header.pre seedForth-i386.pre seedForth.pre |./preForth >seedForth.$(EXT)
 
 %.seed: %.seedsource seedForth-tokenizer.fs
 	gforth seedForth-tokenizer.fs $<

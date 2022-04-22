@@ -10,19 +10,8 @@
 \      ESP  data stack pointer
 
 pre
-;;; This is seedForth - a small,potentially interactive Forth, that dynamically
-;;; bootstraps from a minimal kernel.
-;;;
-;;;    cat seedForth.seed - | ./seedForth
-;;;
-;;; .seed-files are in byte-tokenized source code format.
-;;;
-;;; Use the seedForth tokenizer to convert human readable source code to byte-token form.
-
 DATA_STACK_SIZE = 40000
 RETURN_STACK_SIZE = 40000
-HEAD_SIZE = 40000
-MEM_SIZE = 400000
 
 format ELF
 
