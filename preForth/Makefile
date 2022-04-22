@@ -16,7 +16,7 @@ test: runseedforthdemo runseedforthinteractive
 
 .PHONY=runseedforthdemo
 runseedforthdemo: seedForth seedForthDemo.seed
-	cat seedForthDemo.seed | ./seedForth
+	cat seedForthDemo.seed |./seedForth
 
 .PHONY=runseedfortinteractive
 runseedforthinteractive: seedForth seedForthInteractive.seed
@@ -25,26 +25,31 @@ runseedforthinteractive: seedForth seedForthInteractive.seed
 UNIXFLAVOUR=$(shell uname -s)
 EXT=asm
 
-seedForth-i386.asm: seedForth-i386.pre preForth
-	cat seedForth-i386.pre | ./preForth >seedForth-i386.asm
+preForth.asm: \
+preForth-i386-rts.pre \
+preForth-rts.pre \
+preForth-i386-backend.pre \
+preForth.pre \
+load-i386-preForth.fs
+	cat \
+preForth-i386-rts.pre \
+preForth-rts.pre \
+preForth-i386-backend.pre \
+preForth.pre \
+|$(HOSTFORTH) load-i386-preForth.fs >preForth.asm
 
-# preForth connected to stdin - output to preForth.asm
-preForth.asm: preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre load-i386-preForth.fs
-	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre \
-	    | $(HOSTFORTH) load-i386-preForth.fs >preForth.asm
-
-%.asm: %.pre preForth preForth-i386-rts.pre preForth-rts.pre
-	cat preForth-i386-rts.pre preForth-rts.pre $< | ./preForth >$@
+%.asm: %.pre preForth-i386-rts.pre preForth-rts.pre preForth
+	cat preForth-i386-rts.pre preForth-rts.pre $< |./preForth >$@
 
 ifeq ($(UNIXFLAVOUR),Linux)
 # assemble and link executable on linux
 %: %.asm
 	fasm $< $@.o
 	LDEMULATION=elf_i386 ld -arch i386 -o $@ \
-	   -dynamic-linker /lib32/ld-linux.so.2 \
-	   /usr/lib/i386-linux-gnu/crt1.o /usr/lib/i386-linux-gnu/crti.o \
-	   $@.o \
-	   -lc /usr/lib/i386-linux-gnu/crtn.o
+-dynamic-linker /lib32/ld-linux.so.2 \
+/usr/lib/i386-linux-gnu/crt1.o /usr/lib/i386-linux-gnu/crti.o \
+$@.o \
+-lc /usr/lib/i386-linux-gnu/crtn.o
 	# rm $@.o
 else
 ifeq ($(UNIXFLAVOUR),Darwin)
@@ -53,22 +58,33 @@ ifeq ($(UNIXFLAVOUR),Darwin)
 	fasm $< $@.o
 	objconv -fmacho32 -nu $@.o $@_m.o
 	ld -arch i386 -macosx_version_min 10.6 -o $@ \
-	  $@_m.o /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/crt1.o /usr/lib/libc.dylib
+$@_m.o /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/crt1.o \
+/usr/lib/libc.dylib
 	# rm $@.o $@_m.o
 endif
 endif
 
 # run preForth on its own source code to perform a bootstrap 
 # should produce identical results
-bootstrap: preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre preForth preForth.$(EXT)
-	cat preForth-i386-rts.pre preForth-rts.pre preForth-i386-backend.pre preForth.pre \
-           | ./preForth >preForth1.$(EXT)
+bootstrap: \
+preForth-i386-rts.pre \
+preForth-rts.pre \
+preForth-i386-backend.pre \
+preForth.pre \
+preForth \
+preForth.$(EXT)
+	cat \
+preForth-i386-rts.pre \
+preForth-rts.pre \
+preForth-i386-backend.pre \
+preForth.pre \
+|./preForth >preForth1.$(EXT)
 	cmp preForth.$(EXT) preForth1.$(EXT)
 
 # preForth connected to stdin - output to stdout
 .PHONY=visible-bootstrap
 visible-bootstrap: preForth preForth-i386-backend.pre preForth.pre 
-	cat preForth-i386-backend.pre preForth.pre | ./preForth
+	cat preForth-i386-backend.pre preForth.pre |./preForth
 
 # ------------------------------------------------------------------------
 # Docker support (for Linux version)
@@ -87,8 +103,8 @@ rundocker: docker-image
 # ------------------------------------------------------------------------
 # seedForth
 # ------------------------------------------------------------------------
-seedForth.$(EXT): seedForth-i386.pre preForth
-	cat seedForth-i386.pre | ./preForth >seedForth.$(EXT)
+seedForth.$(EXT): seedForth-i386.pre seedForth.pre preForth
+	cat seedForth-i386.pre seedForth.pre |./preForth >seedForth.$(EXT)
 
 %.seed: %.seedsource seedForth-tokenizer.fs
 	gforth seedForth-tokenizer.fs $<
