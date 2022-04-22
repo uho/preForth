@@ -130,7 +130,7 @@
 : code ( <name> -- )
     token
     _dup ,comment
-    0 header
+    \ 0 header
     ,code  line _drop  pre  ,end-code ;
     
 \ Colon definitions - the preForth compiler
@@ -262,7 +262,7 @@
 : :' ( <name> -- )
     token
     _dup ,comment
-    0 header
+    \ 0 header
     (: ;
 
 \ -----------

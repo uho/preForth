@@ -104,8 +104,6 @@ _dovar: ; ( -- addr )
         push eax
         next
 
-_O = 0
-  
 ;
 
 

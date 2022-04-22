@@ -150,17 +150,18 @@
    body ,_lit
    '>' 'r' 2 ,>word ;
 
-: ."done" ( -- )
-    ';' emit space 'd' emit 'o' emit 'n' emit 'e' emit ;
-
-: ."last:" ( -- )
-    ';' emit space 'l' emit 'a' emit 's' emit 't' emit ':' emit space ;
+\ : ."done" ( -- )
+\     ';' emit space 'd' emit 'o' emit 'n' emit 'e' emit ;
+\ 
+\ : ."last:" ( -- )
+\     ';' emit space 'l' emit 'a' emit 's' emit 't' emit ':' emit space ;
 
 : ,end ( S -- )
-    cr ."last:" alter show
-    cr ."done" cr ;
+    \ cr ."last:" alter show
+    \ cr ."done" cr
+    ;
 
-\ create a new header with given name S2 and flags - do nothing
-: header ( S1 S2 flags -- S3 S2 )
-   drop ;
+\ \ create a new header with given name S2 and flags - do nothing
+\ : header ( S1 S2 flags -- S3 S2 )
+\    drop ;
 

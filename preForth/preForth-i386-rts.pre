@@ -53,8 +53,6 @@ _nest:  lea ebp, [ebp-4]
         lea esi, [eax+4]
         next
 
-_O = 0
-  
 ;
 
 code bye ( -- )
