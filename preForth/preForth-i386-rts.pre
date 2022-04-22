@@ -11,17 +11,12 @@ pre
 ;;; This is a preForth generated file using preForth-i386-backend.
 ;;; Only modify it, if you know what you are doing.
 
+DATA_STACK_SIZE = 40000
+RETURN_STACK_SIZE = 40000
+
 format ELF
 
-section '.bss' executable writeable
-
-	dd	10000 dup(0)
-stck:	dd	16 dup(0)
-
-	dd	10000 dup(0)
-rstck:	dd	16 dup(0)
-
-section '.text' executable writeable
+section '.text' executable
 
 public main
 extrn putchar
@@ -35,8 +30,8 @@ macro next  {
 }
 
 main:	cld
-	mov	esp,dword stck
-	mov	ebp,dword rstck
+	mov	esp,data_stack + DATA_STACK_SIZE
+	mov	ebp,return_stack + RETURN_STACK_SIZE
 	mov	esi,main1
 	next
 
@@ -161,4 +156,19 @@ code lit ( -- )
 	lodsd
 	push	eax
 	next
+;
+
+\ we want the text section to be first and bss last (for linkers that output
+\ sections in definition order), so it would be good to have the bss section
+\ be output by the ",end" hook, but at present we cannot call "pre" from a
+\ defined word, so we make do by switching to bss and then back to text again
+pre
+section '.bss' writeable
+
+data_stack:
+	db	DATA_STACK_SIZE dup (0)
+return_stack:
+	db	RETURN_STACK_SIZE dup (0)
+
+section '.text' executable
 ;

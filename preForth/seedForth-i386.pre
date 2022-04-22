@@ -17,30 +17,20 @@ pre
 ;;;
 ;;; Use the seedForth tokenizer to convert human readable source code to byte-token form.
 
+DATA_STACK_SIZE = 40000
+RETURN_STACK_SIZE = 40000
+HEAD_SIZE = 40000
+MEM_SIZE = 400000
+
 format ELF
 
-section '.bss' executable writeable
-
-	dd	10000 dup(0)
-stck:	dd	16 dup(0)
-
-	dd	10000 dup(0)
-rstck:	dd	16 dup(0)
-
-_dp:	dd	_start  ; dictionary pointer: points to	next free location in memory
-        ; free memory starts at _start
-
-__hp:	dd	0       ; head pointer: index of first unused head
-_head:	dd	10000 dup (0)
-
-section '.text' executable writeable align 4096
+section '.text' executable
 
 public main
 extrn putchar
 extrn getchar
 extrn fflush
 extrn exit
-extrn mprotect
 extrn ioctl
 extrn usleep
 
@@ -52,36 +42,9 @@ macro next  {
 origin:
 
 main:	cld
-	mov	esp,dword stck
-	mov	ebp,dword rstck
-
-	; make section writeable
-	push	ebp
-	mov	ebp,esp
-	sub	esp,16
-	and	esp,0xfffffff0
-	mov	dword [esp+8],7  ; rwx
-	mov	eax,_memtop
-	sub	eax,origin
-	mov	dword [esp+4],eax
-	mov	dword [esp],origin
-	call	mprotect
-	mov	esp,ebp
-	pop	ebp
-	or	eax,eax     ; error?
-	jz	main0
-	push	ebp
-	mov	ebp,esp
-	push	eax
-	and	esp,0xfffffff0
-	;call	__error    ; get error code on Mac OS
-	;mov	eax,[eax]
-	;call	__errno_location ; get error on Linux
-	;mov	eax,[eax]
-	mov	[esp],eax
-	call	exit
-
-main0:	mov	esi,main1
+	mov	esp,data_stack + DATA_STACK_SIZE
+	mov	ebp,return_stack + RETURN_STACK_SIZE
+	mov	esi,main1
 	next
 
 main1:	dd	_cold
@@ -311,7 +274,7 @@ code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
 ;
 
 code depth ( -- n )
-	mov	eax,stck
+	mov	eax,data_stack + DATA_STACK_SIZE
 	sub	eax,esp
 	sar	eax,2
 	push	eax
@@ -372,7 +335,6 @@ code usleep ( c -- )
 	pop	ebp
 	next
 ;
-
 
 : negate ( n1 -- n2 )
    0 swap - ;
@@ -533,8 +495,21 @@ code usleep ( c -- )
    interpreter bye ;
 
 pre
-_start:	db	43
-	dd	100000 dup (0)
+section '.bss' writeable
+
+data_stack:
+	db	DATA_STACK_SIZE dup (0)
+return_stack:
+	db	RETURN_STACK_SIZE dup (0)
+
+	; dictionary pointer: points to	next free location in memory
+_dp:	dd	_mem
+
+	; head pointer: index of first unused head
+__hp:	dd	0
+_head:	dd	HEAD_SIZE dup (0)
+
+        ; free memory starts at _mem
+_mem:	db	MEM_SIZE dup (0)
 _memtop:
-	dd	0
 ;
