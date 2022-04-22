@@ -38,7 +38,7 @@
 \
 \ compiler words:
 \   ,line ,comment ,codefield ,end
-\   ,lit ,>word ,nest ,unnest ,tail
+\   ,lit ,word ,nest ,unnest ,tail
 \
 \ header creation:
 \   header label bodylabel
@@ -238,7 +238,7 @@
 
 \ ?word detects and handles words by compiling them as reference.
 : ?word ( S -- 0 | S )
-     dup 0= ?exit ,>word 0 ;
+     dup 0= ?exit ,word 0 ;
 
 \ Compiler loop
 \ -------------

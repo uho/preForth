@@ -21,17 +21,17 @@ format ELF
 
 section '.bss' executable writeable
 
-	DD	10000 dup(0)
-stck:	DD	16 dup(0)
+	dd	10000 dup(0)
+stck:	dd	16 dup(0)
 
-	DD	10000 dup(0)
-rstck:	DD	16 dup(0)
+	dd	10000 dup(0)
+rstck:	dd	16 dup(0)
 
-_dp:	DD	_start  ; dictionary pointer: points to	next free location in memory
+_dp:	dd	_start  ; dictionary pointer: points to	next free location in memory
         ; free memory starts at _start
 
-__hp:	DD	0       ; head pointer: index of first unused head
-_head:	DD	10000 dup (0)
+__hp:	dd	0       ; head pointer: index of first unused head
+_head:	dd	10000 dup (0)
 
 section '.text' executable writeable align 4096
 
@@ -84,8 +84,8 @@ main:	cld
 main0:	mov	esi,main1
 	next
 
-main1:	DD	_cold
-	DD	_bye
+main1:	dd	_cold
+	dd	_bye
 
 _nest:
 _enter:	lea	ebp,[ebp-4]
@@ -533,8 +533,8 @@ code usleep ( c -- )
    interpreter bye ;
 
 pre
-_start:	DB	43
-	DD	100000 dup (0)
+_start:	db	43
+	dd	100000 dup (0)
 _memtop:
-	DD	0
+	dd	0
 ;

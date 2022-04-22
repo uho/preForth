@@ -15,14 +15,14 @@ format ELF
 
 section '.bss' executable writeable
 
-	DD	10000 dup(0)
-stck:	DD	16 dup(0)
+	dd	10000 dup(0)
+stck:	dd	16 dup(0)
 
-	DD	10000 dup(0)
-rstck:	DD	16 dup(0)
-
+	dd	10000 dup(0)
+rstck:	dd	16 dup(0)
 
 section '.text' executable writeable
+
 public main
 extrn putchar
 extrn getchar
@@ -40,8 +40,8 @@ main:	cld
 	mov	esi,main1
 	next
 
-main1:	DD	_cold
-	DD	_bye
+main1:	dd	_cold
+	dd	_bye
 
 _nest:	lea	ebp,[ebp-4]
 	mov	[ebp],esi
