@@ -171,4 +171,5 @@ return_stack:
 	db	RETURN_STACK_SIZE dup (0)
 
 section '.text' executable
+
 ;

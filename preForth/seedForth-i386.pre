@@ -1,51 +1,13 @@
 \ seedForth: machine dependent portion
 
-\ seedForth - seed it, feed it, grow it - i386 (32 bit) ITC flavour   uho 2018-04-13
-\ ----------------------------------------------------------------------------------
-\
-\  - registers:
-\      EAX, EDX  general purpose
-\      ESI  instruction pointer
-\      EBP  return stack pointer
-\      ESP  data stack pointer
+\ interpreter and basic asm primitives are taken from preForth-i386-rts.pre,
+\ and then this file defines additional primitives (arithmetic, memory, etc)
 
 pre
-DATA_STACK_SIZE = 40000
-RETURN_STACK_SIZE = 40000
-
-format ELF
-
-section '.text' executable
-
-public main
-extrn putchar
-extrn getchar
-extrn fflush
-extrn exit
 extrn ioctl
 extrn usleep
 
-macro next  {
-	lodsd
-	jmp	dword [eax]
-}
-
-origin:
-
-main:	cld
-	mov	esp,data_stack + DATA_STACK_SIZE
-	mov	ebp,return_stack + RETURN_STACK_SIZE
-	mov	esi,main1
-	next
-
-main1:	dd	_cold
-	dd	_bye
-
-_nest:
-_enter:	lea	ebp,[ebp-4]
-	mov	[ebp],esi
-	lea	esi,[eax+4]
-	next
+_enter = _nest
 
 _dodoes: ; ( -- addr )
 	lea	ebp,[ebp-4]  ;	push	IP
@@ -54,50 +16,6 @@ _dodoes: ; ( -- addr )
 _dovar: ; ( -- addr )
 	lea	eax,[eax+4] ; to parameter field
 	push	eax
-	next
-;
-
-code bye ( -- )
-	push	ebp
-	mov	ebp,esp
-	and	esp,0xfffffff0
-	mov	eax,0
-	mov	[esp],eax
-	call	exit
-;
-
-code emit ( c -- )
-	pop	eax
-
-	push	ebp
-	mov	ebp,esp
-	push	eax
-	and	esp,0xfffffff0
-
-	mov	dword [esp],eax
-	call	putchar
-
-	mov	eax,0
-	mov	[esp],eax
-	call	fflush   ; flush all output streams
-
-	mov	esp,ebp
-	pop	ebp
-	next
-;
-
-code key ( -- c )
-	push	ebp
-	mov	ebp,esp
-	and	esp,0xfffffff0
-
-	call	getchar
-	mov	esp,ebp
-	pop	ebp
-	cmp	eax,-1
-	jnz	key1
-	mov	eax,4   ; eof: return Ctrl-D
-key1:	push	eax
 	next
 ;
 
@@ -125,65 +43,7 @@ keyq1:	push	eax
 	next
 ;
 
-code dup ( x -- x x )
-	pop	eax
-	push	eax
-	push	eax
-	next
-;
-
-code swap ( x y -- y x )
-	pop	edx
-	pop	eax
-	push	edx
-	push	eax
-	next
-;
-
-code drop ( x -- )
-	pop	eax
-	next
-;
-
-code 0< ( x -- flag )
-	pop	eax
-	sar	eax,31
-	push	eax
-	next
-;
-
-code ?exit ( f -- ) \  high level:  IF exit THEN
-	pop	eax
-	or	eax,eax
-	jz	qexit1
-	mov	esi,[ebp]
-	lea	ebp,[ebp+4]
-qexit1:	next
-;
-
-code >r ( x -- ) ( R -- x )
-	pop	ebx
-	lea	ebp,[ebp-4]
-	mov	[ebp],ebx
-	next
-;
-
-code r> ( R x -- ) ( -- x )
-	mov	eax,[ebp]
-	lea	ebp,[ebp+4]
-	push	eax
-	next
-;
-
-code - ( x1 x2 -- x3 )
-	pop	edx
-	pop	eax
-	sub	eax,edx
-	push	eax
-	next
-;
-
-code	or	( x1 x2 -- x3 )
+code or ( x1 x2 -- x3 )
 	pop	edx
 	pop	eax
 	or	eax,edx
@@ -191,7 +51,7 @@ code	or	( x1 x2 -- x3 )
 	next
 ;
 
-code	and	( x1 x2 -- x3 )
+code and ( x1 x2 -- x3 )
 	pop	edx
 	pop	eax
 	and	eax,edx
@@ -200,18 +60,7 @@ code	and	( x1 x2 -- x3 )
 ;
 
 pre
-_unnest:
-;
-code exit ( -- )
-	mov	esi,[ebp]
-	lea	ebp,[ebp+4]
-	next
-;
-
-code lit ( -- )
-	lodsd
-	push	eax
-	next
+_exit = _unnest
 ;
 
 code @ ( addr -- x )
@@ -334,11 +183,6 @@ code usleep ( c -- )
 pre
 section '.bss' writeable
 
-data_stack:
-	db	DATA_STACK_SIZE dup (0)
-return_stack:
-	db	RETURN_STACK_SIZE dup (0)
-
 	; dictionary pointer: points to	next free location in memory
 _dp:	dd	_mem
 
@@ -351,4 +195,5 @@ _mem:	db	MEM_SIZE dup (0)
 _memtop:
 
 section '.text' executable
+
 ;
