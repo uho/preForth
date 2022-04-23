@@ -1,4 +1,4 @@
 #!/bin/bash
 stty raw -echo
-./seedForth seedForthInteractive.seed hi.forth -
+./seedForth seedForthInteractive.seed runtime.forth hi.forth -
 stty sane
