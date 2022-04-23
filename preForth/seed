@@ -1,8 +1,4 @@
 #!/bin/bash
-
-# note: we need to fix the below so it exits cleanly
-# when seedForth quits, the "cat" doesn't realize until user types something
-
 stty raw -echo
-cat seedForthInteractive.seed hi.forth - |./seedForth
+./seedForth seedForthInteractive.seed hi.forth -
 stty sane

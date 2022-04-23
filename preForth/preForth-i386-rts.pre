@@ -14,15 +14,28 @@ pre
 DATA_STACK_SIZE = 40000
 RETURN_STACK_SIZE = 40000
 
+O_RDONLY = 0
+STDIN_FILENO = 0
+STDOUT_FILENO = 1
+STDERR_FILENO = 2
+
+EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
+
+EOT_CHAR = 4
+
 format ELF
 
 section '.text' executable
 
 public main
-extrn putchar
-extrn getchar
-extrn fflush
+extrn close
 extrn exit
+extrn open
+extrn read
+extrn strcmp
+extrn strlen
+extrn write
 
 macro next  {
 	lodsd
@@ -30,10 +43,94 @@ macro next  {
 }
 
 main:	cld
+
+	; implement the functionality of "cat" for reading "key" input
+	; files listed on command line will be read in order, "-" is stdin
+	; if there are no command line arguments, supply a default of "-"
+	mov	eax,[esp+4] ; argc
+	mov	ecx,[esp+8] ; argv
+	cmp	eax,2
+	jb	no_arguments ; if no arguments, use pre-filled defaults
+	mov	[argc],eax
+	mov	[argv],ecx
+no_arguments:
+	call	open_fd_in
+
 	mov	esp,data_stack + DATA_STACK_SIZE
 	mov	ebp,return_stack + RETURN_STACK_SIZE
 	mov	esi,main1
 	next
+
+open_fd_in:
+	push	esi
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	sub	esp,16
+
+	mov	eax,[argn]
+	mov	ecx,[argv]
+	mov	esi,[ecx+eax*4] ; esi = argv[argn]
+
+	mov	[esp],esi
+	mov	dword [esp+4],dash_c_str
+	call	strcmp ; eax = strcmp(esi, "-")
+	test	eax,eax
+	mov	eax,STDIN_FILENO
+	jz	open_fd_in_ok ; if "-", do not open and use STDIN_FILENO
+
+	mov	[esp],esi
+	mov	dword [esp+4],O_RDONLY
+	call	open ; eax = open(esi, O_RDONLY)
+	cmp	eax,-1
+	jnz	open_fd_in_ok ; if open successful, use returned fd
+
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_cant_open
+	mov	dword [esp+8],message_cant_open_end - message_cant_open
+	call	write ; write(STDERR_FILENO, "can't open: ", 12)
+
+	mov	dword [esp],esi
+	call	strlen ; eax = strlen(esi)
+
+	mov	dword [esp],STDERR_FILENO
+	mov	[esp+4],esi
+	mov	[esp+8],eax
+	call	write ; write(STDERR_FILENO, esi, strlen(esi))
+
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_newline
+	mov	dword [esp+8],message_newline_end - message_newline
+	call	write ; write(STDERR_FILENO, "\n", 1)
+
+	mov	dword [esp],EXIT_FAILURE
+	call	exit ; exit(EXIT_FAILURE)
+
+open_fd_in_ok:
+	mov	[fd_in],eax
+
+	mov	esp,ebp
+	pop	ebp
+	pop	esi
+	ret
+
+close_fd_in:
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	sub	esp,16
+
+	mov	eax,[fd_in]
+	test	eax,eax ; cmp eax,STDIN_FILENO
+	jz	close_fd_in_ok
+
+	mov	[esp],eax
+	call	close
+
+close_fd_in_ok:
+	mov	esp,ebp
+	pop	ebp
+	ret
 
 main1:	dd	_cold
 	dd	_bye
@@ -42,32 +139,44 @@ _nest:	lea	ebp,[ebp-4]
 	mov	[ebp],esi
 	lea	esi,[eax+4]
 	next
+
 ;
 
 code bye ( -- )
-	push	ebp
-	mov	ebp,esp
 	and	esp,0xfffffff0
-	mov	eax,0
-	mov	[esp],eax
-	call	exit
+	sub	esp,16
+
+	mov	dword [esp],EXIT_SUCCESS
+	call	exit ; exit(EXIT_SUCCESS)
 ;
 
 code emit ( c -- )
-	pop	eax
+	pop	eax ; eax = character to emit
 
 	push	ebp
 	mov	ebp,esp
-	push	eax
 	and	esp,0xfffffff0
+	sub	esp,16
 
-	mov	dword [esp],eax
-	call	putchar
+	mov	[esp+12],al ; char ch_out = character to emit
 
-	mov	eax,0
-	mov	[esp],eax
-	call	fflush   ; flush all output streams
+	mov	dword [esp],STDOUT_FILENO
+	lea	eax,[esp+12]
+	mov	[esp+4],eax
+	mov	dword [esp+8],1
+	call	write ; eax = write(STDOUT_FILENO, &ch_out, 1)
+	cmp	eax,-1
+	jnz	emit_ok
 
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_cant_write
+	mov	dword [esp+8],message_cant_write_end - message_cant_write
+	call	write ; write(STDERR_FILENO, "can't write\n", 12)
+
+	mov	dword [esp],EXIT_FAILURE
+	call	exit ; exit(EXIT_FAILURE)
+
+emit_ok:
 	mov	esp,ebp
 	pop	ebp
 	next
@@ -77,14 +186,59 @@ code key ( -- c )
 	push	ebp
 	mov	ebp,esp
 	and	esp,0xfffffff0
+	sub	esp,16
 
-	call	getchar
+	mov	dword [esp+12],EOT_CHAR ; int ch_in = EOT_CHAR (litle endian)
+
+	; if argn >= argc then no file is open, so return EOT_CHAR
+	mov	eax,[argn]
+	cmp	eax,[argc]
+	jae	key_done
+
+key_read:
+	mov	eax,[fd_in]
+	mov	[esp],eax
+	lea	eax,[esp+12]
+	mov	[esp+4],eax
+	mov	dword [esp+8],1
+	call	read ; eax = read(fd_in, &ch_in, 1)
+	cmp	eax,-1
+	jnz	key_ok
+
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_cant_read
+	mov	dword [esp+8],message_cant_read_end - message_cant_read
+	call	write ; write(STDERR_FILENO, "can't read\n", 11)
+
+	mov	dword [esp],EXIT_FAILURE
+	call	exit ; exit(EXIT_FAILURE)
+
+key_ok:
+	; if key was read successfully, send to application
+	test	eax,eax
+	jnz	key_done
+
+	; eof
+	call	close_fd_in
+
+	; if arguments now exhausted, sent EOT to application
+	mov	eax,[argn]
+	inc	eax
+	mov	[argn],eax
+	cmp	eax,[argc]
+	jae	key_done
+
+	; open next input file, and then re-attempt the read
+	call	open_fd_in
+	jmp	key_read
+
+key_done:
+	mov	eax,[esp+12] ; eax = ch_in
+
 	mov	esp,ebp
 	pop	ebp
-	cmp	eax,-1
-	jnz	key1
-	mov	eax,4   ; eof: return Ctrl-D
-key1:	push	eax
+
+	push	eax
 	next
 ;
 
@@ -163,7 +317,44 @@ code lit ( -- )
 \ be output by the ",end" hook, but at present we cannot call "pre" from a
 \ defined word, so we make do by switching to bss and then back to text again
 pre
-section '.bss' writeable
+section '.data' writeable align 16
+
+message_cant_open:
+	db	'can''t open: '
+message_cant_open_end:
+
+message_newline:
+	db	0xa
+message_newline_end:
+
+message_cant_read:
+	db	'can''t read',0xa
+message_cant_read_end:
+
+message_cant_write:
+	db	'can''t write',0xa
+message_cant_write_end:
+
+dash_c_str:
+	db	'-',0
+
+	align	4
+
+default_argv:
+	dd	0 ; argv[0]
+	dd	dash_c_str
+default_argv_end:
+
+; default command line arguments, overwritten if any passed in
+argc:	dd	(default_argv_end - default_argv) / 4
+argv:	dd	default_argv
+
+; argument number being processed, fd_in is valid if argn < argc
+argn:	dd	1
+
+section '.bss' writeable align 16
+
+fd_in:	dd	0
 
 data_stack:
 	db	DATA_STACK_SIZE dup (0)

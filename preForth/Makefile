@@ -16,7 +16,7 @@ test: runseedforthdemo runseedforthinteractive
 
 .PHONY=runseedforthdemo
 runseedforthdemo: seedForth seedForthDemo.seed
-	cat seedForthDemo.seed |./seedForth
+	./seedForth seedForthDemo.seed
 
 .PHONY=runseedfortinteractive
 runseedforthinteractive: seedForth seedForthInteractive.seed
@@ -39,7 +39,7 @@ preForth.pre \
 |$(HOSTFORTH) load-i386-preForth.fs >preForth.asm
 
 %.asm: %.pre preForth-i386-rts.pre preForth-rts.pre preForth
-	cat preForth-i386-rts.pre preForth-rts.pre $< |./preForth >$@
+	./preForth preForth-i386-rts.pre preForth-rts.pre $< >$@
 
 ifeq ($(UNIXFLAVOUR),Linux)
 # assemble and link executable on linux
@@ -73,18 +73,18 @@ preForth-i386-backend.pre \
 preForth.pre \
 preForth \
 preForth.$(EXT)
-	cat \
+	./preForth \
 preForth-i386-rts.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
 preForth.pre \
-|./preForth >preForth1.$(EXT)
+>preForth1.$(EXT)
 	cmp preForth.$(EXT) preForth1.$(EXT)
 
 # preForth connected to stdin - output to stdout
 .PHONY=visible-bootstrap
 visible-bootstrap: preForth preForth-i386-backend.pre preForth.pre 
-	cat preForth-i386-backend.pre preForth.pre |./preForth
+	./preForth preForth-i386-backend.pre preForth.pre
 
 # ------------------------------------------------------------------------
 # Docker support (for Linux version)
@@ -109,12 +109,12 @@ preForth-i386-rts.pre \
 seedForth-i386.pre \
 seedForth.pre \
 preForth
-	cat \
+	./preForth \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
 seedForth-i386.pre \
 seedForth.pre \
-|./preForth >seedForth.$(EXT)
+>seedForth.$(EXT)
 
 %.seed: %.seedsource seedForth-tokenizer.fs
 	gforth seedForth-tokenizer.fs $<

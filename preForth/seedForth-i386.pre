@@ -23,20 +23,23 @@ code key? ( -- f )
 	push	ebp
 	mov	ebp,esp
 	and	esp,0xfffffff0
-	sub	esp,32
+	sub	esp,16
 
-	mov	dword [esp],0
-	mov	dword [esp+4],1074030207 ; FIONREAD
-	lea	dword eax,[esp+24]
-	mov	dword [esp+8],eax
+	mov	dword [esp+12],0 ; int count = 0
 
-	call	ioctl
-	mov	dword eax,[esp+24]
+	mov	dword [esp],STDIN_FILENO
+	mov	dword [esp+4],IOCTL_FIONREAD
+	lea	eax,[esp+12]
+	mov	[esp+8],eax
+	call	ioctl ; eax = ioctl(STDIN_FILENO, IOCTL_FIONREAD, &count)
+	; ignore error, count initialized to 0 so it will show not ready
+
+	mov	eax,[esp+12] ; eax = count
 
 	mov	esp,ebp
 	pop	ebp
 
-	cmp	eax,0
+	test	eax,eax
 	jz	keyq1
 	mov	eax,-1
 keyq1:	push	eax
@@ -161,14 +164,14 @@ code um/mod ( ud u1 -- u2 u3 )
 ;
 
 code usleep ( c -- )
-	pop	eax
+	pop	eax ; eax = microseconds to sleep
 
 	push	ebp
 	mov	ebp,esp
-	push	eax
 	and	esp,0xfffffff0
+	sub	esp,16
 
-	mov	dword [esp],eax
+	mov	[esp],eax
 	call	usleep
 
 	mov	esp,ebp
