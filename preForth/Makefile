@@ -116,9 +116,14 @@ seedForth-i386.pre \
 seedForth.pre \
 >seedForth.$(EXT)
 
-%.seed: %.seedsource seedForth-tokenizer.fs
-	gforth seedForth-tokenizer.fs $<
+# a little ugly, because gforth insists upon echoing anything read from
+# stdin, and also does not allow parsing words to cross a file boundary,
+# so we will concatenate the tokenizer and source into a *.fs file first
+%.seed: seedForth-tokenizer.fs %.seedsource
+	cat $^ >__temp__.fs
+	gforth __temp__.fs -e bye >$@
+	rm __temp__.fs
 
 .PHONY=clean
 clean:
-	rm -f *.asm *.o *.seed preForthdemo preForth seedForth
+	rm -f *.asm *.o *.seed preForthdemo preForth seedForth __temp__.fs

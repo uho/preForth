@@ -33,22 +33,24 @@ Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
        cr source type cr r> @ name-see abort 
     THEN nip nip ;
 
-VARIABLE OUTFILE
+\ VARIABLE OUTFILE
 
-: submit ( c -- )
-    PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
-
-: submit-token ( x -- )
-    dup 255 > IF  dup 8 rshift  SUBMIT  THEN  SUBMIT ;
+\ : submit ( c -- )
+\     PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
+\
+\ : submit-token ( x -- )
+\     dup 255 > IF  dup 8 rshift  SUBMIT  THEN  SUBMIT ;
+: emit-token ( x -- )
+    dup 255 > IF  dup 8 rshift  emit  THEN  emit ;
 
 : <name> ( -- c-addr u )  bl word count ;
 
 Variable #tokens  0 #tokens !
 : Token ( <name> -- )
    :noname  
-   #tokens @  postpone LITERAL  postpone SUBMIT-TOKEN  postpone ;  
+   #tokens @  postpone LITERAL  postpone emit-token  postpone ; \ SUBMIT-TOKEN  postpone ;  
    <name> 
-   cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
+   \ cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
    ?token ! 1 #tokens +! ;
 
 : Macro ( <name> -- )
@@ -81,7 +83,7 @@ Variable #tokens  0 #tokens !
 \ generate token sequences for numbers
 
 : seed-byte ( c -- )
-   seed key   SUBMIT ;
+   seed key   emit ; \ SUBMIT ;
 
 : seed-number ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
    dup 0<    IF  0 seed-byte   negate recurse  seed -   EXIT THEN
@@ -118,12 +120,12 @@ Variable #tokens  0 #tokens !
 : seed-file ( -- )
    BEGIN refill WHILE  seed-line REPEAT ;
 
-: PROGRAM ( <name> -- )
-   <name> R/W CREATE-FILE THROW OUTFILE !
-   seed-file ;
+\ : PROGRAM ( <name> -- )
+\    <name> R/W CREATE-FILE THROW OUTFILE !
+\    seed-file ;
 
-Macro END ( -- )
-   .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
+\ Macro END ( -- )
+\    .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
 
 Macro [ ( -- )  seed bye      end-macro  \ bye
 Macro ] ( -- )  seed compiler end-macro  \ compiler
@@ -251,7 +253,7 @@ Macro Definer ( <name> -- )
       postpone Token
       #tokens @  1 #tokens +! 
       postpone Literal
-      postpone SUBMIT-TOKEN
+      postpone emit-token \ SUBMIT-TOKEN
       seed fun
    postpone end-macro
 end-macro
@@ -278,3 +280,7 @@ Macro restore-#tokens
    postpone #tokens
    postpone !
 end-macro
+
+seed-file
+\ user code has to be concatenated here
+\ it cannot be in a separate file when running via gforth

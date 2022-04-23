@@ -9,8 +9,6 @@
 \ cat seedForthInteractive.seed | ./seedForth
 \
 
-PROGRAM seedForthInteractive.seed
-
 \ Defining words
 Definer Create ( <name> -- )      create ( x ) drop ;
 Definer Variable ( <name> -- )    create ( x ) drop 0 , ;
@@ -1180,7 +1178,7 @@ Create errormsg  0 , 0 ,
 
 
 : boot ( -- )
-   key drop \ skip 0 of boot program
+   \ key drop \ skip 0 of boot program
    .banner
    BEGIN
       [ ' warm ] Literal catch ?dup IF  .error  cr THEN
@@ -1206,4 +1204,3 @@ t{ -> }t
 \ 0 input-echo !
 reveal
 boot
-END

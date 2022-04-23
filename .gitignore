@@ -1,7 +1,6 @@
 *.asm
 *.o
 *.seed
-/preForth/preForthdemo
 /preForth/preForth
-/preForth/forth
 /preForth/seedForth
+/preForth/__temp__.fs

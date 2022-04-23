@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# a little ugly, because gforth insists upon echoing anything read from
+# stdin, and also does not allow parsing words to cross a file boundary,
+# so we will concatenate the tokenizer and source into a *.fs file first
+
+cat seedForth-tokenizer.fs - >__temp__.fs
+gforth __temp__.fs -e bye
+rm __temp__.fs
