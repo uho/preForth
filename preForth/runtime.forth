@@ -146,7 +146,13 @@ false invert Constant true
 : I ( -- )
      postpone r@ ; immediate
 
-\ : ?DO ( to from -- )
-\     postpone 2dup
-\     postpone -
-\     postpone IF  postpone DO ; immediate
+: ?DO ( to from -- )
+     postpone 2dup
+     postpone -
+     postpone IF  postpone DO ; immediate
+
+\ Nick
+: UNLOOP ( -- )
+     postpone r>
+     postpone r>
+     postpone 2drop ; immediate

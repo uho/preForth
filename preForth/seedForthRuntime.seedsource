@@ -379,7 +379,7 @@ init
 
 \ for the input stream a struct could be defined that generally handles terminal input, evaluate, file input and others.
 
-Create tib 80 allot
+Create tib 255 allot
 
 Create 'source here 0 , tib ,  \ ' source is normally  ^tib #tib is set to c-addr u for evaluate
 Constant #tib
@@ -406,7 +406,7 @@ Variable input-echo 0 input-echo !
 ;
 
 : query ( -- )
-    tib 80 accept #tib ! ;
+    tib 255 accept #tib ! ;
 
 
 
