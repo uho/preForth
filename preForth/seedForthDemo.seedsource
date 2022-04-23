@@ -399,3 +399,4 @@ t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
 \ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
 
 \ hi
+bye

@@ -1,0 +1,3 @@
+\ seedForth interactive system
+\ this file boots for running textual forth program (no banner, prompt, echo)
+boot

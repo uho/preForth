@@ -9,7 +9,12 @@ HOSTFORTH=gforth
 # ------------------------------------------------------------------------
 
 .PHONY=all
-all: preForth seedForth seedForthDemo.seed seedForthInteractive.seed
+all: \
+preForth \
+seedForth \
+seedForthDemo.seed \
+seedForthBoot.seed \
+seedForthInteractive.seed
 
 .PHONY=test
 test: runseedforthdemo runseedforthinteractive
@@ -119,7 +124,23 @@ seedForth.pre \
 # a little ugly, because gforth insists upon echoing anything read from
 # stdin, and also does not allow parsing words to cross a file boundary,
 # so we will concatenate the tokenizer and source into a *.fs file first
-%.seed: seedForth-tokenizer.fs %.seedsource
+seedForthDemo.seed: seedForth-tokenizer.fs seedForthDemo.seedsource
+	cat $^ >__temp__.fs
+	gforth __temp__.fs -e bye >$@
+	rm __temp__.fs
+
+seedForthBoot.seed: \
+seedForth-tokenizer.fs \
+seedForthRuntime.seedsource \
+seedForthBoot.seedsource
+	cat $^ >__temp__.fs
+	gforth __temp__.fs -e bye >$@
+	rm __temp__.fs
+
+seedForthInteractive.seed: \
+seedForth-tokenizer.fs \
+seedForthRuntime.seedsource \
+seedForthInteractive.seedsource
 	cat $^ >__temp__.fs
 	gforth __temp__.fs -e bye >$@
 	rm __temp__.fs
