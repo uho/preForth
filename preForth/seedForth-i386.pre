@@ -4,7 +4,7 @@
 \ and then this file defines additional primitives (arithmetic, memory, etc)
 
 pre
-extrn ioctl
+extrn poll
 extrn usleep
 
 _enter = _nest
@@ -23,26 +23,46 @@ code key? ( -- f )
 	push	ebp
 	mov	ebp,esp
 	and	esp,0xfffffff0
-	sub	esp,16
+	sub	esp,32
 
-	mov	dword [esp+12],0 ; int count = 0
+	; if all arguments exhausted, return ready
+	; this allows application to collect the EOT character
+	mov	eax,[argn]
+	cmp	eax,[argc]
+	jae	keyq_ready
 
-	mov	dword [esp],STDIN_FILENO
-	mov	dword [esp+4],IOCTL_FIONREAD
+	mov	eax,[fd_in]
+	mov	dword [esp+12],eax
+	mov	dword [esp+16],POLLIN ; struct pollfd fd = {fd_in, POLLIN, 0}
+
 	lea	eax,[esp+12]
-	mov	[esp+8],eax
-	call	ioctl ; eax = ioctl(STDIN_FILENO, IOCTL_FIONREAD, &count)
-	; ignore error, count initialized to 0 so it will show not ready
+	mov	[esp],eax
+	mov	dword [esp+4],1
+	mov	dword [esp+8],0
+	call	poll ; eax = poll(&fd, 1, 0)
+	cmp	eax,-1
+	jnz	keyq_ok
 
-	mov	eax,[esp+12] ; eax = count
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_cant_poll
+	mov	dword [esp+8],message_cant_poll_end - message_cant_poll
+	call	write ; write(STDERR_FILENO, "can't write\n", 11)
+
+	mov	dword [esp],EXIT_FAILURE
+	call	exit ; exit(EXIT_FAILURE)
+
+keyq_ok:
+	sub	eax,eax
+	test	word [esp+18],POLLIN ; fd.revents & POLLIN
+	jz	keyq_done
+keyq_ready:
+	mov	eax,-1
+keyq_done:
 
 	mov	esp,ebp
 	pop	ebp
 
-	test	eax,eax
-	jz	keyq1
-	mov	eax,-1
-keyq1:	push	eax
+	push	eax
 	next
 ;
 
@@ -184,7 +204,13 @@ code usleep ( c -- )
 \ be output by the ",end" hook, but at present we cannot call "pre" from a
 \ defined word, so we make do by switching to bss and then back to text again
 pre
-section '.bss' writeable
+section '.data' writeable align 16
+
+message_cant_poll:
+	db	'can''t poll',0xa
+message_cant_poll_end:
+
+section '.bss' writeable align 16
 
 	; dictionary pointer: points to	next free location in memory
 _dp:	dd	_mem
