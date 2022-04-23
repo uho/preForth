@@ -386,7 +386,9 @@ Constant #tib
 
 Defer getkey   ' key is getkey
 
-Variable input-echo -1 input-echo !
+\ after loading the *.seed runtime we will need to load further runtime as
+\ textual forth source before being useable, so we will default to echo off
+Variable input-echo 0 input-echo !
 
 : accept ( c-addr u1 -- u2 )
     >r
@@ -979,8 +981,9 @@ Variable handlers        interpreters @ handlers !
 
 ' refill      has-header refill
 
-
-Variable echo  -1 echo !
+\ after loading the *.seed runtime we will need to load further runtime as
+\ textual forth source before being useable, so we will default to echo off
+Variable echo  0 echo !
 ' echo has-header echo
 
 ' input-echo has-header input-echo
@@ -1054,7 +1057,6 @@ Create errormsg  0 , 0 ,
 
 : .error ( n -- )
      red bold .error# normal reset-colors ."  🤔 " ;
-
 
 : boot ( -- )
    BEGIN

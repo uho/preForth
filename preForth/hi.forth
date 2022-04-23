@@ -1,6 +1,3 @@
-0 echo !
-0 input-echo !
-
 cr .( ⓪ )
 
 : ( 

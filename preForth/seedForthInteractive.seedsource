@@ -129,8 +129,6 @@ cr
 t{ -> }t
 
 
-0 echo !
-\ 0 input-echo !
 reveal
 .banner
 boot
