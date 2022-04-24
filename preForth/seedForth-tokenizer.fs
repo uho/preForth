@@ -2,41 +2,88 @@
 
 \ seedForth does not support hex so put some useful constants in decimal
 255 Constant xFF
+1023 Constant x3FF
+1024 Constant x400
 65261 Constant xFEED
-4294967295 Constant xFFFFFFFF
 
-: fnv1a ( c-addr u -- x )
-    2166136261 >r
-    BEGIN dup WHILE  over c@ r> xor 16777619 um* drop    xFFFFFFFF and >r 1 /string REPEAT 2drop r> ;
+\ exceptions
+100 Constant except_hash_table_full
 
-15 Constant #hashbits
-1 #hashbits lshift Constant #hashsize
+\ hash table entry structure
+0 Constant _hash_table_xt
+1 cells Constant _hash_table_name_addr
+2 cells Constant _hash_table_name_len
+3 cells Constant #hash_table
 
-#hashbits 16 < [IF]
+\ the sizing below accommodates up to 1K word definitions
+\ (the same as the number of tokens available to seedForth)
+x3FF Constant hash_table_mask
+x400 Constant hash_table_size
+Create hash_table
+hash_table_size #hash_table * dup allot hash_table swap 0 fill
 
-  #hashsize 1 - Constant tinymask
-  : fold ( x1 -- x2 )  dup   #hashbits rshift  xor  tinymask and ;
+: hash_table_index ( entry -- addr )
+    #hash_table * hash_table + ;
 
-[ELSE] \ #hashbits has 16 bits or more
+: hash_table_find ( name_addr name_len -- entry_addr found )
+    \ calculate CRC10 of the symbol name
+    \ initial value is same as hash table mask (all 1s)
+    2dup hash_table_mask crc10
+    \ hash_table_mask and
 
-  #hashsize 1 - Constant mask 
-  : fold ( x1 -- x2 )  dup   #hashbits rshift  swap mask and  xor ;
+    \ using the CRC10 as the starting entry, look circularly
+    \ for either a null entry (not found) or a matching entry
+    hash_table_size 0 ?DO ( name_addr name_len entry )
+        dup >r hash_table_index >r ( name_addr name_len R: entry entry_addr )
 
-[THEN]
+        \ check for null entry
+        r@ _hash_table_xt + @ 0= IF
+            2drop r> r> drop false UNLOOP exit
+        THEN
 
-Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
+        \ check for matching entry
+        2dup
+        r@ _hash_table_name_addr + @
+        r@ _hash_table_name_len + @
+        compare 0= IF
+            2drop r> r> drop true UNLOOP exit
+        THEN
 
-: 'token ( c-addr u -- addr )
-    fnv1a fold  cells tokens + ;
+        \ go to next entry, circularly
+        r> drop
+        r> 1+ hash_table_mask and
+    LOOP
 
-: token@ ( c-addr u -- x )  'token @ ;
+    \ not found, and no room for new entry
+    except_hash_table_full throw
+;
 
-: ?token ( c-addr u -- x )  
-    2dup 'token dup @ 
-    IF  
-       >r cr type ."  collides with another token " 
-       cr source type cr r> @ abort \ ??? name-see abort 
-    THEN nip nip ;
+: token@ ( c-addr u -- x )
+    \ get entry address and flag for found/empty
+    hash_table_find
+
+    \ if found, return value of _xt, otherwise 0
+    IF _hash_table_xt + @ ELSE drop 0 THEN
+;
+
+: ?token ( c-addr u -- x )
+    \ get entry address and flag for found/empty
+    2dup hash_table_find
+
+    \ if empty, copy symbol name and fill in entry
+    0= IF
+        >r
+        here r@  _hash_table_name_addr + !
+        dup r@ _hash_table_name_len + !
+        here swap dup allot cmove
+        r>
+    ELSE
+        nip nip
+    THEN
+
+    \ return address of _xt for caller to fill in
+    _hash_table_xt +
+;
 
 \ VARIABLE OUTFILE
 
