@@ -68,8 +68,8 @@ Variable #tokens  0 #tokens !
 
 
 (  0 $00 ) Token bye
-5 #tokens !
-(  4 $04 )                 Token dup           Token swap       Token drop          
+4 #tokens !
+(  4 $04 ) Token eot       Token dup           Token swap       Token drop          
 (  8 $08 ) Token 0<        Token ?exit         Token >r         Token r>
 ( 12 $0C ) Token -         Token exit          Token lit        Token @             
 ( 16 $10 ) Token c@        Token !             Token c!         Token execute       
@@ -132,7 +132,17 @@ Variable #tokens  0 #tokens !
 \ Macro END ( -- )
 \    .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
 
-Macro [ ( -- )  seed bye      end-macro  \ bye
+\ eot is overloaded to either:
+\ - return from compilation state to interpretive state
+\   (used for compiling ; and various control flow constructs)
+\ - quit the interpreter if invoked in interpretive state
+\   (can overloading because control flow is not allowed here)
+\ this means that if the token stream runs out and starts to return
+\ EOT characters, we will first terminate any word definition that
+\ was in progress, then we'll do an automatic bye (in the old way,
+\ there was an automatic bye token appended to seed file, but this
+\ was annoying because seedForthInteractive had to read and drop it)
+Macro [ ( -- )  seed eot      end-macro  \ eot
 Macro ] ( -- )  seed compiler end-macro  \ compiler
 
 Macro : ( <name> -- )  seed fun  Token  end-macro
@@ -289,3 +299,4 @@ end-macro
 seed-file
 \ user code has to be concatenated here
 \ it cannot be in a separate file when running via gforth
+\ it cannot have a partial last line when running via seedForth

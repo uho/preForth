@@ -69,13 +69,12 @@
    lit lit ,   num ,             \ generate  lit x   num call puts x on stack
    r> drop   tail compiler ;
 
-\ Nick: detect EOT and treat as an immediate bye token
-\ note: Nick has moved tokens key/emit so that EOT is no longer a token,
-\ but EOT can still occur in numbers and will not terminate compilation
-: ?eot
-   dup 4 - ?exit \ not EOT token: exit i.e. normal compile action
-   'X' emit
-   bye ;         \ EOT token: assume program has run, automatic bye
+: eot ( -- )
+   bye ; \ interpretive semantics: input exhausted, automatic bye
+
+: ?eot ( xt -- xt | )
+   dup h@ lit eot - ?exit drop   \ not eot token: exit i.e. normal compile action
+   r> drop ; \ compilation semantics: return to interpretive state
 
 : compiler ( -- )
    token
@@ -116,7 +115,7 @@
    0               h, \ 1   01  prefix
    0               h, \ 2   02  prefix
    0               h, \ 3   03  prefix
-   lit bye         h, \ 4   04  EOT (this entry accessed in interpretive mode)
+   lit eot         h, \ 4   04  code
    lit dup         h, \ 5   05  code
    lit swap        h, \ 6   06  code
    lit drop        h, \ 7   07  code
