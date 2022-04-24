@@ -124,12 +124,13 @@ seedForth.pre \
 # a little ugly, because gforth insists upon echoing anything read from
 # stdin, and also does not allow parsing words to cross a file boundary,
 # so we will concatenate the tokenizer and source into a *.fs file first
-seedForthDemo.seed: seedForth-tokenizer.fs seedForthDemo.seedsource
+seedForthDemo.seed: crc10.forth seedForth-tokenizer.fs seedForthDemo.seedsource
 	cat $^ >__temp__.fs
 	gforth __temp__.fs -e bye >$@
 	rm __temp__.fs
 
 seedForthBoot.seed: \
+crc10.forth \
 seedForth-tokenizer.fs \
 seedForthRuntime.seedsource \
 seedForthBoot.seedsource
@@ -138,12 +139,16 @@ seedForthBoot.seedsource
 	rm __temp__.fs
 
 seedForthInteractive.seed: \
+crc10.forth \
 seedForth-tokenizer.fs \
 seedForthRuntime.seedsource \
 seedForthInteractive.seedsource
 	cat $^ >__temp__.fs
 	gforth __temp__.fs -e bye >$@
 	rm __temp__.fs
+
+crc10.forth: crc10_gen.forth
+	gforth $^ -e bye >$@
 
 .PHONY=clean
 clean:
