@@ -78,7 +78,11 @@ false invert Constant true
 : * ( n1 n2 -- )
    2dup xor 0< >r abs swap abs um* drop r> IF negate THEN ;
 
-: u/ ( u1 u2 -- u3 )  >r 0 r> um/mod nip ;
+: u/ ( n1 n2 -- quot ) 0 swap um/mod nip ;
+
+: u/mod ( n1 n2 -- rem quot ) 0 swap um/mod ;
+
+: umod ( n1 n2 -- rem ) 0 swap um/mod drop ;
 
 : FOR ( n -- )
     postpone BEGIN 
@@ -132,6 +136,15 @@ false invert Constant true
     postpone (abort") ; immediate
 
 : DO ( to from -- )
+     0 \ open a dummy IF block for the backpatching test in LOOP
+     postpone swap
+     postpone BEGIN
+     postpone >r postpone >r ; immediate
+
+: ?DO ( to from -- )
+     postpone 2dup
+     postpone -
+     postpone IF
      postpone swap
      postpone BEGIN
      postpone >r postpone >r ; immediate
@@ -141,15 +154,12 @@ false invert Constant true
      postpone 1+ 
      postpone r> 
      postpone 2dup postpone = postpone UNTIL 
-     postpone 2drop ; immediate
+     postpone 2drop
+     \ this backpatches IF block for ?DO or does nothing for DO
+     ?dup IF postpone THEN THEN ; immediate
 
 : I ( -- )
      postpone r@ ; immediate
-
-: ?DO ( to from -- )
-     postpone 2dup
-     postpone -
-     postpone IF  postpone DO ; immediate
 
 \ Nick
 : UNLOOP ( -- )
