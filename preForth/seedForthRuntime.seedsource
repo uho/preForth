@@ -395,10 +395,21 @@ Variable input-echo 0 input-echo !
     0 BEGIN ( c-addr u2 ) ( R: u1 )
         getkey dup 10 = over 13 = or 0=
     WHILE ( c-addr u2 key )
-        dup  8 = over 127 = or 
-           IF  drop dup 0 > 
-               IF 1-  8 emit bl emit 8 emit ELSE 7 emit THEN ELSE
-        input-echo @ IF dup emit THEN >r 2dup + r> swap c!  1+ r@ min THEN
+        dup  8 = over 127 = or IF
+            drop dup 0 > IF
+                1-  8 emit bl emit 8 emit
+            ELSE
+                7 emit
+            THEN
+        ELSE
+            \ only char write to buffer and echo if there is room
+            over r@ < IF
+                >r 2dup + r@ swap c! 1+ r>
+                input-echo @ IF dup emit THEN
+            THEN
+            \ if char was EOT, quit after maybe writing to buffer
+            4 = IF r> drop nip exit THEN
+        THEN
     REPEAT ( c-addr u2 key r:u1 )
     drop  r> drop   nip  
     \ input-echo @ IF cr THEN
@@ -547,58 +558,56 @@ Macro has-header ( <name> -- )
 end-macro
 
 
-' bye         has-header bye         \ 0   00
-' emit        has-header emit        \ 1   01
-' key         has-header key         \ 2   02
-' dup         has-header dup         \ 3   03
-' swap        has-header swap        \ 4   04
-' drop        has-header drop        \ 5   05
-' 0<          has-header 0<          \ 6   06
-' ?exit       has-header ?exit       \ 7   07
-' >r          has-header >r          \ 8   08
-' r>          has-header r>          \ 9   09
-' -           has-header -           \ 10  0A
-' exit        has-header exit        \ 11  0B
-' lit         has-header lit         \ 12  0C
-' @           has-header @           \ 13  0D
-' c@          has-header c@          \ 14  0E
-' !           has-header !           \ 15  0F
-' c!          has-header c!          \ 16  10
-' execute     has-header execute     \ 17  11
-' branch      has-header branch      \ 18  12
-' ?branch     has-header ?branch     \ 19  13
-' negate      has-header negate      \ 20  14
-' +           has-header +           \ 21  15
-' 0=          has-header 0=          \ 22  16
-' ?dup        has-header ?dup        \ 23  17
-' cells       has-header cells       \ 24  18
-' +!          has-header +!          \ 25  19
-' h@          has-header h@          \ 26  1A
-' h,          has-header h,          \ 27  1B
-' here        has-header here        \ 28  1C
-' allot       has-header allot       \ 29  1D
-' ,           has-header ,           \ 30  1E
-' c,          has-header c,          \ 31  1F
-' fun         has-header fun         \ 32  20
-' interpreter has-header interpreter \ 33  21
-' compiler    has-header compiler    \ 34  22
-' create      has-header create      \ 35  23
-' does>       has-header does>       \ 36  24
-' cold        has-header cold        \ 37  25
-' depth       has-header depth       \ 38  26
-' compile,    has-header compile,    \ 39  26
-' new         has-header new         \ 40  28
-' couple      has-header couple      \ 41  29
-' and         has-header and         \ 42  2A
-' or          has-header or          \ 43  2B
-' catch       has-header catch       \ 44  2C
-' throw       has-header throw       \ 45  2D
-' sp@         has-header sp@         \ 46  2E
-' sp!         has-header sp!         \ 47  2F
-' rp@         has-header rp@         \ 48  30
-' rp!         has-header rp!         \ 49  31
-' $lit        has-header $lit        \ 50  32
-' num         has-header num         \ 51  33
+' bye         has-header bye
+' dup         has-header dup
+' swap        has-header swap
+' drop        has-header drop
+' 0<          has-header 0<
+' ?exit       has-header ?exit
+' >r          has-header >r
+' r>          has-header r>
+' -           has-header -
+' exit        has-header exit
+' lit         has-header lit
+' @           has-header @
+' c@          has-header c@
+' !           has-header !
+' c!          has-header c!
+' execute     has-header execute
+' branch      has-header branch
+' ?branch     has-header ?branch
+' negate      has-header negate
+' +           has-header +
+' 0=          has-header 0=
+' ?dup        has-header ?dup
+' cells       has-header cells
+' +!          has-header +!
+' h@          has-header h@
+' h,          has-header h,
+' here        has-header here
+' allot       has-header allot
+' ,           has-header ,
+' c,          has-header c,
+' fun         has-header fun
+' interpreter has-header interpreter
+' compiler    has-header compiler
+' create      has-header create
+' does>       has-header does>
+' cold        has-header cold
+' depth       has-header depth
+' compile,    has-header compile,
+' new         has-header new
+' couple      has-header couple
+' and         has-header and
+' or          has-header or
+' catch       has-header catch
+' throw       has-header throw
+' sp@         has-header sp@
+' sp!         has-header sp!
+' rp@         has-header rp@
+' rp!         has-header rp!
+' $lit        has-header $lit
+' num         has-header num
 ' um*         has-header um*
 ' um/mod      has-header um/mod       
 ' unused      has-header unused
@@ -606,6 +615,9 @@ end-macro
 \ ' token has-header token
 ' usleep      has-header usleep
 ' hp          has-header hp
+' key         has-header key
+' emit        has-header emit
+' eemit       has-header eemit
 
 ' over        has-header over
 ' rot         has-header rot
@@ -980,7 +992,7 @@ Variable handlers        interpreters @ handlers !
       query 0 >in !
 
       \ Nick: detect EOT (only works at the start of a line)
-      #tib @ IF tib c@ 4 = IF 0 exit THEN THEN
+      #tib @ IF tib c@ 4 = IF 0 #tib ! 0 exit THEN THEN
 
       -1 exit
     THEN

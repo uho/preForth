@@ -170,6 +170,7 @@
    lit token       h, \ 56  38
    lit usleep      h, \ 57  39  code
    lit hp          h, \ 58  40
-   lit emit        h, \ 59  41  code
-   lit key         h, \ 60  42  code
+   lit key         h, \ 59  41  code
+   lit emit        h, \ 60  42  code
+   lit eemit       h, \ 61  43  code
    interpreter bye ;

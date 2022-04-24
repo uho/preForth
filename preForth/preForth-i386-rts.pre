@@ -182,6 +182,38 @@ emit_ok:
 	next
 ;
 
+code eemit ( c -- )
+	pop	eax ; eax = character to emit
+
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	sub	esp,16
+
+	mov	[esp+12],al ; char ch_out = character to emit
+
+	mov	dword [esp],STDERR_FILENO
+	lea	eax,[esp+12]
+	mov	[esp+4],eax
+	mov	dword [esp+8],1
+	call	write ; eax = write(STDERR_FILENO, &ch_out, 1)
+	cmp	eax,-1
+	jnz	eemit_ok
+
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_cant_write
+	mov	dword [esp+8],message_cant_write_end - message_cant_write
+	call	write ; write(STDERR_FILENO, "can't write\n", 12)
+
+	mov	dword [esp],EXIT_FAILURE
+	call	exit ; exit(EXIT_FAILURE)
+
+eemit_ok:
+	mov	esp,ebp
+	pop	ebp
+	next
+;
+
 code key ( -- c )
 	push	ebp
 	mov	ebp,esp
