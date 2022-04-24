@@ -976,7 +976,14 @@ Variable handlers        interpreters @ handlers !
 ' evaluate has-header evaluate
 
 : refill ( -- f )
-    'source cell+ @ tib = IF  query 0 >in !  -1 exit THEN
+    'source cell+ @ tib = IF
+      query 0 >in !
+
+      \ Nick: detect EOT (only works at the start of a line)
+      #tib @ IF tib c@ 4 = IF 0 exit THEN THEN
+
+      -1 exit
+    THEN
     0 ;
 
 ' refill      has-header refill
@@ -1034,7 +1041,13 @@ Defer .status   : noop ;  ' noop is .status
    tib 0 'source 2!
    ([)
    BEGIN
-     .status  prompt query  0 >in !  interpret  ?stack .ok
+     .status  prompt
+     query  0 >in !
+
+     \ Nick: detect EOT (only works at the start of a line)
+     #tib @ IF tib c@ 4 = IF bye THEN THEN
+
+     interpret  ?stack .ok
    0 UNTIL ;
 
 : warm ( -- )

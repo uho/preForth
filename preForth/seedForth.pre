@@ -48,14 +48,15 @@
 : compile, ( x -- )
    h@ , ;
 
-\ token are in the range 0 .. 767:
-\   0, 3 .. 255 are single byte tokens
-\    256 .. 511 are double byte tokens of the form 01 xx
-\    511 .. 767 are double byte tokens of the form 02 xx
+\ token are in the range 0 .. 1023:
+\   0, 4 ..  255 are single byte tokens
+\    256 ..  511 are double byte tokens of the form 01 xx
+\    511 ..  767 are double byte tokens of the form 02 xx
+\    768 .. 1023 are double byte tokens of the form 03 xx
 : token ( -- x )
-   key dup 0= ?exit    \       0 -> single byte token
-   dup 3 - 0< 0= ?exit \ not 1 2 -> single byte token
-   key couple ;        \            double byte token
+   key dup 0= ?exit    \         0 -> single byte token
+   dup 4 - 0< 0= ?exit \ not 1 2 3 -> single byte token
+   key couple ;        \              double byte token
 
 : interpreter ( -- )
    token execute   tail interpreter ;  \ executing exit  will leave this loop
@@ -68,8 +69,22 @@
    lit lit ,   num ,             \ generate  lit x   num call puts x on stack
    r> drop   tail compiler ;
 
+\ Nick: detect EOT and treat as an immediate bye token
+\ note: Nick has moved tokens key/emit so that EOT is no longer a token,
+\ but EOT can still occur in numbers and will not terminate compilation
+: ?eot
+   dup 4 - ?exit \ not EOT token: exit i.e. normal compile action
+   'X' emit
+   bye ;         \ EOT token: assume program has run, automatic bye
+
 : compiler ( -- )
-   token ?dup 0= ?exit  ?lit
+   token
+
+   \ Nick: old way of detecting bye token directly prevented compiling it
+   \ ?dup 0= ?exit
+   ?eot
+
+   ?lit
    compile, tail compiler ;
 
 : new ( -- xt )
@@ -100,8 +115,8 @@
    lit bye         h, \ 0   00  code
    0               h, \ 1   01  prefix
    0               h, \ 2   02  prefix
-   lit emit        h, \ 3   03  code
-   lit key         h, \ 4   04  code
+   0               h, \ 3   03  prefix
+   lit bye         h, \ 4   04  EOT (this entry accessed in interpretive mode)
    lit dup         h, \ 5   05  code
    lit swap        h, \ 6   06  code
    lit drop        h, \ 7   07  code
@@ -156,4 +171,6 @@
    lit token       h, \ 56  38
    lit usleep      h, \ 57  39  code
    lit hp          h, \ 58  40
+   lit emit        h, \ 59  41  code
+   lit key         h, \ 60  42  code
    interpreter bye ;

@@ -67,8 +67,9 @@ Variable #tokens  0 #tokens !
     parse-name token@ dup 0= abort" is undefined"    postpone Literal   postpone execute ; immediate
 
 
-(  0 $00 ) Token bye       Token prefix1       Token prefix2    Token emit          
-(  4 $04 ) Token key       Token dup           Token swap       Token drop          
+(  0 $00 ) Token bye
+5 #tokens !
+(  4 $04 )                 Token dup           Token swap       Token drop          
 (  8 $08 ) Token 0<        Token ?exit         Token >r         Token r>
 ( 12 $0C ) Token -         Token exit          Token lit        Token @             
 ( 16 $10 ) Token c@        Token !             Token c!         Token execute       
@@ -81,7 +82,8 @@ Variable #tokens  0 #tokens !
 ( 44 $2C ) Token and       Token or            Token sp@        Token sp!           
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
 ( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?          
-( 56 $38 ) Token token     Token usleep        Token hp
+( 56 $38 ) Token token     Token usleep        Token hp         Token emit
+( 60 $3C ) Token key
 
 \ generate token sequences for numbers
 
