@@ -2,6 +2,7 @@
 
 include load-preForth.fs
 include preForth-i386-rts.pre
+include preForth-rts-nonstandard.pre
 include preForth-rts.pre
 include preForth-i386-backend.pre
 include preForth.pre

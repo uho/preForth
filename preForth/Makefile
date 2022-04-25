@@ -32,19 +32,31 @@ EXT=asm
 
 preForth.asm: \
 preForth-i386-rts.pre \
+preForth-rts-nonstandard.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
 preForth.pre \
 load-i386-preForth.fs
 	cat \
 preForth-i386-rts.pre \
+preForth-rts-nonstandard.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
 preForth.pre \
 |$(HOSTFORTH) load-i386-preForth.fs >preForth.asm
 
-%.asm: %.pre preForth-i386-rts.pre preForth-rts.pre preForth
-	./preForth preForth-i386-rts.pre preForth-rts.pre $< >$@
+%.asm: \
+%.pre \
+preForth-i386-rts.pre \
+preForth-rts-nonstandard.pre \
+preForth-rts.pre \
+preForth
+	./preForth \
+preForth-i386-rts.pre \
+preForth-rts-nonstandard.pre \
+preForth-rts.pre \
+$< \
+>$@
 
 ifeq ($(UNIXFLAVOUR),Linux)
 # assemble and link executable on linux
@@ -73,6 +85,7 @@ endif
 # should produce identical results
 bootstrap: \
 preForth-i386-rts.pre \
+preForth-rts-nonstandard.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
 preForth.pre \
@@ -80,6 +93,7 @@ preForth \
 preForth.$(EXT)
 	./preForth \
 preForth-i386-rts.pre \
+preForth-rts-nonstandard.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
 preForth.pre \
