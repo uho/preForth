@@ -1,0 +1,7 @@
+*.asm
+*.o
+*.seed
+/preForth/crc10.forth
+/preForth/preForth
+/preForth/seedForth
+/preForth/__temp__.fs

@@ -1,0 +1,64 @@
+\ preForth runtime system - machine independent part - nonstandard words
+
+\ since preForth is mostly a subset of standard Forth, preForth programs can
+\ basically run under gForth or similar for bootstrapping, after including:
+\   preForth-bootstrap.fs: adjust environment (not needed under pure preForth)
+\   preForth-rts-nonstandard.fs: useful words (needed under/part of preForth)
+
+\ case? compares the value x to y. If they match, return true. If not keep x
+\ and return false.
+: case? ( x y -- tf | x ff )
+    over = dup 0= ?exit  2drop -1 ; 
+
+\ text output words
+\ -----------------
+
+: tab ( -- )
+    9 emit ;
+
+
+\ number output
+\ -------------
+
+: 10* ( x1 -- x2 )
+    dup + dup dup + dup + + ;
+
+
+\ strings
+\ -------
+
+\ Strings are represented as character stack elements with a count on top
+\ They can be processed conveniently using recursion.
+\ Idioms:  dup pick   gets 1st character
+\          dup        gets length
+\          x swap 1+  adds x to end of string
+\          nip 1-     removes last character
+\
+\ Useful words
+\ show   displays trings
+\ _dup   duplicates topmost string
+\ _drop  removes topmost string
+\ _swap  exchanges two topmost strings
+
+\ show displays topmost string
+: show ( S -- )
+   ?dup 0= ?exit  swap >r 1- show r> emit ;
+
+: (_dup ( S m n -- S S )
+    ?dup 0= ?exit  over 2 + pick rot rot  1-   tail (_dup ;
+
+\ _dup duplicated topmost string
+: _dup ( S -- S S )
+    dup dup (_dup ;
+
+\ _drop removes topmost string
+: _drop ( S -- )
+    ?dup 0= ?exit nip 1- _drop ;
+
+
+: (_swap ( S1 S2 x1 x2 -- S2 S1 x1 0 )
+    dup 0= ?exit over 3 + roll rot rot 1- (_swap ;
+
+\ _swap exchanges two topmost strings
+: _swap ( S1 S2 -- S2 S1 )
+    dup >r pick r> dup >r  over >r + r> r> rot rot 1+ (_swap 2drop ;

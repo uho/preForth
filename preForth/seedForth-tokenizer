@@ -1,0 +1,2 @@
+#!/bin/sh
+./seedForth seedForthBoot.seed runtime.forth crc10.forth seedForth-tokenizer.fs -
