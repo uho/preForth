@@ -31,19 +31,26 @@ UNIXFLAVOUR=$(shell uname -s)
 EXT=asm
 
 preForth.asm: \
+preForth-bootstrap.fs \
+preForth-cold.fs \
 preForth-i386-rts.pre \
 preForth-rts-nonstandard.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
-preForth.pre \
-load-i386-preForth.fs
+preForth.pre
 	cat \
 preForth-i386-rts.pre \
 preForth-rts-nonstandard.pre \
 preForth-rts.pre \
 preForth-i386-backend.pre \
 preForth.pre \
-|$(HOSTFORTH) load-i386-preForth.fs >preForth.asm
+|$(HOSTFORTH) \
+preForth-bootstrap.fs \
+preForth-rts-nonstandard.pre \
+preForth-i386-backend.pre \
+preForth.pre \
+preForth-cold.fs \
+>$@
 
 %.asm: \
 %.pre \
