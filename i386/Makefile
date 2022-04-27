@@ -8,7 +8,7 @@ HOSTFORTH=gforth
 # HOSTFORTH=sf   # SwiftForth >3.7
 # ------------------------------------------------------------------------
 
-.PHONY=all
+.PHONY: all
 all: \
 preForth \
 seedForth \
@@ -16,14 +16,14 @@ seedForthDemo.seed \
 seedForthBoot.seed \
 seedForthInteractive.seed
 
-.PHONY=test
+.PHONY: test
 test: runseedforthdemo runseedforthinteractive
 
-.PHONY=runseedforthdemo
+.PHONY: runseedforthdemo
 runseedforthdemo: seedForth seedForthDemo.seed
 	./seedForth seedForthDemo.seed
 
-.PHONY=runseedfortinteractive
+.PHONY: runseedfortinteractive
 runseedforthinteractive: seedForth seedForthInteractive.seed
 	./seed
 
@@ -31,37 +31,37 @@ UNIXFLAVOUR=$(shell uname -s)
 EXT=asm
 
 preForth.asm: \
-preForth-bootstrap.fs \
-preForth-cold.fs \
+../common/preForth-bootstrap.fs \
+../common/preForth-cold.fs \
 preForth-i386-rts.pre \
-preForth-rts-nonstandard.pre \
-preForth-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
 preForth-i386-backend.pre \
-preForth.pre
+../common/preForth.pre
 	cat \
 preForth-i386-rts.pre \
-preForth-rts-nonstandard.pre \
-preForth-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
 preForth-i386-backend.pre \
-preForth.pre \
+../common/preForth.pre \
 |$(HOSTFORTH) \
-preForth-bootstrap.fs \
-preForth-rts-nonstandard.pre \
+../common/preForth-bootstrap.fs \
+../common/preForth-rts-nonstandard.pre \
 preForth-i386-backend.pre \
-preForth.pre \
-preForth-cold.fs \
+../common/preForth.pre \
+../common/preForth-cold.fs \
 >$@
 
 %.asm: \
 %.pre \
 preForth-i386-rts.pre \
-preForth-rts-nonstandard.pre \
-preForth-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
 preForth
 	./preForth \
 preForth-i386-rts.pre \
-preForth-rts-nonstandard.pre \
-preForth-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
 $< \
 >$@
 
@@ -92,36 +92,36 @@ endif
 # should produce identical results
 bootstrap: \
 preForth-i386-rts.pre \
-preForth-rts-nonstandard.pre \
-preForth-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
 preForth-i386-backend.pre \
-preForth.pre \
+../common/preForth.pre \
 preForth \
 preForth.$(EXT)
 	./preForth \
 preForth-i386-rts.pre \
-preForth-rts-nonstandard.pre \
-preForth-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
 preForth-i386-backend.pre \
-preForth.pre \
+../common/preForth.pre \
 >preForth1.$(EXT)
 	cmp preForth.$(EXT) preForth1.$(EXT)
 
 # preForth connected to stdin - output to stdout
-.PHONY=visible-bootstrap
-visible-bootstrap: preForth preForth-i386-backend.pre preForth.pre 
-	./preForth preForth-i386-backend.pre preForth.pre
+.PHONY: visible-bootstrap
+visible-bootstrap: preForth preForth-i386-backend.pre ../common/preForth.pre 
+	./preForth preForth-i386-backend.pre ../common/preForth.pre
 
 # ------------------------------------------------------------------------
 # Docker support (for Linux version)
 # ------------------------------------------------------------------------
 # create a linux image based on Dockerfile
-.PHONY=docker-image
+.PHONY: docker-image
 docker-image: Dockerfile
 	docker build -t preforth .
 
 # run the docker image
-.PHONY=run
+.PHONY: run
 rundocker: docker-image
 	docker run -i -t --rm preforth /preForth/seed
 # ------------------------------------------------------------------------
@@ -133,44 +133,44 @@ seedForth.$(EXT): \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
 seedForth-i386.pre \
-seedForth.pre \
+../common/seedForth.pre \
 preForth
 	./preForth \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
 seedForth-i386.pre \
-seedForth.pre \
+../common/seedForth.pre \
 >seedForth.$(EXT)
 
 # a little ugly, because gforth insists upon echoing anything read from
 # stdin, and also does not allow parsing words to cross a file boundary,
 # so we will concatenate the tokenizer and source into a *.fs file first
-seedForthDemo.seed: crc10.forth seedForth-tokenizer.fs seedForthDemo.seedsource
+seedForthDemo.seed: \
+../common/crc10.forth \
+../common/../common/seedForth-tokenizer.fs \
+../common/seedForthDemo.seedsource
 	cat $^ >__temp__.fs
-	gforth __temp__.fs -e bye >$@
+	$(HOSTFORTH) __temp__.fs -e bye >$@
 	rm __temp__.fs
 
 seedForthBoot.seed: \
-crc10.forth \
-seedForth-tokenizer.fs \
-seedForthRuntime.seedsource \
-seedForthBoot.seedsource
+../common/crc10.forth \
+../common/../common/seedForth-tokenizer.fs \
+../common/seedForthRuntime.seedsource \
+../common/seedForthBoot.seedsource
 	cat $^ >__temp__.fs
-	gforth __temp__.fs -e bye >$@
+	$(HOSTFORTH) __temp__.fs -e bye >$@
 	rm __temp__.fs
 
 seedForthInteractive.seed: \
-crc10.forth \
-seedForth-tokenizer.fs \
-seedForthRuntime.seedsource \
-seedForthInteractive.seedsource
+../common/crc10.forth \
+../common/../common/seedForth-tokenizer.fs \
+../common/seedForthRuntime.seedsource \
+../common/seedForthInteractive.seedsource
 	cat $^ >__temp__.fs
-	gforth __temp__.fs -e bye >$@
+	$(HOSTFORTH) __temp__.fs -e bye >$@
 	rm __temp__.fs
 
-crc10.forth: crc10_gen.forth
-	gforth $^ -e bye >$@
-
-.PHONY=clean
+.PHONY: clean
 clean:
 	rm -f *.asm *.o *.seed preForthdemo preForth seedForth __temp__.fs
