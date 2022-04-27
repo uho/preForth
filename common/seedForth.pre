@@ -70,19 +70,6 @@
    dup h@ lit eot - ?exit drop   \ not eot token: exit i.e. normal compile action
    r> drop ; \ compilation semantics: return to interpretive state
 
-: compiler ( -- )
-   token
-
-   \ Nick: old way of detecting bye token directly prevented compiling it
-   \ ?dup 0= ?exit
-   ?eot
-
-   ?lit
-   compile, tail compiler ;
-
-: new ( -- xt )
-   hp @   here h,  lit enter , ;
-
 : fun ( -- )
    new drop  compiler ;
 
@@ -91,14 +78,6 @@
 
 : $lit ( -- addr u )
     r>  dup   1 +   dup >r  swap c@  dup r> + >r ;
-
-: create ( -- xt )
-   0 , \ dummy does> field
-   hp @  here h, lit dovar , ;
-
-: does> ( xt -- ) \ set code field of last defined word
-    r>   swap h@  dup >r 1 cells - !   lit dodoes r> !
-;
 
 : unused ( -- u )
     lit memtop  here - ;

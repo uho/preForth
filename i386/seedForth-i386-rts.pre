@@ -1,0 +1,228 @@
+\ seedForth: machine dependent portion
+
+\ interpreter and basic asm primitives are taken from preForth-i386-rts.pre,
+\ and then this file defines additional primitives (arithmetic, memory, etc)
+
+pre
+extrn poll
+extrn usleep
+
+_enter = _nest
+
+_dodoes: ; ( -- addr )
+	lea	ebp,[ebp-4]  ;	push	IP
+	mov	[ebp],esi
+	mov	esi,[eax-4]   ; set IP
+_dovar: ; ( -- addr )
+	lea	eax,[eax+4] ; to parameter field
+	push	eax
+	next
+;
+
+code key? ( -- f )
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	sub	esp,32
+
+	; if all arguments exhausted, return ready
+	; this allows application to collect the EOT character
+	mov	eax,[argn]
+	cmp	eax,[argc]
+	jae	keyq_ready
+
+	mov	eax,[fd_in]
+	mov	dword [esp+12],eax
+	mov	dword [esp+16],POLLIN ; struct pollfd fd = {fd_in, POLLIN, 0}
+
+	lea	eax,[esp+12]
+	mov	[esp],eax
+	mov	dword [esp+4],1
+	mov	dword [esp+8],0
+	call	poll ; eax = poll(&fd, 1, 0)
+	cmp	eax,-1
+	jnz	keyq_ok
+
+	mov	dword [esp],STDERR_FILENO
+	mov	dword [esp+4],message_cant_poll
+	mov	dword [esp+8],message_cant_poll_end - message_cant_poll
+	call	write ; write(STDERR_FILENO, "can't poll\n", 11)
+
+	mov	dword [esp],EXIT_FAILURE
+	call	exit ; exit(EXIT_FAILURE)
+
+keyq_ok:
+	sub	eax,eax
+	test	word [esp+18],POLLIN ; fd.revents & POLLIN
+	jz	keyq_done
+keyq_ready:
+	mov	eax,-1
+keyq_done:
+
+	mov	esp,ebp
+	pop	ebp
+
+	push	eax
+	next
+;
+
+code or ( x1 x2 -- x3 )
+	pop	edx
+	pop	eax
+	or	eax,edx
+	push	eax
+	next
+;
+
+code and ( x1 x2 -- x3 )
+	pop	edx
+	pop	eax
+	and	eax,edx
+	push	eax
+	next
+;
+
+pre
+_exit = _unnest
+;
+
+code @ ( addr -- x )
+	pop	eax
+	mov	eax,[eax]
+	push	eax
+	next
+;
+
+code c@ ( c-addr -- c )
+	pop	edx
+        xor	eax,eax
+	mov	al,byte [edx]
+	push	eax
+	next
+;
+
+code ! ( x addr -- )
+	pop	edx
+	pop	eax
+	mov	dword [edx],eax
+	next
+;
+
+code c! ( c c-addr -- )
+	pop	edx
+	pop	eax
+	mov	byte [edx],al
+	next
+;
+
+\ code invoke ( addr -- ) \ native code: >r ;
+code execute ( addr -- ) \ this version uses token numbers as execution tokens	and	finds their code address via the headers table
+	pop	edx
+	mov	dword eax,[_head+edx*4]
+	jmp	dword [eax]
+;
+
+code branch ( -- )  \ threaded code: r>  @ >r ;
+	lodsd
+	mov	esi,eax
+	next
+;
+
+code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
+	pop	eax
+	or	eax,eax
+	jz	_branchX
+	lea	esi,[esi+4]
+	next
+;
+
+code depth ( -- n )
+	mov	eax,data_stack + DATA_STACK_SIZE
+	sub	eax,esp
+	sar	eax,2
+	push	eax
+	next
+;
+
+code sp@ ( -- x )
+	push	esp
+	next
+;
+
+code sp! ( x -- )
+	pop	esp
+	next
+;
+
+code rp@ ( -- x )
+	push	ebp
+	next
+;
+
+code rp! ( x -- )
+	pop	ebp
+	next
+;
+
+code um* ( u1 u2 -- ud )
+	pop	edx
+	pop	eax
+	mul	edx
+	push	eax
+	push	edx
+	next
+;
+
+code um/mod ( ud u1 -- u2 u3 )
+	pop	ebx
+	pop	edx
+	pop	eax
+	div	ebx
+	push	edx
+	push	eax
+	next
+;
+
+code usleep ( c -- )
+	pop	eax ; eax = microseconds to sleep
+
+	push	ebp
+	mov	ebp,esp
+	and	esp,0xfffffff0
+	sub	esp,16
+
+	mov	[esp],eax
+	call	usleep
+
+	mov	esp,ebp
+	pop	ebp
+	next
+;
+
+\ we want the text section to be first and bss last (for linkers that output
+\ sections in definition order), so it would be good to have the bss section
+\ be output by the ",end" hook, but at present we cannot call "pre" from a
+\ defined word, so we make do by switching to bss and then back to text again
+pre
+section '.data' writeable align 16
+
+message_cant_poll:
+	db	'can''t poll',0xa
+message_cant_poll_end:
+
+section '.bss' writeable align 16
+
+	; dictionary pointer: points to	next free location in memory
+_dp:	dd	_mem
+
+	; head pointer: index of first unused head
+__hp:	dd	0
+_head:	dd	HEAD_SIZE dup (0)
+
+        ; free memory starts at _mem
+_mem:	db	MEM_SIZE dup (0)
+_memtop:
+
+section '.text' executable
+
+;

@@ -132,6 +132,7 @@ rundocker: docker-image
 seedForth.$(EXT): \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
+seedForth-i386-rts.pre \
 seedForth-i386.pre \
 ../common/seedForth32bit.pre \
 ../common/seedForth.pre \
@@ -139,6 +140,7 @@ preForth
 	./preForth \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
+seedForth-i386-rts.pre \
 seedForth-i386.pre \
 ../common/seedForth32bit.pre \
 ../common/seedForth.pre \
