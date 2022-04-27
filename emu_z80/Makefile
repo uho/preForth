@@ -1,4 +1,4 @@
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -O3
 LDFLAGS=-g
 
 ASZ80=../asxv5pxx/asxmak/linux/exe/asz80
@@ -25,4 +25,4 @@ test.rel: test.asm
 
 .PHONY: clean
 clean:
-	rm -f *.bin *.hlr *.ihx *.lst *.map *.o *.rel *.rst emu_z80
+	rm -f *.bin *.hlr *.ihx *.lst *.map *.o *.rel *.rst emu_z80 z80/*.o

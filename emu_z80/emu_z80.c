@@ -18,8 +18,6 @@
 #define SYS_EXIT 8
 
 z80 cpu;
-bool timing;
-long nb_instructions;
 
 int stdin_fd;
 int g_argn = 0;
@@ -30,6 +28,7 @@ const char **g_argv = &default_argv;
 #define MEMORY_SIZE 0x10000
 uint8_t memory[MEMORY_SIZE];
 uint8_t usleep_lo;
+int exit_flag;
 
 uint8_t rb(void *userdata, uint16_t addr) {
   return memory[addr];
@@ -135,19 +134,15 @@ void out(z80 *const z, uint8_t port, uint8_t val) {
     usleep(usleep_lo | (val << 8));
     break;
   case SYS_EXIT:
-    if (timing)
-      fprintf(
-        stderr,
-        "%lu instructions executed on %lu cycles\n",
-        nb_instructions,
-        cpu.cyc
-      );
-    exit(val);
+    exit_flag = val | 0x100;
+    cpu.halted = true;
+    break;
   }
 }
 
 int main(int argc, char **argv) {
   int argn = 1;
+  bool timing = false;
   if (argn < argc && strcmp(argv[argn], "-t") == 0) {
     timing = true;
     ++argn;
@@ -185,12 +180,18 @@ int main(int argc, char **argv) {
   cpu.port_in = in;
   cpu.port_out = out;
 
-  while (true) {
-    ++nb_instructions;
+  long n, nb_instructions = 0;
+  do {
+    n = z80_step(&cpu, 1000);
+    nb_instructions += n;
+  } while (n >= 1000);
 
-    // warning: the following line will output dozens of GB of data.
-    //z80_debug_output(&cpu);
-
-    z80_step(&cpu);
-  }
+  if (timing)
+    fprintf(
+      stderr,
+      "%lu instructions executed on %lu cycles\n",
+      nb_instructions,
+      cpu.cyc
+    );
+  exit(exit_flag & 0xff);
 }
