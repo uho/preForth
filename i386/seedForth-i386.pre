@@ -46,7 +46,7 @@ code key? ( -- f )
 	mov	dword [esp],STDERR_FILENO
 	mov	dword [esp+4],message_cant_poll
 	mov	dword [esp+8],message_cant_poll_end - message_cant_poll
-	call	write ; write(STDERR_FILENO, "can't write\n", 11)
+	call	write ; write(STDERR_FILENO, "can't poll\n", 11)
 
 	mov	dword [esp],EXIT_FAILURE
 	call	exit ; exit(EXIT_FAILURE)
