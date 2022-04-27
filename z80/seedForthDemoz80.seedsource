@@ -1,7 +1,8 @@
 \ machine dependent part of seedForthDemo.seedsource
 \ allows us to adjust things for direct threaded vs indirect threaded
 
-: >body ( xt -- body )  h@  1 cells + ;
+\ we must index past the "call" instruction
+: >body ( xt -- body )  h@  1 + 1 cells + ;
 
 : is ( xt -- )  ' >body ! ;
 

@@ -8,10 +8,19 @@ HOSTFORTH=gforth
 # HOSTFORTH=sf   # SwiftForth >3.7
 # ------------------------------------------------------------------------
 
+ASZ80=../asxv5pxx/asxmak/linux/exe/asz80
+ASLINK=../asxv5pxx/asxmak/linux/exe/aslink
+
+# need to install intelhex package in Python first:
+#   pip3 install --user intelhex
+HEX2BIN=python3 $(HOME)/.local/bin/hex2bin.py
+
+EMU_Z80=../emu_z80/emu_z80
+
 .PHONY: all
 all: \
-preForth \
-seedForth \
+preForth.bin \
+seedForth.bin \
 seedForthDemo.seed \
 seedForthBoot.seed \
 seedForthInteractive.seed
@@ -57,36 +66,18 @@ preForth-z80-backend.pre \
 preForth-z80-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
 ../common/preForth-rts.pre \
-preForth
-	./preForth \
+preForth.bin
+	$(EMU_Z80) preForth.bin \
 preForth-z80-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
 ../common/preForth-rts.pre \
 $< \
 >$@
 
-ifeq ($(UNIXFLAVOUR),Linux)
-# assemble and link executable on linux
-%: %.asm
-	fasm $< $@.o
-	LDEMULATION=elf_i386 ld -arch i386 -o $@ \
--dynamic-linker /lib32/ld-linux.so.2 \
-/usr/lib/i386-linux-gnu/crt1.o /usr/lib/i386-linux-gnu/crti.o \
-$@.o \
--lc /usr/lib/i386-linux-gnu/crtn.o
-	# rm $@.o
-else
-ifeq ($(UNIXFLAVOUR),Darwin)
-# assemble and link executable on MacOS
-%: %.asm
-	fasm $< $@.o
-	objconv -fmacho32 -nu $@.o $@_m.o
-	ld -arch i386 -macosx_version_min 10.6 -o $@ \
-$@_m.o /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/crt1.o \
-/usr/lib/libc.dylib
-	# rm $@.o $@_m.o
-endif
-endif
+%.bin: %.asm
+	$(ASZ80) -l -o $<
+	$(ASLINK) -n -m -u -i $(<:.asm=.ihx) $(<:.asm=.rel)
+	$(HEX2BIN) $(<:.asm=.ihx) $@
 
 # run preForth on its own source code to perform a bootstrap 
 # should produce identical results
@@ -96,9 +87,9 @@ preForth-z80-rts.pre \
 ../common/preForth-rts.pre \
 preForth-z80-backend.pre \
 ../common/preForth.pre \
-preForth \
+preForth.bin \
 preForth.$(EXT)
-	./preForth \
+	$(EMU_Z80) preForth.bin \
 preForth-z80-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
 ../common/preForth-rts.pre \
@@ -109,8 +100,8 @@ preForth-z80-backend.pre \
 
 # preForth connected to stdin - output to stdout
 .PHONY: visible-bootstrap
-visible-bootstrap: preForth preForth-z80-backend.pre ../common/preForth.pre 
-	./preForth preForth-z80-backend.pre ../common/preForth.pre
+visible-bootstrap: preForth.bin preForth-z80-backend.pre ../common/preForth.pre 
+	$(EMU_Z80) preForth.bin preForth-z80-backend.pre ../common/preForth.pre
 
 # ------------------------------------------------------------------------
 # Docker support (for Linux version)
@@ -134,15 +125,15 @@ seedForth-z80-header.pre \
 preForth-z80-rts.pre \
 seedForth-z80-rts.pre \
 seedForth-z80.pre \
-../common/seedForth32bit.pre \
+../common/seedForth16bit.pre \
 ../common/seedForth.pre \
-preForth
-	./preForth \
+preForth.bin
+	$(EMU_Z80) preForth.bin \
 seedForth-z80-header.pre \
 preForth-z80-rts.pre \
 seedForth-z80-rts.pre \
 seedForth-z80.pre \
-../common/seedForth32bit.pre \
+../common/seedForth16bit.pre \
 ../common/seedForth.pre \
 >seedForth.$(EXT)
 
@@ -161,7 +152,7 @@ seedForthDemoz80.seedsource
 seedForthBoot.seed: \
 ../common/crc10.forth \
 ../common/../common/seedForth-tokenizer.fs \
-../common/seedForthRuntime32bit.seedsource \
+../common/seedForthRuntime16bit.seedsource \
 ../common/seedForthRuntime.seedsource \
 seedForthRuntimez80.seedsource \
 ../common/seedForthBoot.seedsource
@@ -172,7 +163,7 @@ seedForthRuntimez80.seedsource \
 seedForthInteractive.seed: \
 ../common/crc10.forth \
 ../common/../common/seedForth-tokenizer.fs \
-../common/seedForthRuntime32bit.seedsource \
+../common/seedForthRuntime16bit.seedsource \
 ../common/seedForthRuntime.seedsource \
 seedForthRuntimez80.seedsource \
 ../common/seedForthInteractive.seedsource

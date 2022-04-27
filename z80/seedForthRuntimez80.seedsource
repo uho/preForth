@@ -1,8 +1,9 @@
 \ machine dependent part of seedForthRuntime.seedsource
 \ allows us to adjust things for direct threaded vs indirect threaded
 
+\ we must index past the "call" instruction
 : >body ( xt -- body )  
-    h@  1 cells + ;
+    h@  1 + 1 cells + ;
 ' >body has-header >body
 
 : is ( xt -- )  \ only interactive
@@ -13,7 +14,9 @@
 ' key is getkey
 ' noop is .status
 
+\ insert "call _dodoes" after each "does>" token
 : (Does>) ( -- )
      [ ' last-xt ] Literal compile,
-     [ ' does> ] Literal compile, ; 
+     [ ' does> ] Literal compile,
+     205 c, [ ' dodoes ] Literal compile, ; 
 ' (Does>) has-header Does> immediate

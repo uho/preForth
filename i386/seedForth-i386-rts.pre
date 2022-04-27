@@ -210,10 +210,12 @@ message_cant_poll:
 	db	'can''t poll',0xa
 message_cant_poll_end:
 
-section '.bss' writeable align 16
+	align	4
 
 	; dictionary pointer: points to	next free location in memory
 _dp:	dd	_mem
+
+section '.bss' writeable align 16
 
 	; head pointer: index of first unused head
 __hp:	dd	0

@@ -1,202 +1,282 @@
 \ seedForth: machine dependent portion
 
-\ interpreter and basic asm primitives are taken from preForth-i386-rts.pre,
+\ interpreter and basic asm primitives are taken from preForth-z80-rts.pre,
 \ and then this file defines additional primitives (arithmetic, memory, etc)
 
+\ note: we arrive at _dodoes by a sequence of 2 calls, the return
+\ address stacked by first call points to some instance data, and
+\ the return address stacked by second call (to _dodoes) points to
+\ high level forth code which is going to operate on that instance
+\ data -- we simply leave the instance data's address stacked for
+\ the high level forth code and then "execute" the high level forth
+\ code, which means that _dodoes is the same as _enter in our case
+\ note: similarly, arriving at _dovar we just leave address stacked
 pre
-extrn poll
-extrn usleep
-
 _enter = _nest
+_exit = _unnest
 
-_dodoes: ; ( -- addr )
-	lea	ebp,[ebp-4]  ;	push	IP
-	mov	[ebp],esi
-	mov	esi,[eax-4]   ; set IP
-_dovar: ; ( -- addr )
-	lea	eax,[eax+4] ; to parameter field
-	push	eax
-	next
+_dodoes = _nest
+_dovar = next
 ;
 
 code key? ( -- f )
-	push	ebp
-	mov	ebp,esp
-	and	esp,0xfffffff0
-	sub	esp,32
-
-	; if all arguments exhausted, return ready
-	; this allows application to collect the EOT character
-	mov	eax,[argn]
-	cmp	eax,[argc]
-	jae	keyq_ready
-
-	mov	eax,[fd_in]
-	mov	dword [esp+12],eax
-	mov	dword [esp+16],POLLIN ; struct pollfd fd = {fd_in, POLLIN, 0}
-
-	lea	eax,[esp+12]
-	mov	[esp],eax
-	mov	dword [esp+4],1
-	mov	dword [esp+8],0
-	call	poll ; eax = poll(&fd, 1, 0)
-	cmp	eax,-1
-	jnz	keyq_ok
-
-	mov	dword [esp],STDERR_FILENO
-	mov	dword [esp+4],message_cant_poll
-	mov	dword [esp+8],message_cant_poll_end - message_cant_poll
-	call	write ; write(STDERR_FILENO, "can't poll\n", 11)
-
-	mov	dword [esp],EXIT_FAILURE
-	call	exit ; exit(EXIT_FAILURE)
-
-keyq_ok:
-	sub	eax,eax
-	test	word [esp+18],POLLIN ; fd.revents & POLLIN
-	jz	keyq_done
-keyq_ready:
-	mov	eax,-1
-keyq_done:
-
-	mov	esp,ebp
-	pop	ebp
-
-	push	eax
-	next
+	in	a,(STDIN_STATUS)
+	ld	l,a
+	ld	h,0
+	push	hl
+	jr	next
 ;
 
 code or ( x1 x2 -- x3 )
-	pop	edx
-	pop	eax
-	or	eax,edx
-	push	eax
-	next
+	pop	de
+	pop	hl
+	ld	a,l
+	or	e
+	ld	l,a
+	ld	a,h
+	or	d
+	ld	h,a
+	push	hl
+	jr	next
 ;
 
 code and ( x1 x2 -- x3 )
-	pop	edx
-	pop	eax
-	and	eax,edx
-	push	eax
-	next
-;
-
-pre
-_exit = _unnest
+	pop	de
+	pop	hl
+	ld	a,l
+	and	e
+	ld	l,a
+	ld	a,h
+	and	d
+	ld	h,a
+	push	hl
+	jr	next
 ;
 
 code @ ( addr -- x )
-	pop	eax
-	mov	eax,[eax]
-	push	eax
-	next
+	pop	hl
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	push	de
+	jr	next
 ;
 
 code c@ ( c-addr -- c )
-	pop	edx
-        xor	eax,eax
-	mov	al,byte [edx]
-	push	eax
-	next
+	pop	hl
+	ld	e,(hl)
+	ld	d,0
+	push	de
+	jr	next
 ;
 
 code ! ( x addr -- )
-	pop	edx
-	pop	eax
-	mov	dword [edx],eax
-	next
+	pop	hl
+	pop	de
+	ld	(hl),e
+	inc	hl
+	ld	(hl),d
+	jr	next
 ;
 
 code c! ( c c-addr -- )
-	pop	edx
-	pop	eax
-	mov	byte [edx],al
-	next
+	pop	hl
+	pop	de
+	ld	(hl),e
+	jr	next
 ;
 
 \ code invoke ( addr -- ) \ native code: >r ;
-code execute ( addr -- ) \ this version uses token numbers as execution tokens	and	finds their code address via the headers table
-	pop	edx
-	mov	dword eax,[_head+edx*4]
-	jmp	dword [eax]
+code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
+	pop	hl
+	add	hl,hl
+	ld	de,_head
+	add	hl,de
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	jp	(hl)
 ;
 
 code branch ( -- )  \ threaded code: r>  @ >r ;
-	lodsd
-	mov	esi,eax
-	next
+	ld	l,c
+	ld	h,b
+	ld	c,(hl)
+	inc	hl
+	ld	b,(hl)
+	jr	next
 ;
 
 code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
-	pop	eax
-	or	eax,eax
-	jz	_branchX
-	lea	esi,[esi+4]
-	next
+	pop	hl
+	ld	a,l
+	or	h
+	jr	z,_branch
+	inc	bc
+	inc	bc
+	jr	next
 ;
 
 code depth ( -- n )
-	mov	eax,data_stack + DATA_STACK_SIZE
-	sub	eax,esp
-	sar	eax,2
-	push	eax
-	next
+	ld	hl,data_stack + DATA_STACK_SIZE
+	or	a
+	sbc	hl,sp ; should leave cf = 0
+	rr	h
+	rr	l
+	push	hl
+	jr	next1
 ;
 
 code sp@ ( -- x )
-	push	esp
-	next
+	ld	hl,0
+	add	hl,sp
+	push	hl
+	jr	next1
 ;
 
 code sp! ( x -- )
-	pop	esp
-	next
+	pop	hl
+	ld	sp,hl
+	jr	next1
 ;
 
 code rp@ ( -- x )
-	push	ebp
-	next
+	push	ix
+	jr	next1
 ;
 
 code rp! ( x -- )
-	pop	ebp
-	next
+	pop	ix
+	jr	next1
 ;
 
 code um* ( u1 u2 -- ud )
-	pop	edx
-	pop	eax
-	mul	edx
-	push	eax
-	push	edx
-	next
+	exx ; preserve bc
+
+	pop	de ; pop u2
+	pop	bc ; pop u1
+; ld l,c
+; ld h,b
+; call print_hexw
+; ld a,0x2a
+; call print_char
+; ld l,e
+; ld h,d
+; call print_hexw
+
+	sub	a ; clears cf
+	ld	l,a
+	ld	h,a
+	ld	a,b
+	ld	b,16
+	or	a
+umul_loop:
+	rra
+	rr	c
+	jr	nc,umul_skip
+	add	hl,de ; can't overflow, leaves cf = 0
+umul_skip:
+	rr	h
+	rr	l
+	djnz	umul_loop
+	rra
+	rr	c
+	ld	b,a
+; ld a,0x3d
+; call print_char
+; push hl
+; call print_hexw
+; ld l,c
+; ld h,b
+; call print_hexw
+; pop hl
+; ld a,0xa
+; call print_char
+
+	push	bc ; push ud lo
+	push	hl ; push ud hi
+
+	exx
+	jr	next1
 ;
 
 code um/mod ( ud u1 -- u2 u3 )
-	pop	ebx
-	pop	edx
-	pop	eax
-	div	ebx
-	push	edx
-	push	eax
-	next
+	exx ; preserve bc
+
+	pop	bc ; pop u1
+	pop	hl ; pop ud hi
+	pop	de ; pop ud lo
+; push hl
+; call print_hexw
+; ld l,e
+; ld h,d
+; call print_hexw
+; ld a,0x2f
+; call print_char
+; ld l,c
+; ld h,b
+; call print_hexw
+; pop hl
+
+	ld	a,16
+	or	a
+udiv_loop:
+	ex	de,hl
+	adc	hl,hl
+	ex	de,hl
+	adc	hl,hl
+	jr	nc,udiv_test
+	; shift left has overflowed, so we can always subtract bc, and
+	; always cf=1 to indicate subtraction went, record cf in quotient
+	sbc	hl,bc
+	jr	udiv_cont
+udiv_test:
+	; shift left has not overflowed, see if we can subtract bc, cf=0
+	; indicates subtraction went, record complement of cf in quotient
+	sbc	hl,bc
+	jr	nc,udiv_goes
+	add	hl,bc
+udiv_goes:
+	ccf
+udiv_cont:
+	dec	a
+	jr	nz,udiv_loop
+	ex	de,hl
+	adc	hl,hl ; record final quotient bit
+; ld a,0x3d
+; call print_char
+; push hl
+; call print_hexw
+; ld a,0x72
+; call print_char
+; ld l,e
+; ld h,d
+; call print_hexw
+; pop hl
+; ld a,0xa
+; call print_char
+
+	push	de ; push u2 (remainder)
+	push	hl ; push u1 (quotient)
+
+	exx
+	jr	next1
 ;
 
 code usleep ( c -- )
-	pop	eax ; eax = microseconds to sleep
-
-	push	ebp
-	mov	ebp,esp
-	and	esp,0xfffffff0
-	sub	esp,16
-
-	mov	[esp],eax
-	call	usleep
-
-	mov	esp,ebp
-	pop	ebp
-	next
+	pop	hl
+	ld	a,l
+	out	(USLEEP_LO),a
+	ld	a,h
+	out	(USLEEP_HI),a
+next1:	ld	a,(bc)
+	ld	l,a
+	inc	bc
+	ld	a,(bc)
+	ld	h,a
+	inc	bc
+	jp	(hl)
 ;
 
 \ we want the text section to be first and bss last (for linkers that output
@@ -204,25 +284,43 @@ code usleep ( c -- )
 \ be output by the ",end" hook, but at present we cannot call "pre" from a
 \ defined word, so we make do by switching to bss and then back to text again
 pre
-section '.data' writeable align 16
+;print_hexw:
+;	ld	a,h
+;	call	print_hexb
+;	ld	a,l
+;print_hexb:
+;	push	af
+;	rrca
+;	rrca
+;	rrca
+;	rrca
+;	call	print_hexn
+;	pop	af
+;print_hexn:
+;	and	0xf
+;	add	a,0x30
+;	cp	0x3a
+;	jr	c,print_char
+;	add	a,0x41 - 0x3a
+;print_char:
+;	out	(STDOUT_PORT),a
+;	ret
 
-message_cant_poll:
-	db	'can''t poll',0xa
-message_cant_poll_end:
-
-section '.bss' writeable align 16
+	.area	data
 
 	; dictionary pointer: points to	next free location in memory
-_dp:	dd	_mem
+_dp:	.dw	_mem
+
+	.area	bss
 
 	; head pointer: index of first unused head
-__hp:	dd	0
-_head:	dd	HEAD_SIZE dup (0)
+__hp:	.dw	0
+_head:	.ds	HEAD_SIZE*2
 
         ; free memory starts at _mem
-_mem:	db	MEM_SIZE dup (0)
+_mem:	.ds	MEM_SIZE
 _memtop:
 
-section '.text' executable
+	.area	text
 
 ;

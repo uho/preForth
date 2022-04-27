@@ -130,7 +130,7 @@ Variable #tokens  0 #tokens !
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
 ( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?          
 ( 56 $38 ) Token token     Token usleep        Token hp         Token key
-( 60 $3C ) Token emit      Token eemit
+( 60 $3C ) Token emit      Token eemit         Token dodoes
 
 \ generate token sequences for numbers
 

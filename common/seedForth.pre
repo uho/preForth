@@ -146,4 +146,5 @@
    lit key         h, \ 59  41  code
    lit emit        h, \ 60  42  code
    lit eemit       h, \ 61  43  code
+   lit dodoes      h, \ 62  44
    interpreter bye ;
