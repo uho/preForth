@@ -11,7 +11,7 @@ HEX2BIN=python3 $(HOME)/.local/bin/hex2bin.py
 .PHONY: all
 all: emu_z80 test.bin
 
-emu_z80: emu_z80.o z80/z80.o z80/z80.o
+emu_z80: emu_z80.o z80/z80.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 test.bin: test.ihx
