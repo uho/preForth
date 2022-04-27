@@ -1,4 +1,3 @@
-*.asm
 *.bin
 *.hlr
 *.ihx
@@ -11,8 +10,12 @@
 /common/crc10.forth
 /emu_z80/emu_z80
 /i386/preForth
+/i386/preForth.asm
 /i386/seedForth
+/i386/seedForth.asm
 /i386/__temp__.fs
 /z80/preForth
+/z80/preForth.asm
 /z80/seedForth
+/z80/seedForth.asm
 /z80/__temp__.fs
