@@ -1,0 +1,6 @@
+[submodule "emu_z80/z80"]
+	path = emu_z80/z80
+	url = https://github.com/superzazu/z80.git
+[submodule "asxv5pxx"]
+	path = asxv5pxx
+	url = https://github.com/nickd4/asxv5pxx.git

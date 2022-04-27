@@ -1,7 +1,15 @@
 *.asm
+*.bin
+*.hlr
+*.ihx
+*.lst
+*.map
 *.o
+*.rel
+*.rst
 *.seed
 /common/crc10.forth
+/emu_z80/emu_z80
 /i386/preForth
 /i386/seedForth
 /i386/__temp__.fs
