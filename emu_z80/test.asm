@@ -23,9 +23,9 @@ in_wait:
 	or	a
 	jr	nz,in_char
 
-	ld	a,>1000
-	out	(USLEEP_LO),a
 	ld	a,<1000
+	out	(USLEEP_LO),a
+	ld	a,>1000
 	out	(USLEEP_HI),a
 	jr	in_wait
 
@@ -41,9 +41,9 @@ out_wait:
 	or	a
 	jr	nz,out_char
 
-	ld	a,>1000
-	out	(USLEEP_LO),a
 	ld	a,<1000
+	out	(USLEEP_LO),a
+	ld	a,>1000
 	out	(USLEEP_HI),a
 	jr	out_wait
 
@@ -58,5 +58,6 @@ done:	ld	a,0
 	.area	text
 
 message:
-	.db	'h,'e,'l,'l,'o,',,' ,'w,'o,'r,'l,'d,'!,0xa
+	.ascii	/hello, world/
+	.db	0xa
 message_end:
