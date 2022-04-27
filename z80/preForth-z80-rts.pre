@@ -89,7 +89,7 @@ code drop ( x -- )
 code 0< ( x -- flag )
 	pop	hl
 	add	hl,hl
-	ld	hl, 0
+	ld	hl,0
 	jr	nc,zless1
 	dec	hl
 zless1: push	hl

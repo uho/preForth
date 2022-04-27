@@ -118,14 +118,14 @@
    'X' swap 1+ ;
 
 \ ,codefield compiles the code field of primitive
-\ not needed for z80 dtc implementation but define a dummy label anyway
-: ,codefield ( S -- )
-   \ body _dup ,word label ;
-   body label ;
+\ for z80, for asm words there is only a body, so omit the body label
+\ : ,codefield ( S -- )
+\    \ body _dup ,word label ;
+\    body label ;
 
 : ,code ( S -- )
     _dup label
-    ,codefield ;
+    ; \ ,codefield ;
 
 : ,end-code ( -- )
   cr ;
