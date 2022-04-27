@@ -8,6 +8,7 @@
 *.rst
 *.seed
 /common/crc10.forth
+/emu_65c02/emu_65c02
 /emu_z80/emu_z80
 /i386/preForth
 /i386/preForth.asm

@@ -1,13 +1,17 @@
 .PHONY: all
-all: asxv5pxx common emu_z80 i386 z80
+all: asxv5pxx common emu_65c02 emu_z80 i386 z80
 
 .PHONY: asxv5pxx
 asxv5pxx:
-	$(MAKE) $(MAKEFLAGS) -C asxv5pxx/asxmak/linux/build asz80 aslink
+	$(MAKE) $(MAKEFLAGS) -C asxv5pxx/asxmak/linux/build asz80 as6500 aslink
 
 .PHONY: common
 common:
 	$(MAKE) $(MAKEFLAGS) -C common
+
+.PHONY: emu_65c02
+emu_65c02: asxv5pxx
+	$(MAKE) $(MAKEFLAGS) -C emu_65c02
 
 .PHONY: emu_z80
 emu_z80: asxv5pxx
