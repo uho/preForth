@@ -4,7 +4,8 @@
 \ Defining words
 Definer Create ( <name> -- )      create ( x ) drop ;
 Definer Variable ( <name> -- )    create ( x ) drop 0 , ;
-Definer Constant ( x <name> -- )  create ( x ) >r , r> does> @ ;
+\ the following is defined in seedForthRuntimeXXbit.seedsource
+\ Definer Constant ( x <name> -- )  create ( x ) >r , r> does> @ ;
 
 Macro Literal
    seed lit
@@ -216,11 +217,6 @@ Macro end-tests
    seed empty
 end-macro
 
-: minint ( -- n )
-   1 BEGIN dup 2* dup WHILE nip REPEAT drop ;
-
-minint 1- Constant maxint
-
 : skip ( c-addr1 u1 c -- c-addr2 u2 )
    BEGIN
      over
@@ -263,12 +259,6 @@ minint 1- Constant maxint
 
 Definer Defer ( <name> -- ) 
    create >r [ ' uninitialized ] Literal , r> does> @ execute ;
-
-: >body ( xt -- body )  
-    h@  1 cells + ;
-
-: is ( xt -- )  \ only interactive
-    ' >body ! ;
 
 \ String comparison
 : compare ( c-addr1 u1 c-addr2 u2 -- n )
@@ -384,7 +374,7 @@ Create tib 255 allot
 Create 'source here 0 , tib ,  \ ' source is normally  ^tib #tib is set to c-addr u for evaluate
 Constant #tib
 
-Defer getkey   ' key is getkey
+Defer getkey   \ ' key is getkey (done later)
 
 \ after loading the *.seed runtime we will need to load further runtime as
 \ textual forth source before being useable, so we will default to echo off
@@ -680,7 +670,6 @@ end-macro
 ' reveal      has-header reveal
 ' hide        has-header hide
 ' pad         has-header pad  
-' >body       has-header >body
 
 ' allocate    has-header allocate
 ' free        has-header free
@@ -760,11 +749,6 @@ Variable heads -1 heads !
 : last-xt ( -- xt )
      last @ _xt @ ;
 
-: (Does>) ( -- )
-     [ ' last-xt ] Literal compile,
-     [ ' does> ] Literal compile, ; 
-
-' (Does>) has-header Does> immediate
 ' last has-header last
 ' _xt has-header _xt
 ' _name has-header _name
@@ -1031,7 +1015,7 @@ Variable echo  0 echo !
 
 ' compiling? has-header compiling?
 
-Defer .status   : noop ;  ' noop is .status
+Defer .status   : noop ;  \ ' noop is .status (done later)
 
 ' noop has-header noop
 

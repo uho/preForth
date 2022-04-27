@@ -133,12 +133,14 @@ seedForth.$(EXT): \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
 seedForth-i386.pre \
+../common/seedForth32bit.pre \
 ../common/seedForth.pre \
 preForth
 	./preForth \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
 seedForth-i386.pre \
+../common/seedForth32bit.pre \
 ../common/seedForth.pre \
 >seedForth.$(EXT)
 
@@ -148,7 +150,8 @@ seedForth-i386.pre \
 seedForthDemo.seed: \
 ../common/crc10.forth \
 ../common/../common/seedForth-tokenizer.fs \
-../common/seedForthDemo.seedsource
+../common/seedForthDemo.seedsource \
+seedForthDemoi386.seedsource
 	cat $^ >__temp__.fs
 	$(HOSTFORTH) __temp__.fs -e bye >$@
 	rm __temp__.fs
@@ -156,7 +159,9 @@ seedForthDemo.seed: \
 seedForthBoot.seed: \
 ../common/crc10.forth \
 ../common/../common/seedForth-tokenizer.fs \
+../common/seedForthRuntime32bit.seedsource \
 ../common/seedForthRuntime.seedsource \
+seedForthRuntimei386.seedsource \
 ../common/seedForthBoot.seedsource
 	cat $^ >__temp__.fs
 	$(HOSTFORTH) __temp__.fs -e bye >$@
@@ -165,7 +170,9 @@ seedForthBoot.seed: \
 seedForthInteractive.seed: \
 ../common/crc10.forth \
 ../common/../common/seedForth-tokenizer.fs \
+../common/seedForthRuntime32bit.seedsource \
 ../common/seedForthRuntime.seedsource \
+seedForthRuntimei386.seedsource \
 ../common/seedForthInteractive.seedsource
 	cat $^ >__temp__.fs
 	$(HOSTFORTH) __temp__.fs -e bye >$@

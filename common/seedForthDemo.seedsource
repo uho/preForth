@@ -173,16 +173,6 @@ t{ person -> 3 cells }t          \ size of structure
 
 Definer Defer ( <name> -- ) create >r 'uninitialized , r> does> @ execute ;
 
-: >body ( xt -- body )  h@  1 cells + ;
-
-: is ( xt -- )  ' >body ! ;
-
-Defer d1  
-' ten is d1
-t{ d1 d1 d1 -> ten ten ten }t
-' five is d1
-t{ d1 d1 d1 -> five five five }t
-
 t{ 3 4 + -> 7 }t
 
 

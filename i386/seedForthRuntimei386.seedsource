@@ -1,0 +1,19 @@
+\ machine dependent part of seedForthRuntime.seedsource
+\ allows us to adjust things for direct threaded vs indirect threaded
+
+: >body ( xt -- body )  
+    h@  1 cells + ;
+' >body has-header >body
+
+: is ( xt -- )  \ only interactive
+    ' >body ! ;
+' is has-header is
+
+\ these could not be done until here
+' key is getkey
+' noop is .status
+
+: (Does>) ( -- )
+     [ ' last-xt ] Literal compile,
+     [ ' does> ] Literal compile, ; 
+' (Does>) has-header Does> immediate

@@ -48,9 +48,9 @@ t{ 15 10 xor -> 5 }t
 t{ 21845 dup xor -> 0 }t  \ $5555
 t{ 21845 dup 2* xor -> 65535 }t
 
-t{ -2147483648 2147483647 <  -> -1 }t  \ 32bit $80000000 $7FFFFFFF
-t{ -2147483648 0 <  -> -1 }t \ 32bit $80000000 0
-t{ 0 -2147483648 <  -> 0 }t  \ 32bit 0 $80000000
+t{ minint maxint <  -> -1 }t  \ 32bit $80000000 $7FFFFFFF
+t{ minint 0 <  -> -1 }t \ 32bit $80000000 0
+t{ 0 minint <  -> 0 }t  \ 32bit 0 $80000000
 
 \ both positive
 t{ 10 10 < -> 0 }t

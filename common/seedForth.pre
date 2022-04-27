@@ -12,12 +12,6 @@
 : ?dup ( x -- x x | 0 )
    dup 0= ?exit dup ;
 
-: 2* ( x1 -- x2 )
-   dup + ;
-
-: cells ( x1 -- x2 )
-   2* 2* ;
-
 : +! ( x addr -- )
    swap >r  dup @ r> +  swap ! ;
 
