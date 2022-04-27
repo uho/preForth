@@ -1,5 +1,5 @@
 .PHONY: all
-all: asxv5pxx common emu_z80 i386
+all: asxv5pxx common emu_z80 i386 z80
 
 .PHONY: asxv5pxx
 asxv5pxx:
@@ -16,6 +16,10 @@ emu_z80: asxv5pxx
 .PHONY: i386
 i386: common
 	$(MAKE) $(MAKEFLAGS) -C i386
+
+.PHONY: z80
+z80: emu_z80 common
+	$(MAKE) $(MAKEFLAGS) -C z80
 
 clean:
 	$(MAKE) $(MAKEFLAGS) -C asxv5pxx/asxmak/linux/build clean

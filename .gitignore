@@ -13,3 +13,6 @@
 /i386/preForth
 /i386/seedForth
 /i386/__temp__.fs
+/z80/preForth
+/z80/seedForth
+/z80/__temp__.fs
