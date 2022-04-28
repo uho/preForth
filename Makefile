@@ -1,5 +1,9 @@
 .PHONY: all
-all: asxv5pxx common emu_65c02 emu_z80 i386 z80
+all: 65c02 asxv5pxx common emu_65c02 emu_z80 i386 z80
+
+.PHONY: 65c02
+65c02: emu_65c02 common
+	$(MAKE) $(MAKEFLAGS) -C 65c02
 
 .PHONY: asxv5pxx
 asxv5pxx:

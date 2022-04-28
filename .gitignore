@@ -7,6 +7,10 @@
 *.rel
 *.rst
 *.seed
+/65c02/preForth.asm
+/65c02/preForthDemo.asm
+/65c02/seedForth.asm
+/65c02/__temp__.fs
 /common/crc10.forth
 /emu_65c02/emu_65c02
 /emu_z80/emu_z80

@@ -1,0 +1,22 @@
+\ seedForth: machine dependent header portion
+
+\ this contains only definitions we want at the top of the file
+\ it is then followed by preForth-65c02-rts.pre (primitive asm words)
+\ and then by seedForth-65c02.pre (additional primitive asm words)
+\ and then by seedForth.pre (high level words and the interpreter)
+
+pre
+;;; This is seedForth - a small potentially interactive Forth, that dynamically
+;;; bootstraps from a minimal kernel.
+;;;
+;;;    cat seedForth.seed - | ../65c02_emu/65c02_emu seedForth.bin
+;;;
+;;; .seed files are in byte-tokenized source code format.
+;;;
+;;; Use the seedForth tokenizer to convert human readable source code to
+;;; byte-token form.
+
+HEAD_SIZE = 4000
+MEM_SIZE = 40000
+
+;

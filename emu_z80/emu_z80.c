@@ -17,6 +17,8 @@
 #define USLEEP_HI 7
 #define SYS_EXIT 8
 
+#define TRACE 0
+
 z80 cpu;
 
 int stdin_fd;
@@ -181,10 +183,37 @@ int main(int argc, char **argv) {
   cpu.port_out = out;
 
   long n, nb_instructions = 0;
+#if TRACE
+  do {
+    int pc = cpu.pc;
+    int ip = cpu.c | cpu.b << 8;
+    int dsp = cpu.sp;
+    int rsp = cpu.ix;
+    fprintf(
+      stderr,
+      "pc=%04x:%02x,%02x,%02x,%02x ip=%04x:%04x dsp=%04x:%04x rsp=%04x:%04x\n",
+      pc,
+      memory[pc],
+      memory[(pc + 1) & 0xffff],
+      memory[(pc + 2) & 0xffff],
+      memory[(pc + 3) & 0xffff],
+      ip,
+      memory[ip] | (memory[(ip + 1) & 0xffff] << 8),
+      dsp,
+      memory[dsp] | (memory[(dsp + 1) & 0xffff] << 8),
+      rsp,
+      memory[rsp] | (memory[(rsp + 1) & 0xffff] << 8)
+    );
+
+    n = z80_step(&cpu, 1);
+    nb_instructions += n;
+  } while (n);
+#else
   do {
     n = z80_step(&cpu, 1000);
     nb_instructions += n;
   } while (n >= 1000);
+#endif
 
   if (timing)
     fprintf(

@@ -125,6 +125,7 @@ code branch ( -- )  \ threaded code: r>  @ >r ;
 	next
 ;
 
+\ is this misleading? I would have thought ?branch means branch on nonzero
 code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
 	pop	eax
 	or	eax,eax

@@ -27,6 +27,11 @@ SYS_EXIT = 8
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 
+	; define load order
+	.area	text
+	.area	data
+	.area	bss
+
 	.area	text
 
 main:	ld	ix,return_stack + RETURN_STACK_SIZE

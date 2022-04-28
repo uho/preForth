@@ -31,7 +31,15 @@
 \ 0xfffeffff / 0xffff = 0xffff rem 0xfffe
 \ 65535 65534 65535 um/mod 65535 - 0= '1' + emit 65534 - 0= '1' + emit
 
+\ stack debug: emits '00000'
+\ depth 0= '1' + emit
+\ 1234 sp@ @ 1234 - 0= '1' + emit sp@ 2345 swap ! 2345 - 0= '1' + emit
+\ 3456 >r rp@ @ 3456 - 0= '1' + emit rp@ 4567 swap ! r> 4567 - 0= '1' + emit
+
 Definer Variable create ( x ) drop 0 , ;
+
+\ Variable debug: emits '0'
+\ Variable dummy dummy 2 + here - 0= '1' + emit
 
 \ Missing primitives
 : over ( x1 x2 -- x1 x2 x1 )  >r dup r> swap ;

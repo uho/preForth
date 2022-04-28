@@ -21,6 +21,8 @@
 #define LOAD_ADDRESS 0x300
 #define RESET_VECTOR 0xfffc
 
+#define TRACE 0
+
 VrEmu6502 *cpu;
 
 int stdin_fd;
@@ -188,7 +190,32 @@ int main(int argc, char **argv) {
   }
 
   long nb_ticks = 0;
+#if TRACE
+  int pc = -1;
+#endif
   while (!exit_flag) {
+#if TRACE
+    if (pc != vrEmu6502GetPC(cpu)) {
+      pc = vrEmu6502GetPC(cpu);
+      int ip = memory[0] | (memory[1] << 8);
+      int dsp = memory[2] | (memory[3] << 8);
+      int rsp = memory[4] | (memory[5] << 8);
+      fprintf(
+        stderr,
+        "pc=%04x:%02x,%02x,%02x ip=%04x:%04x dsp=%04x:%04x rsp=%04x:%04x\n",
+        pc,
+        memory[pc],
+        memory[(pc + 1) & 0xffff],
+        memory[(pc + 2) & 0xffff],
+        ip,
+        memory[ip] | (memory[(ip + 1) & 0xffff] << 8),
+        dsp,
+        memory[dsp] | (memory[(dsp + 1) & 0xffff] << 8),
+        rsp,
+        memory[rsp] | (memory[(rsp + 1) & 0xffff] << 8)
+      );
+    }
+#endif
     vrEmu6502Tick(cpu);
     ++nb_ticks;
   }
