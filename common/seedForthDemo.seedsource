@@ -9,6 +9,28 @@
 \ cat seedForthDemo.seed | ./seedForth
 \
 
+\ multiply debug: emits '0000'
+\ 0x1234 * 0x5678 = 0x06260060
+\ 4660 22136 um* 1574 - 0= '1' + emit 96 - 0= '1' + emit
+\ 0xffff * 0xffff = 0xfffe0001
+\ 65535 65535 um* 65534 - 0= '1' + emit 1 - 0= '1' + emit
+
+\ divide debug: emits '000000'
+\ 0x06260060 / 0x5678 = 0x1234 rem 0x0000
+\ 96 1574 22136 um/mod 4660 - 0= '1' + emit 0= '1' + emit
+\ 0x06260060 / 0x1234 = 0x5678 rem 0x0000
+\ 96 1574 4660 um/mod 22136 - 0= '1' + emit 0= '1' + emit
+\ 0xfffe0001 / 0xffff = 0xffff rem 0x0000
+\ 1 65534 65535 um/mod 65535 - 0= '1' + emit 0= '1' + emit
+
+\ divide debug: emits '000000'
+\ 0x062656d7 / 0x5678 = 0x1234 rem 0x5677
+\ 22231 1574 22136 um/mod 4660 - 0= '1' + emit 22135 - 0= '1' + emit
+\ 0x06261293 / 0x1234 = 0x5678 rem 0x1233
+\ 4755 1574 4660 um/mod 22136 - 0= '1' + emit 4659 - 0= '1' + emit
+\ 0xfffeffff / 0xffff = 0xffff rem 0xfffe
+\ 65535 65534 65535 um/mod 65535 - 0= '1' + emit 65534 - 0= '1' + emit
+
 Definer Variable create ( x ) drop 0 , ;
 
 \ Missing primitives

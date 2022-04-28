@@ -8,6 +8,7 @@ extrn poll
 extrn usleep
 
 _enter = _nest
+_exit = _unnest
 
 _dodoes: ; ( -- addr )
 	lea	ebp,[ebp-4]  ;	push	IP
@@ -80,10 +81,6 @@ code and ( x1 x2 -- x3 )
 	and	eax,edx
 	push	eax
 	next
-;
-
-pre
-_exit = _unnest
 ;
 
 code @ ( addr -- x )

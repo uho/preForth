@@ -72,7 +72,7 @@
 
 : (/mod  ( n d q0 -- r d q )
    >r over over <  r> swap ?exit
-   >r swap over -  swap  r> 1+  (/mod ;
+   >r swap over -  swap  r> 1+  tail (/mod ;
 
 : (10u/mod ( n q d -- r q d )
    2 pick over > 0= ?exit     \ ( n q d )

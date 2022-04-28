@@ -1,4 +1,4 @@
-\ preForth runtime system - i386 (16 bit) dependent part
+\ preForth runtime system - z80 (16 bit) dependent part
 \ --------------------------
 \
 \  - registers:

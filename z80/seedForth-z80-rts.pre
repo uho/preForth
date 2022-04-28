@@ -3,6 +3,12 @@
 \ interpreter and basic asm primitives are taken from preForth-z80-rts.pre,
 \ and then this file defines additional primitives (arithmetic, memory, etc)
 
+\ aliases for the user-visible versions of some internal routines
+pre
+_enter = _nest
+_exit = _unnest
+;
+
 \ note: we arrive at _dodoes by a sequence of 2 calls, the return
 \ address stacked by first call points to some instance data, and
 \ the return address stacked by second call (to _dodoes) points to
@@ -10,19 +16,22 @@
 \ data -- we simply leave the instance data's address stacked for
 \ the high level forth code and then "execute" the high level forth
 \ code, which means that _dodoes is the same as _enter in our case
+pre
+_dodoes = _nest
+;
+
 \ note: similarly, arriving at _dovar we just leave address stacked
 pre
-_enter = _nest
-_exit = _unnest
-
-_dodoes = _nest
 _dovar = next
 ;
 
 code key? ( -- f )
 	in	a,(STDIN_STATUS)
-	ld	l,a
-	ld	h,0
+	or	a
+	jr	z,1$
+	ld	a,0xff
+1$:	ld	l,a
+	ld	h,a
 	push	hl
 	jr	next
 ;
@@ -159,32 +168,32 @@ code um* ( u1 u2 -- ud )
 ; ld l,c
 ; ld h,b
 ; call print_hexw
-; ld a,0x2a
+; ld a,'*
 ; call print_char
 ; ld l,e
 ; ld h,d
 ; call print_hexw
+; ld a,'=
+; call print_char
 
-	sub	a ; clears cf
+	sub	a
 	ld	l,a
 	ld	h,a
 	ld	a,b
 	ld	b,16
-	or	a
-umul_loop:
+	; cf does not matter here (shift in a random bit that isn't used)
 	rra
 	rr	c
+umul_loop:
 	jr	nc,umul_skip
-	add	hl,de ; can't overflow, leaves cf = 0
+	add	hl,de
 umul_skip:
 	rr	h
 	rr	l
-	djnz	umul_loop
 	rra
 	rr	c
+	djnz	umul_loop
 	ld	b,a
-; ld a,0x3d
-; call print_char
 ; push hl
 ; call print_hexw
 ; ld l,c
@@ -198,7 +207,15 @@ umul_skip:
 	push	hl ; push ud hi
 
 	exx
-	jr	next1
+	;jr	next1
+
+next1:	ld	a,(bc)
+	ld	l,a
+	inc	bc
+	ld	a,(bc)
+	ld	h,a
+	inc	bc
+	jp	(hl)
 ;
 
 code um/mod ( ud u1 -- u2 u3 )
@@ -212,43 +229,46 @@ code um/mod ( ud u1 -- u2 u3 )
 ; ld l,e
 ; ld h,d
 ; call print_hexw
-; ld a,0x2f
+; ld a,'/
 ; call print_char
 ; ld l,c
 ; ld h,b
 ; call print_hexw
 ; pop hl
+; ld a,'=
+; call print_char
 
 	ld	a,16
-	or	a
+	; cf does not matter here (shift in a random bit that isn't used)
+	jr	udiv_loop
+udiv_test:
+	; shift left has not overflowed, try to subtract bc, leaves cf=0
+	; only if subtraction went, record complement of cf in quotient
+	sbc	hl,bc
+	jr	nc,udiv_goes
+	add	hl,bc ; preserves cf
+udiv_goes:
+	ccf
+	dec	a
+	jr	z,udiv_done
 udiv_loop:
 	ex	de,hl
 	adc	hl,hl
 	ex	de,hl
 	adc	hl,hl
 	jr	nc,udiv_test
-	; shift left has overflowed, so we can always subtract bc, and
-	; always cf=1 to indicate subtraction went, record cf in quotient
+	; shift left has overflowed, so we can always subtract bc, always
+	; leaves cf=1 to indicate subtraction went, record cf in quotient
+	or	a
 	sbc	hl,bc
-	jr	udiv_cont
-udiv_test:
-	; shift left has not overflowed, see if we can subtract bc, cf=0
-	; indicates subtraction went, record complement of cf in quotient
-	sbc	hl,bc
-	jr	nc,udiv_goes
-	add	hl,bc
-udiv_goes:
-	ccf
-udiv_cont:
 	dec	a
 	jr	nz,udiv_loop
+udiv_done:
 	ex	de,hl
 	adc	hl,hl ; record final quotient bit
-; ld a,0x3d
-; call print_char
 ; push hl
 ; call print_hexw
-; ld a,0x72
+; ld a,'r
 ; call print_char
 ; ld l,e
 ; ld h,d
@@ -270,13 +290,7 @@ code usleep ( c -- )
 	out	(USLEEP_LO),a
 	ld	a,h
 	out	(USLEEP_HI),a
-next1:	ld	a,(bc)
-	ld	l,a
-	inc	bc
-	ld	a,(bc)
-	ld	h,a
-	inc	bc
-	jp	(hl)
+	jr	next1
 ;
 
 \ we want the text section to be first and bss last (for linkers that output
@@ -298,12 +312,12 @@ pre
 ;	pop	af
 ;print_hexn:
 ;	and	0xf
-;	add	a,0x30
-;	cp	0x3a
+;	add	a,'0
+;	cp	'0 + 10
 ;	jr	c,print_char
-;	add	a,0x41 - 0x3a
+;	add	a,'a - '0 - 10
 ;print_char:
-;	out	(STDOUT_PORT),a
+;	out	(STDERR_DATA),a
 ;	ret
 
 	.area	data

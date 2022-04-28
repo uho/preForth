@@ -1,8 +1,8 @@
 \ seedForth: machine dependent header portion
 
 \ this contains only definitions we want at the top of the file
-\ it is then followed by preForth-i386-rts.pre (primitive asm words)
-\ and then by seedForth-i386.pre (additional primitive asm words)
+\ it is then followed by preForth-z80-rts.pre (primitive asm words)
+\ and then by seedForth-z80.pre (additional primitive asm words)
 \ and then by seedForth.pre (high level words and the interpreter)
 
 pre
