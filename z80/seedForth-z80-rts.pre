@@ -176,9 +176,7 @@ code um* ( u1 u2 -- ud )
 ; ld a,'=
 ; call print_char
 
-	sub	a
-	ld	l,a
-	ld	h,a
+	ld	hl,0
 	ld	a,b
 	ld	b,16
 	; cf does not matter here (shift in a random bit that isn't used)
