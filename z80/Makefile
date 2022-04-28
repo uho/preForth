@@ -1,6 +1,6 @@
 # Makefile for preForth and seedForth
 #
-# make bootstrap should produce two identical files: preForth1.asm and preForth.asm 
+# make bootstrap should produce two identical files: preForth1.$(ASM) and preForth.$(ASM) 
 
 # Set HOSTFORTH to the Forth system that generates the initial preForth
 # ------------------------------------------------------------------------
@@ -19,6 +19,7 @@ EMU_Z80=../emu_z80/emu_z80
 
 .PHONY: all
 all: \
+preForthDemo.bin \
 preForth.bin \
 seedForth.bin \
 seedForthDemo.seed \
@@ -37,9 +38,33 @@ runseedforthinteractive: seedForth seedForthInteractive.seed
 	./seed
 
 UNIXFLAVOUR=$(shell uname -s)
-EXT=asm
+ASM=asm
 
-preForth.asm: \
+# build preForthDemo via the host Forth first, so that it
+# can be used for basic debugging of the preForth runtime
+preForthDemo.$(ASM): \
+../common/preForth-bootstrap.fs \
+../common/preForth-cold.fs \
+preForth-z80-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
+preForth-z80-backend.pre \
+../common/preForth.pre \
+../common/preForthDemo.pre
+	cat \
+preForth-z80-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
+../common/preForthDemo.pre \
+|$(HOSTFORTH) \
+../common/preForth-bootstrap.fs \
+../common/preForth-rts-nonstandard.pre \
+preForth-z80-backend.pre \
+../common/preForth.pre \
+../common/preForth-cold.fs \
+>$@
+
+preForth.$(ASM): \
 ../common/preForth-bootstrap.fs \
 ../common/preForth-cold.fs \
 preForth-z80-rts.pre \
@@ -61,7 +86,7 @@ preForth-z80-backend.pre \
 ../common/preForth-cold.fs \
 >$@
 
-%.asm: \
+%.$(ASM): \
 %.pre \
 preForth-z80-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
@@ -74,10 +99,10 @@ preForth-z80-rts.pre \
 $< \
 >$@
 
-%.bin: %.asm
+%.bin: %.$(ASM)
 	$(ASZ80) -l -o $<
-	$(ASLINK) -n -m -u -i $(<:.asm=.ihx) $(<:.asm=.rel)
-	$(HEX2BIN) $(<:.asm=.ihx) $@
+	$(ASLINK) -n -m -u -i $(<:.$(ASM)=.ihx) $(<:.$(ASM)=.rel)
+	$(HEX2BIN) $(<:.$(ASM)=.ihx) $@
 
 # run preForth on its own source code to perform a bootstrap 
 # should produce identical results
@@ -88,15 +113,15 @@ preForth-z80-rts.pre \
 preForth-z80-backend.pre \
 ../common/preForth.pre \
 preForth.bin \
-preForth.$(EXT)
+preForth.$(ASM)
 	$(EMU_Z80) preForth.bin \
 preForth-z80-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
 ../common/preForth-rts.pre \
 preForth-z80-backend.pre \
 ../common/preForth.pre \
->preForth1.$(EXT)
-	cmp preForth.$(EXT) preForth1.$(EXT)
+>preForth1.$(ASM)
+	cmp preForth.$(ASM) preForth1.$(ASM)
 
 # preForth connected to stdin - output to stdout
 .PHONY: visible-bootstrap
@@ -120,7 +145,7 @@ rundocker: docker-image
 # ------------------------------------------------------------------------
 # seedForth
 # ------------------------------------------------------------------------
-seedForth.$(EXT): \
+seedForth.$(ASM): \
 seedForth-z80-header.pre \
 preForth-z80-rts.pre \
 seedForth-z80-rts.pre \
@@ -135,7 +160,7 @@ seedForth-z80-rts.pre \
 seedForth-z80.pre \
 ../common/seedForth16bit.pre \
 ../common/seedForth.pre \
->seedForth.$(EXT)
+>seedForth.$(ASM)
 
 # a little ugly, because gforth insists upon echoing anything read from
 # stdin, and also does not allow parsing words to cross a file boundary,
@@ -173,4 +198,4 @@ seedForthRuntimez80.seedsource \
 
 .PHONY: clean
 clean:
-	rm -f *.asm *.o *.seed preForthdemo preForth seedForth __temp__.fs
+	rm -f *.$(ASM) *.o *.seed preForthDemo preForth seedForth __temp__.fs

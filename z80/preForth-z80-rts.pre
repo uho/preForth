@@ -170,7 +170,6 @@ code lit ( -- )
 \ sections in definition order), so it would be good to have the bss section
 \ be output by the ",end" hook, but at present we cannot call "pre" from a
 \ defined word, so we make do by switching to bss and then back to text again
-
 pre
 	.area	bss
 

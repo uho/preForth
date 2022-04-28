@@ -1,6 +1,6 @@
 # Makefile for preForth and seedForth
 #
-# make bootstrap should produce two identical files: preForth1.asm and preForth.asm 
+# make bootstrap should produce two identical files: preForth1.$(ASM) and preForth.$(ASM) 
 
 # Set HOSTFORTH to the Forth system that generates the initial preForth
 # ------------------------------------------------------------------------
@@ -10,6 +10,7 @@ HOSTFORTH=gforth
 
 .PHONY: all
 all: \
+preForthDemo \
 preForth \
 seedForth \
 seedForthDemo.seed \
@@ -28,9 +29,33 @@ runseedforthinteractive: seedForth seedForthInteractive.seed
 	./seed
 
 UNIXFLAVOUR=$(shell uname -s)
-EXT=asm
+ASM=asm
 
-preForth.asm: \
+# build preForthDemo via the host Forth first, so that it
+# can be used for basic debugging of the preForth runtime
+preForthDemo.$(ASM): \
+../common/preForth-bootstrap.fs \
+../common/preForth-cold.fs \
+preForth-i386-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
+preForth-i386-backend.pre \
+../common/preForth.pre \
+../common/preForthDemo.pre
+	cat \
+preForth-i386-rts.pre \
+../common/preForth-rts-nonstandard.pre \
+../common/preForth-rts.pre \
+../common/preForthDemo.pre \
+|$(HOSTFORTH) \
+../common/preForth-bootstrap.fs \
+../common/preForth-rts-nonstandard.pre \
+preForth-i386-backend.pre \
+../common/preForth.pre \
+../common/preForth-cold.fs \
+>$@
+
+preForth.$(ASM): \
 ../common/preForth-bootstrap.fs \
 ../common/preForth-cold.fs \
 preForth-i386-rts.pre \
@@ -52,7 +77,7 @@ preForth-i386-backend.pre \
 ../common/preForth-cold.fs \
 >$@
 
-%.asm: \
+%.$(ASM): \
 %.pre \
 preForth-i386-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
@@ -67,7 +92,7 @@ $< \
 
 ifeq ($(UNIXFLAVOUR),Linux)
 # assemble and link executable on linux
-%: %.asm
+%: %.$(ASM)
 	fasm $< $@.o
 	LDEMULATION=elf_i386 ld -arch i386 -o $@ \
 -dynamic-linker /lib32/ld-linux.so.2 \
@@ -78,7 +103,7 @@ $@.o \
 else
 ifeq ($(UNIXFLAVOUR),Darwin)
 # assemble and link executable on MacOS
-%: %.asm
+%: %.$(ASM)
 	fasm $< $@.o
 	objconv -fmacho32 -nu $@.o $@_m.o
 	ld -arch i386 -macosx_version_min 10.6 -o $@ \
@@ -97,15 +122,15 @@ preForth-i386-rts.pre \
 preForth-i386-backend.pre \
 ../common/preForth.pre \
 preForth \
-preForth.$(EXT)
+preForth.$(ASM)
 	./preForth \
 preForth-i386-rts.pre \
 ../common/preForth-rts-nonstandard.pre \
 ../common/preForth-rts.pre \
 preForth-i386-backend.pre \
 ../common/preForth.pre \
->preForth1.$(EXT)
-	cmp preForth.$(EXT) preForth1.$(EXT)
+>preForth1.$(ASM)
+	cmp preForth.$(ASM) preForth1.$(ASM)
 
 # preForth connected to stdin - output to stdout
 .PHONY: visible-bootstrap
@@ -129,7 +154,7 @@ rundocker: docker-image
 # ------------------------------------------------------------------------
 # seedForth
 # ------------------------------------------------------------------------
-seedForth.$(EXT): \
+seedForth.$(ASM): \
 seedForth-i386-header.pre \
 preForth-i386-rts.pre \
 seedForth-i386-rts.pre \
@@ -144,7 +169,7 @@ seedForth-i386-rts.pre \
 seedForth-i386.pre \
 ../common/seedForth32bit.pre \
 ../common/seedForth.pre \
->seedForth.$(EXT)
+>seedForth.$(ASM)
 
 # a little ugly, because gforth insists upon echoing anything read from
 # stdin, and also does not allow parsing words to cross a file boundary,
@@ -182,4 +207,4 @@ seedForthRuntimei386.seedsource \
 
 .PHONY: clean
 clean:
-	rm -f *.asm *.o *.seed preForthdemo preForth seedForth __temp__.fs
+	rm -f *.$(ASM) *.o *.seed preForthDemo preForth seedForth __temp__.fs
