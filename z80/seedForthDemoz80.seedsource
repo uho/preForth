@@ -11,3 +11,5 @@ Defer d1
 t{ d1 d1 d1 -> ten ten ten }t
 ' five is d1
 t{ d1 d1 d1 -> five five five }t
+
+done bye
