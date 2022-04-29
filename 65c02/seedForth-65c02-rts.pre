@@ -623,7 +623,7 @@ _dp:	.dw	_mem
 	.area	bss
 
 	; head pointer: index of first unused head
-__hp:	.dw	0
+__hp:	.ds	2
 _head:	.ds	HEAD_SIZE*2
 
         ; free memory starts at _mem
