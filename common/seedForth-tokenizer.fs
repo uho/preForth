@@ -125,12 +125,12 @@ Variable #tokens  0 #tokens !
 ( 28 $1C ) Token h@        Token h,            Token here       Token allot         
 ( 32 $20 ) Token ,         Token c,            Token fun        Token interpreter   
 ( 36 $24 ) Token compiler  Token create        Token does>      Token cold          
-( 40 $28 ) Token depth     Token compile,      Token new        Token couple        
+( 40 $28 ) Token depth     Token dodoes        Token new        Token couple        
 ( 44 $2C ) Token and       Token or            Token sp@        Token sp!           
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
 ( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?          
 ( 56 $38 ) Token token     Token usleep        Token hp         Token key
-( 60 $3C ) Token emit      Token eemit         Token dodoes
+( 60 $3C ) Token emit      Token eemit
 
 \ generate token sequences for numbers
 

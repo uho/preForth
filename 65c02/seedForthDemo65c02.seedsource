@@ -2,7 +2,7 @@
 \ allows us to adjust things for direct threaded vs indirect threaded
 
 \ we must index past the "jsr" instruction
-: >body ( xt -- body )  h@  1 + 1 cells + ;
+: >body ( xt -- body )  3 + ;
 
 : is ( xt -- )  ' >body ! ;
 

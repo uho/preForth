@@ -196,7 +196,7 @@ t{ person -> 3 cells }t          \ size of structure
 
 \ Deferred words
 
-: ' ( --  x )  key ;
+: ' ( --  x )  token h@ ;
 
 : uninitialized ( -- ) cr s" uninitialized execution vector" type ;
 ' uninitialized Constant 'uninitialized

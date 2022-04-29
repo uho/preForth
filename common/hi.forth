@@ -297,7 +297,7 @@ Defer %defer  ' %defer >body 2 cells -  @  Constant dodefer
     [ ' exit ] Literal >body 1 cells - r> cell+ ! ;
 
 : backpatch ( xt1 xt2 -- ) 
-    here >r  >body dp!  compile,  postpone exit  r> dp! ;
+    here >r  >body dp!  ,  postpone exit  r> dp! ;
 
 begin-tests
 

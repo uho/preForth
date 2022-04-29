@@ -95,17 +95,8 @@ code c! ( c c-addr -- )
 	jr	next
 ;
 
-\ code invoke ( addr -- ) \ native code: >r ;
-code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
-	pop	hl
-	add	hl,hl
-	ld	de,_head
-	add	hl,de
-	ld	a,(hl)
-	inc	hl
-	ld	h,(hl)
-	ld	l,a
-	jp	(hl)
+code execute ( xt -- )
+	ret
 ;
 
 code branch ( -- )  \ threaded code: r>  @ >r ;

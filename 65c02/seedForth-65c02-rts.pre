@@ -221,34 +221,16 @@ code c! ( c c-addr -- )
 	bra	next2
 ;
 
-\ code invoke ( addr -- ) \ native code: >r ;
-code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
+code execute ( xt -- )
 	lda	[dsp],y
-	asl	a
-	sta	temp
+	sta	1$+1 ; self modifying code
 	inc	dsp
 	lda	[dsp],y
-	rol	a
-	tax ; sta temp+1
+	sta	1$+2 ; self modifying code
 	inc	dsp
 	bne	1$
 	inc	dsp+1
-
-1$:	lda	temp
-	clc
-	adc	#<_head
-	sta	temp
-	txa ; lda temp+1
-	adc	#>_head
-	sta	temp+1
-
-	lda	[temp],y
-	sta	2$+1 ; self modifying code
-	iny
-	lda	[temp],y
-	sta	2$+2 ; self modifying code
-	dey
-2$:	jmp	0
+1$:	jmp	0
 ;
 
 code branch ( -- )  \ threaded code: r>  @ >r ;

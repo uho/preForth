@@ -112,10 +112,8 @@ code c! ( c c-addr -- )
 	next
 ;
 
-\ code invoke ( addr -- ) \ native code: >r ;
-code execute ( addr -- ) \ this version uses token numbers as execution tokens	and	finds their code address via the headers table
-	pop	edx
-	mov	dword eax,[_head+edx*4]
+code execute ( xt -- )
+	pop	eax
 	jmp	dword [eax]
 ;
 

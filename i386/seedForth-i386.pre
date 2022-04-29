@@ -2,17 +2,17 @@
 \ allows us to adjust things for direct threaded vs indirect threaded
 
 : compiler ( -- )
-   token
+   token h@
    ?eot
    ?lit
-   compile, tail compiler ;
+   , tail compiler ;
 
 : new ( -- xt )
-   hp @   here h,  lit enter , ;
+   here dup h,  lit enter , ;
 
 : create ( -- xt )
    0 , \ dummy does> field
-   hp @  here h, lit dovar , ;
+   here dup h, lit dovar , ;
 
 : does> ( xt -- ) \ set code field of last defined word
-   r>   swap h@  dup >r 1 cells - !   lit dodoes r> ! ;
+   r>   swap  dup >r 1 cells - !   lit dodoes r> ! ;

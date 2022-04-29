@@ -252,7 +252,7 @@ end-macro
 
 \ Deferred words
 
-: ' ( --  x )  token ;
+: ' ( --  x )  token h@ ;
 
 : uninitialized ( -- ) 
      cr s" uninitialized execution vector" type -1 throw ;
@@ -585,7 +585,7 @@ end-macro
 ' does>       has-header does>
 ' cold        has-header cold
 ' depth       has-header depth
-' compile,    has-header compile,
+' ,    has-header ,
 ' new         has-header new
 ' couple      has-header couple
 ' and         has-header and
@@ -754,19 +754,19 @@ Variable heads -1 heads !
 ' _name has-header _name
 
 : (Literal) ( x -- )
-    lit [ ' lit , ] compile, , ;
+    lit [ ' lit , ] , , ;
 
 ' (Literal)   has-header Literal  immediate
 
 : (s") ( ccc" -- )
-    [ ' $lit ] Literal compile,  
+    [ ' $lit ] Literal ,  
     '"' parse here over 1+ allot place ;
 
 ' (s") has-header s" immediate
 
 : (.") ( ccc" -- )
     (s")
-    [ ' type ] Literal compile, ;
+    [ ' type ] Literal , ;
 
 ' (.") has-header ." immediate
 
@@ -822,7 +822,7 @@ Variable heads -1 heads !
     BEGIN
        dup
     WHILE ( xt wid )
-       2dup _xt @ h@ = IF nip exit THEN
+       2dup _xt @ = IF nip exit THEN
        _link @
     REPEAT ( xt wid )
     2drop 0 ;
@@ -842,9 +842,9 @@ Variable heads -1 heads !
 : (postpone) ( <name> -- )
     parse-name find-name dup 0= -13 and throw
     dup immediate? IF
-      _xt @ compile, 
+      _xt @ , 
     ELSE 
-      [ ' lit ] Literal compile,  _xt @ ,  [ ' compile, ] Literal compile, 
+      [ ' lit ] Literal ,  _xt @ ,  [ ' , ] Literal , 
     THEN 
 ;
 
@@ -857,7 +857,7 @@ Variable heads -1 heads !
 ' tick        has-header '
 
 : ([']) ( <name> -- xt )
-    tick  [ ' lit ] Literal compile,  , ;
+    tick  [ ' lit ] Literal ,  , ;
 
 ' ([']) has-header ['] immediate
 
@@ -881,7 +881,7 @@ Variable heads -1 heads !
 : ,# ( c-addr u -- 0 0 | c-addr u )
     dup 0= ?exit
     ?# dup ?exit
-    lit [ ' lit , ] compile, rot , ;
+    lit [ ' lit , ] , rot , ;
 
 :  ?'x' ( c-addr u -- x 0 0 | c-addr u )
     dup 0= ?exit
@@ -893,7 +893,7 @@ Variable heads -1 heads !
 : ,'x' ( c-addr u -- 0 0 | c-addr u )
     dup 0= ?exit
     ?'x' dup ?exit
-    lit [ ' lit , ] compile, rot , ;
+    lit [ ' lit , ] , rot , ;
 
 : ?word ( c-addr1 u1 | i*x c-addr2 u2 )
    dup 0= ?exit
@@ -913,7 +913,7 @@ Variable heads -1 heads !
    dup 0= ?exit
    2dup find-name ?dup
    IF 
-      nip nip dup immediate? IF _xt @ execute ELSE _xt @ compile, THEN 0 0 
+      nip nip dup immediate? IF _xt @ execute ELSE _xt @ , THEN 0 0 
    THEN 
 ;
 
@@ -942,7 +942,7 @@ Variable handlers        interpreters @ handlers !
     Header new swap _xt !  hide  (]) ;
 
 : (;) ( -- )
-   lit [ ' exit , ] compile,  reveal ([) ;
+   lit [ ' exit , ] ,  reveal ([) ;
 
 ' (])   has-header ] 
 ' ([)   has-header [  immediate 
@@ -1047,7 +1047,7 @@ Defer .status   : noop ;  \ ' noop is .status (done later)
    0 UNTIL ;
 
 : warm ( -- )
-   \ [ ' [ compile, ] 
+   \ [ ' [ , ] 
    empty-stack restart ;
 
 Create errormsg  0 , 0 ,

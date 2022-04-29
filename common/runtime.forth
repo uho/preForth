@@ -96,7 +96,7 @@ false invert Constant true
     postpone UNTIL
     postpone drop ; immediate
 
-: recurse ( -- )  last @ _xt @ compile, ; immediate
+: recurse ( -- )  last @ _xt @ , ; immediate
 
 \ conditional compilation
 
