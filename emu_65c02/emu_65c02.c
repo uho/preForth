@@ -141,6 +141,7 @@ void mem_write(uint16_t addr, uint8_t val) {
     break;
   case SYS_EXIT:
     exit_flag = val | 0x100;
+    vrEmu6502Jam(cpu);
     break;
   }
 }
@@ -189,44 +190,48 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  long nb_ticks = 0;
+  long nb_instructions = 0, nb_cycles = 0;
+  int i, j;
 #if TRACE
-  int pc = -1;
+  do {
+    int pc = vrEmu6502GetPC(cpu);
+    int ip = memory[0] | (memory[1] << 8);
+    int dsp = memory[2] | (memory[3] << 8);
+    int rsp = memory[4] | (memory[5] << 8);
+    fprintf(
+      stderr,
+      "pc=%04x:%02x,%02x,%02x ip=%04x:%04x dsp=%04x:%04x rsp=%04x:%04x\n",
+      pc,
+      memory[pc],
+      memory[(pc + 1) & 0xffff],
+      memory[(pc + 2) & 0xffff],
+      ip,
+      memory[ip] | (memory[(ip + 1) & 0xffff] << 8),
+      dsp,
+      memory[dsp] | (memory[(dsp + 1) & 0xffff] << 8),
+      rsp,
+      memory[rsp] | (memory[(rsp + 1) & 0xffff] << 8)
+    );
+    i = vrEmu6502Run(cpu, 1, &j);
+    nb_instructions += i;
+    nb_cycles += j;
+  } while (i);
+#else
+  do {
+    i = vrEmu6502Run(cpu, 1000, &j);
+    nb_instructions += i;
+    nb_cycles += j;
+  } while (i >= 1000);
 #endif
-  while (!exit_flag) {
-#if TRACE
-    if (pc != vrEmu6502GetPC(cpu)) {
-      pc = vrEmu6502GetPC(cpu);
-      int ip = memory[0] | (memory[1] << 8);
-      int dsp = memory[2] | (memory[3] << 8);
-      int rsp = memory[4] | (memory[5] << 8);
-      fprintf(
-        stderr,
-        "pc=%04x:%02x,%02x,%02x ip=%04x:%04x dsp=%04x:%04x rsp=%04x:%04x\n",
-        pc,
-        memory[pc],
-        memory[(pc + 1) & 0xffff],
-        memory[(pc + 2) & 0xffff],
-        ip,
-        memory[ip] | (memory[(ip + 1) & 0xffff] << 8),
-        dsp,
-        memory[dsp] | (memory[(dsp + 1) & 0xffff] << 8),
-        rsp,
-        memory[rsp] | (memory[(rsp + 1) & 0xffff] << 8)
-      );
-    }
-#endif
-    vrEmu6502Tick(cpu);
-    ++nb_ticks;
-  }
 
   vrEmu6502Destroy(cpu);
 
   if (timing)
     fprintf(
       stderr,
-      "%lu ticks executed\n",
-      nb_ticks
+      "%lu instructions executed on %lu cycles\n",
+      nb_instructions,
+      nb_cycles
     );
   exit(exit_flag & 0xff);
 }
