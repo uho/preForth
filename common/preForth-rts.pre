@@ -1,0 +1,99 @@
+\ preForth runtime system - machine independent part - standard words
+
+\ ------------------------------------
+\ define lots of useful standard words
+\ ------------------------------------
+
+: ?dup ( x -- x x | 0 )
+    dup dup ?exit drop ;
+    
+: 0= ( x -- flag )
+   0 swap ?exit drop -1 ;
+
+: negate ( n1 -- n2 )
+    0 swap - ;
+
+: + ( x1 x2 -- x3 )
+    negate - ;
+
+: 1+ ( n1 -- n2 )
+   1 + ;
+
+: 1- ( n1 -- n2 )
+   1 - ;
+
+: = ( x1 x2 -- flag )
+   - 0= ;
+
+: < ( n1 n2 -- flag )
+   - 0< ;
+
+: > ( n1 n2 -- flag )
+   swap < ;
+
+
+\ additional stack operators
+\ --------------------------
+
+: over ( x1 x2 -- x1 x2 x1 )
+   >r dup r> swap ;
+
+: rot ( x1 x2 x3 -- x2 x3 x1 )
+   >r swap r> swap ;
+
+: nip ( x1 x2 -- x2 )
+   swap drop ;
+
+: 2drop ( x1 x2 -- )
+   drop drop ;
+
+: pick ( xn-1 ... x0 i -- xn-1 ... x0 xi )
+    over swap ?dup 0= ?exit nip swap >r 1- pick r> swap ;  
+
+: roll ( xn-1 ... x0 i -- xn-1 ... xi-1 xi+1 ... x0 xi )
+    ?dup 0= ?exit swap >r 1- roll r> swap ;
+
+
+\ text output words
+\ -----------------
+
+: bl ( -- bl )
+   32 ;
+
+: space ( -- )
+   bl emit ;
+
+: cr ( -- )
+   10 emit ;
+
+
+\ number output
+\ -------------
+
+: (/mod  ( n d q0 -- r d q )
+   >r over over <  r> swap ?exit
+   >r swap over -  swap  r> 1+  tail (/mod ;
+
+: (10u/mod ( n q d -- r q d )
+   2 pick over > 0= ?exit     \ ( n q d )
+   dup >r 10*                 \ ( n q 10*d ) ( R: d )
+   (10u/mod                   \ ( r q d )
+   swap >r   0 (/mod nip   r> 10* + r> ;
+     
+: 10u/mod ( n -- r q )
+   0 1 (10u/mod drop  ;
+
+: (u. ( u1 -- )
+   ?dup 0= ?exit 10u/mod (u. '0' + emit ;
+
+\ display unsigned number
+: u. ( u -- )
+   dup (u. ?exit '0' emit ;
+
+
+: (. ( n -- n' )
+   dup 0< 0= ?exit '-' emit negate ;
+
+\ display signed number
+: . ( n -- )
+   (. u. ;

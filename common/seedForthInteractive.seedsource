@@ -1,0 +1,134 @@
+\ seedForth interactive system
+\ this file boots for interactive use (with banner, prompt, echo)
+
+\ catch and throw tests: see later when ' is defined
+
+\ save and empty tests
+save
+
+: three 3 ;
+
+empty
+
+begin-tests
+\ Test basics
+t{ 10 '*' + ->  52 }t
+t{ 0 0< -> 0 }t
+t{ 1 0< -> 0 }t
+t{ 2 0< -> 0 }t
+
+t{ 1 negate 0< -> -1 }t
+t{ 2 negate 0< -> -1 }t
+t{ 0 negate -> 0 }t
+t{ -1 negate 0< -> 0 }t
+t{ -2 negate 0< -> 0 }t
+
+
+t{ 10 20 30 third -> 10 20 30 10 }t
+
+t{ 1 2 3 rot -> 2 3 1 }t
+t{ 1 2 3 -rot -> 3 1 2 }t
+
+
+t{ 3 4 max -> 4 }t
+t{ 3 4 min -> 3 }t
+t{ -1 4 max -> 4 }t
+t{ -1 4 min -> -1 }t
+
+t{ 1 2 2drop -> }t
+t{ 1 2 2dup -> 1 2 1 2 }t
+
+t{ 1 2 3 4 2swap -> 3 4 1 2 }t
+t{ 1 2 3 4 2over -> 1 2 3 4 1 2 }t
+
+t{ 10 abs -> 10 }t
+t{ -10 abs -> 10 }t
+
+t{ 15 10 xor -> 5 }t
+t{ 21845 dup xor -> 0 }t  \ $5555
+t{ 21845 dup 2* xor -> 65535 }t
+
+t{ minint maxint <  -> -1 }t  \ 32bit $80000000 $7FFFFFFF
+t{ minint 0 <  -> -1 }t \ 32bit $80000000 0
+t{ 0 minint <  -> 0 }t  \ 32bit 0 $80000000
+
+\ both positive
+t{ 10 10 < -> 0 }t
+t{ 10 1000 < -> -1 }t
+t{ 1000 10 < ->  0 }t
+
+\ both negative
+t{ -10 -10 < -> 0 }t
+t{ -10 -1000 < -> 0 }t
+t{ -1000 -10 < ->  -1 }t
+
+\ left negative
+t{ -10 10 < -> -1 }t
+t{ -10 1000 < -> -1 }t
+t{ -1000 10 < ->  -1 }t
+
+\ right negative
+t{ 10 -10 < -> 0 }t
+t{ 10 -1000 < -> 0 }t
+t{ 1000 -10 < ->  0 }t
+
+end-tests
+
+\ minint and maxint tests
+begin-tests
+
+t{ minint negate -> minint }t
+t{ minint maxint < -> -1 }t
+t{ maxint minint < -> 0  }t
+
+t{ 0 1 u< -> -1 }t
+t{ 1 0 u< -> 0 }t
+t{ -1 0 u< -> 0 }t
+t{ 0 -1 u< -> -1 }t
+
+end-tests
+
+\ catch and throw tests
+begin-tests
+
+t{ 10 ' dup catch  -> 10 10 0 }t
+ 
+: err99 ( x -- )  dup 9 = IF 99 throw THEN 1 + ;
+ 
+t{ 1 ' err99 catch -> 2 0 }t
+t{ 5 9 ' err99 catch nip ->  5 99 }t
+
+end-tests
+
+\ interactive part
+2 Constant major ( -- x )
+2 Constant minor ( -- x )
+0 Constant patch ( -- x )
+
+: .version ( -- )
+    major .digit '.' emit
+    minor .digit '.' emit
+    patch .digit ;
+
+: .banner ( -- )
+    cr ." seedForth/interactive " .version
+    cr ." ---------------------------" 
+    cr unused . ." bytes free" cr ;
+
+\ ---- try colored words with embedded ESC sequences
+Create colored-header here 0 c, here 
+    27 c,  '[' c,  '3' c, '1' c, 'm' c,  'r' c, 'e' c, 'd' c, 'w' c, 'o' c, 'r' c, 'd' c,
+    27 c,  '[' c,  '3' c, '9' c, ';' c,  '4' c, '9' c, 'm' c,
+here swap - swap c!
+
+ colored-header count "header dup link-header
+\ --------
+
+
+cr
+t{ -> }t
+
+
+reveal
+.banner
+boot
