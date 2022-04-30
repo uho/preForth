@@ -7,82 +7,82 @@
 65261 Constant xFEED
 
 \ exceptions
-100 Constant except_hash_table_full
+100 Constant except-hash-table-full
 
 \ hash table entry structure
-0 Constant _hash_table_xt
-1 cells Constant _hash_table_name_addr
-2 cells Constant _hash_table_name_len
-3 cells Constant #hash_table
+0 Constant _hash-table-xt
+1 cells Constant _hash-table-name-addr
+2 cells Constant _hash-table-name-len
+3 cells Constant #hash-table
 
 \ the sizing below accommodates up to 1K word definitions
 \ (the same as the number of tokens available to seedForth)
-x3FF Constant hash_table_mask
-x400 Constant hash_table_size
-Create hash_table
-hash_table_size #hash_table * dup allot hash_table swap 0 fill
+x3FF Constant hash-table-mask
+x400 Constant hash-table-size
+Create hash-table
+hash-table-size #hash-table * dup allot hash-table swap 0 fill
 
-: hash_table_index ( entry -- addr )
-    #hash_table * hash_table + ;
+: hash-table-index ( entry -- addr )
+    #hash-table * hash-table + ;
 
-: hash_table_find ( name_addr name_len -- entry_addr found )
+: hash-table-find ( name-addr name-len -- entry-addr found )
     \ calculate CRC10 of the symbol name
     \ initial value is same as hash table mask (all 1s)
-    2dup hash_table_mask crc10
-    \ hash_table_mask and
+    2dup hash-table-mask crc10
+    \ hash-table-mask and
 
     \ using the CRC10 as the starting entry, look circularly
     \ for either a null entry (not found) or a matching entry
-    hash_table_size 0 ?DO ( name_addr name_len entry )
-        dup >r hash_table_index >r ( name_addr name_len R: entry entry_addr )
+    hash-table-size 0 ?DO ( name-addr name-len entry )
+        dup >r hash-table-index >r ( name-addr name-len R: entry entry-addr )
 
         \ check for null entry
-        r@ _hash_table_xt + @ 0= IF
+        r@ _hash-table-xt + @ 0= IF
             2drop r> r> drop false UNLOOP exit
         THEN
 
         \ check for matching entry
         2dup
-        r@ _hash_table_name_addr + @
-        r@ _hash_table_name_len + @
+        r@ _hash-table-name-addr + @
+        r@ _hash-table-name-len + @
         compare 0= IF
             2drop r> r> drop true UNLOOP exit
         THEN
 
         \ go to next entry, circularly
         r> drop
-        r> 1+ hash_table_mask and
+        r> 1+ hash-table-mask and
     LOOP
 
     \ not found, and no room for new entry
-    except_hash_table_full throw
+    except-hash-table-full throw
 ;
 
 : token@ ( c-addr u -- x )
     \ get entry address and flag for found/empty
-    hash_table_find
+    hash-table-find
 
-    \ if found, return value of _xt, otherwise 0
-    IF _hash_table_xt + @ ELSE drop 0 THEN
+    \ if found, return value of -xt, otherwise 0
+    IF _hash-table-xt + @ ELSE drop 0 THEN
 ;
 
 : ?token ( c-addr u -- x )
     \ get entry address and flag for found/empty
-    2dup hash_table_find
+    2dup hash-table-find
 
     \ if empty, copy symbol name and fill in entry
     0= IF
         >r
-        here r@  _hash_table_name_addr + !
-        dup r@ _hash_table_name_len + !
+        here r@  _hash-table-name-addr + !
+        dup r@ _hash-table-name-len + !
         here swap dup allot cmove
         r>
     ELSE
         nip nip
     THEN
 
-    \ return address of _xt for caller to fill in
-    _hash_table_xt +
+    \ return address of -xt for caller to fill in
+    _hash-table-xt +
 ;
 
 \ VARIABLE OUTFILE
@@ -104,12 +104,13 @@ hash_table_size #hash_table * dup allot hash_table swap 0 fill
 \ a new token number (hence assuming we will emit a "fun" token to make the
 \ seedForth kernel do the same at the other side), whereas "Macro" does not.
 Variable #tokens  0 #tokens !
+Variable last-xt-ptr \ will be copied to colon-xt-ptr during colon definition
 : Token ( <name> -- )
    :noname
      #tokens @  postpone Literal
      postpone emit-token
      postpone ;
-   parse-name ?token !
+   parse-name ?token dup last-xt-ptr ! !
    1 #tokens +! ;
 
 : Macro ( <name> -- )
@@ -191,11 +192,57 @@ Variable #tokens  0 #tokens !
 \ was in progress, then we'll do an automatic bye (in the old way,
 \ there was an automatic bye token appended to seed file, but this
 \ was annoying because seedForthInteractive had to read and drop it)
-Macro [ ( -- )  seed eot      end-macro  \ eot
-Macro ] ( -- )  seed compiler end-macro  \ compiler
+Macro [ ( -- )
+  seed eot
+end-macro
+Macro ] ( -- )
+  seed compiler
+end-macro
 
-Macro : ( <name> -- )  Token  seed fun  end-macro
-Macro ; ( -- )         seed exit   seed [ end-macro
+\ the colon-xt-ptr points into the hash table entry of the symbol
+\ being defined during a colon-definition, indirecting through this
+\ pointer gives the routine the tokenizer executes when compiling
+\ that symbol later -- initially it just outputs the symbol's token,
+\ but by editing the value at the colon-xt-ptr we can implement a
+\ chain of actions to execute before outputting the symbol's token
+Variable colon-xt-ptr  0 colon-xt-ptr !
+Macro : ( <name> -- )
+  Token  last-xt-ptr @ colon-xt-ptr !
+  seed fun
+end-macro
+Macro ; ( -- )
+  0 colon-xt-ptr !
+  seed exit
+  seed [
+end-macro
+
+\ New style defining-words (regular Forth syntax)
+\ Call the Create macro inside a definer-definition, e.g.
+\   : Variable Create drop 0 , ;
+\ This scheme can also handle SOME more complex cases, e.g.
+\   : 2Variable Create drop 0 , Create drop 0 , ;
+\ But, it does not have the full generality of Forth Create, since we cannot
+\ properly handle <name> arguments to Forth words when working via tokenizer
+Macro Create
+  colon-xt-ptr @ 0= abort" Create outside of colon-definition"
+
+  \ tokenizer side of creating a new defining-word
+  \ hook the routine at colon-xt-ptr to call Token then call the old routine,
+  \ so each time seed source calls e.g. Variable, we'll consume the name and
+  \ create the corresponding token (then the new variable can be referenced)
+  :noname
+    postpone Token
+    colon-xt-ptr @ @  postpone Literal  postpone execute
+    postpone ;
+  colon-xt-ptr @ !
+
+  \ seedForth side of creating a new defining-word
+  \ compile "create dup h," instead of "Create" in body of new defining-word,
+  \ makes the corresponding token in seedForth heads table to keep us in sync
+  seed create
+  seed dup
+  seed h,
+end-macro
 
 \ generate token sequences for strings
 
@@ -311,6 +358,12 @@ end-macro
 Macro \ ( -- )
   postpone \
 end-macro
+
+\ Old style defining-words (special seedForth syntax)
+\ Use "Definer" instead of ":" for definition that begins with "create", e.g.
+\   Definer Variable create drop 0 , ;
+\ Note: above style is deprecated, please use the Create macro instead, e.g.
+\   : Variable Create drop 0 , ;
 
 \ A Definer-definition is similar to a :-definition, see for reference:
 \   Macro : ( <name> -- )  Token  seed fun  end-macro
