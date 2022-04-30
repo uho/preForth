@@ -1,0 +1,322 @@
+\ preForth compiler
+\
+\ features: minimal control structures, no immediate words, strings on stack, few primitives 
+\
+\ just
+\    - Stack
+\    - Returnstack
+\    - Only ?exit and recursion as control structures
+\    - :-definitions
+\    - IO via KEY/EMIT
+\    - signed single cell decimal numbers (0-9)+
+\    - character constants via 'c'-notation
+\    - output signed single cell decimal numbers
+\
+\ and 
+\    - no immediate words, i.e.
+\    - no control structures IF ELSE THEN BEGIN WHILE REPEAT UNTIL
+\    - no defining words
+\    - no DOES>
+\    - no memory @ ! CMOVE ALLOT ,
+\    - no pictured numeric output
+\    - no input stream
+\    - no state
+\    - no base
+\    - no dictionary, no EXECUTE, not EVALUATE
+\    - no CATCH and THROW
+\    - no error handling
+
+\ Prerequisites:
+\ Just 13 primitives: emit key dup swap drop 0< ?exit >r r> - nest unnest lit
+
+
+\ ---------------------------------------------------
+\ Words required from backend:
+\
+\ primitives: 
+\    emit key dup swap drop 0< ?exit >r r> - nest unnest lit
+\
+\ compiler words:
+\   ,line ,comment ,codefield ,end
+\   ,lit ,word ,nest ,unnest ,tail
+\
+\ header creation:
+\   header label bodylabel
+\
+\ Words defined in runtime system
+\   ?dup 0= negate + 1+ 1- = < > case? over rot nip 2drop pick roll
+\   bl space tab cr u. .
+\   show _dup _drop _swap 
+
+\ -----------
+\ parse input
+\ -----------
+\ Input has only key. Ascii End of Transmission, 4, Ctrl-D signals end of input.
+\ We scan input on a character by character basis skiping whitespace (control characters) and collecting non control characters
+\ essentially extracting tokens a word boundaries.
+
+\ This all leads to the word  token  that gets the next word from the input.
+\ As preForth word names can contain symbol characters and the assembler can most likely not handle symbols in labels,
+\ a simple subsitution is defined that replaces symbols to upper case letters. Because of this all preForth definitions themselves
+\ are assumed to have lower case letters only to avoid name clashes.
+
+\ skip reads and ignores control character and returns the next non-control character (or EOF when the input is exhausted).
+: skip ( -- c )
+    key dup bl > ?exit
+    dup 4 = ?exit \ eof
+    drop   tail skip ;
+
+\ scan reads and appends non-control characters to the given string. Returns resulting string and the delimiting character.
+: scan ( S1 -- S2 bl )
+    key dup bl > 0= ?exit swap 1+ scan ;
+
+: (line ( S1 -- S2 )
+    key swap 1+ over 10 = ?exit   tail (line ;
+
+\ line reads the rest of the current line and returns it as a string.
+: line ( -- S )
+    0 (line ;
+
+\ token gets the next whitespace separated token from the input and returns it as topmost string on the stack.
+: token ( -- S )
+    skip  1 scan drop ;
+
+
+\ -----------------
+\ Code definitions
+\ -----------------
+\ preForth uses code definitions in the form
+\
+\ code <name> ( stack comment )
+\     assembly instruction
+\     ...
+\     assembly instruction
+\ ;
+\
+\ To define primitives.
+\ The assembly instructions are copied verbatim to the output. No processing takes place.
+\ Note, that the assembly instructions start at the line after code. All characters
+\ following <name> on the same line are ignored.
+\ As preForth has no immediate words, comments must be handled by code directly.
+\ ; has to be placed on a line of its own to be recognized.
+
+\ Code definitions and also the :-compiler and interpreter use a scheme of handlers trying to process
+\ the current line (or token) as topmost string. The first handler that can process the string, performs
+\ its action (possibly leaving items beneath the string) and turns the string into an empty string.
+\
+\ Code works on lines of source code.
+
+\ handle ;
+
+\ ?: detects a single ; character 
+: ?; ( S --  0 | S )
+   dup 0= ?exit
+   dup 1 - ?exit
+   over ';' - ?exit
+   _drop 0 ;
+
+\ detect if there is a ; as single character in a line 
+: ?;< ( S -- tf | S ff )
+    dup 2 - ?exit
+    2 pick ';' - ?exit
+    over 10 - ?exit
+    _drop 0 ; 
+
+\ pre just copies the following line verbatim to output until a single ; on a line of its own is detected.
+: pre ( -- )
+    line  ?;< ?dup 0= ?exit ,line   tail pre ;
+
+\ code starts a code definition. Lines are replicated to output until a single ; on a line of its own is detected.
+: code ( <name> -- )
+    token
+    _dup ,comment
+    \ 0 header
+    ,code  line _drop  pre  ,end-code ;
+    
+\ Colon definitions - the preForth compiler
+\ -----------------------------------------
+\ preForth uses :-definitions in the form
+\
+\ : <name> ( stack comment )
+\     word 99 'x' \ comment
+\     ...
+\     word word word ;
+\
+\ To define secondary (threaded code) words. The body of the :-definition is compiled by the appropriate
+\ compiler handlers. 
+\ Note, that as for code definitions, the body starts at the line after : <name> and comment. All characters
+\ following <name> on the same line are ignored.
+\
+\ In preForth : does not switch to compiler mode but contains a loop on its own, traditionally called ] .
+\ It uses the same handler scheme as code definitions and the interpreter.
+\ 
+\ The :-compiler works on tokens.
+
+
+\ compiler handlers
+\ =================
+
+\ handle character literals
+\ -------------------------
+
+\ ?'x' detects and compiles a character literal.
+: ?'x' ( S -- 0 | S )
+       dup 0= ?exit
+       dup 3 - ?exit
+       over   ''' - ?exit
+       3 pick ''' - ?exit
+       2 pick >r _drop r>
+       ,lit 0 ;
+
+\ handle numbers
+\ --------------
+\ preForth can compile signed and unsigned decimal numbers.
+\ Digit sequences are detected by ?# and compiled by ?lit as a lit primtive followed by the number.
+\ Note, that the compiler could in principle just copy the number token to the output.
+\ The interpreter however needs to put the numbers on the stack, so the conversion is
+\ still necessary there.
+\ preForth has no base and processed decimal numbers only.
+
+\ digit checks whether a given character is a decimal digit.
+: ?digit ( c -- x 0 | c )
+    dup '0' < ?exit  '9' over < ?exit '0' - 0 ;
+
+\ ?'-' checks if the first character of the topmost string is a '-' sign.
+: ?'-' ( S -- flag )
+    dup pick >r dup >r  _drop r> 1 > r> '-' = ?exit drop 0 ;
+
+: ((?# ( S x1 -- 0 x2 ff | ci ... cn n-i x2 tf )
+      over dup 0= ?exit drop
+      >r dup pick r> swap ?digit ?dup ?exit
+      swap 10* + >r  dup roll drop 1- r>    tail ((?# ;
+
+: (?# ( S x1 -- tf | x ff )
+      ((?# >r >r _drop r> r> dup 0= ?exit nip ;
+
+ : ?-# ( S -- ci ... cn n-i tf | x ff )
+     _dup ?'-' 0= dup ?exit drop   \ check for leading '-'
+     dup roll drop 1-              \ remove leading '-'
+     0 (?# ?dup ?exit
+     negate 0 ;
+
+: ?+-#  ( S -- tf | x ff )
+     ?-# dup 0= ?exit drop     \ try to convert negative
+     0 (?# ;                   \ try to convert positive
+
+\ ?# detects and handles a signed or unsigned decimal number and puts its value on the stack.
+: ?#  ( S -- x ff | S )
+    dup 0= ?exit
+    _dup ?+-# ?exit >r _drop r> 0 ;    
+
+\ ?lit detects and handles a signed or unsigned decimal number and compiles it.
+: ?lit  ( S -- ff | S )
+    dup 0= ?exit
+    _dup ?+-# ?exit >r _drop r> ,lit 0 ;    
+
+\ Handle comments
+\ ---------------
+
+\ ?\ detects and handles \ comments by ignoring the rest of the current input line.
+: ?\ ( S -- 0 | S )
+   dup 1 -    ?exit  \ length 
+   over '\' - ?exit  \ sole character
+   _drop line _drop 0 ; \ skip rest of line
+
+
+\ Handle tail calls
+
+: ?tail ( S -- 0 | S )
+   dup 4 -      ?exit
+   4 pick 't' - ?exit 
+   3 pick 'a' - ?exit
+   2 pick 'i' - ?exit
+   over   'l' - ?exit
+   _drop  token ,tail  0 ;
+
+\ Handle words
+\ ------------
+
+\ ?word detects and handles words by compiling them as reference.
+: ?word ( S -- 0 | S )
+     dup 0= ?exit ,word 0 ;
+
+\ Compiler loop
+\ -------------
+
+: ] ( -- )
+    token             \ get next token
+    \ run compilers
+    ?; ?dup 0= ?exit  \ ;  leave compiler loop
+    ?\                \ comment
+    ?tail
+    ?'x'              \ character literal
+    ?lit              \ number
+    ?word             \ word
+    _drop  tail ] ;   \ ignore unhandled token and cycle
+    
+\ (:  creates label for word and compiles body.
+: (:  ( S  -- )
+    _dup label   line _drop  ,nest  bodylabel  ]   ,unnest ;
+
+\ :' is the pre: that already has the intended :-functionality. However : has to be defined as last word. See below.
+: :' ( <name> -- )
+    token
+    _dup ,comment
+    \ 0 header
+    (: ;
+
+\ -----------
+\ Interpreter
+\ -----------
+\ As preForth has no dictionary the interpreter must detect the words to execute on its own.
+\ The preForth interpreter handles
+\    - Code definitions
+\    - :-definitions
+\    - signed and unsigned decimal numbers.
+\    - \-comments
+
+\ interpreter handlers
+\ ---------------------
+
+\ ?: detects a single : token and executes the :-compiler.
+: ?: ( S c -- 0 | S )
+   dup 0= ?exit
+   dup 1 - ?exit
+   over ':' - ?exit
+   _drop :' 0 ;
+
+\ ?code detects the code token and executes the inline assembler.
+: ?code ( S -- 0 | S )
+   dup 4 - ?exit
+   4 pick 'c' - ?exit
+   3 pick 'o' - ?exit
+   2 pick 'd' - ?exit
+   over   'e' - ?exit
+   _drop code 0 ;
+
+\ ?pre detects token starting with pre and copies lines verbatim.
+: ?pre ( S -- 0 | S )
+    dup 3 < ?exit
+    dup pick     'p' - ?exit
+    dup 1 - pick 'r' - ?exit
+    dup 2 - pick 'e' - ?exit
+    _drop pre 0 ;
+
+\ quit is the top level preForth interpreter loop. It reads tokens and handles them until
+\ an error occurs or the input is exhausted.
+: quit ( -- )
+    token   \ get next token
+    \ run interpreters
+    ?:              \ :-definition
+    ?code           \ code definitions
+    ?pre            \ pre* 
+    ?\              \ comment
+    dup ?exit drop  \ unhandled or EOF
+    tail quit ;          \ cycle
+
+\ cold initializes the dictionary link and starts the interpreter. Acknowledge end on exit.
+: cold ( -- )
+    \ '0' 1        \ dictionary anchor
+    quit \ _drop   \ eof
+    \ top of dictionary as string on stack
+    ,end ;

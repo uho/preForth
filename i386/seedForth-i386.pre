@@ -1,0 +1,18 @@
+\ seedForth: less machine dependent portion
+\ allows us to adjust things for direct threaded vs indirect threaded
+
+: compiler ( -- )
+   token h@
+   ?eot
+   ?lit
+   , tail compiler ;
+
+: new ( -- xt )
+   here dup h,  lit enter , ;
+
+: create ( -- xt )
+   0 , \ dummy does> field
+   here dup h, lit dovar , ;
+
+: does> ( xt -- ) \ set code field of last defined word
+   r>   swap  dup >r 1 cells - !   lit dodoes r> ! ;

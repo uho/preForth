@@ -1,0 +1,15 @@
+\ machine dependent part of seedForthDemo.seedsource
+\ allows us to adjust things for direct threaded vs indirect threaded
+
+\ we must index past the "jsr" instruction
+: >body ( xt -- body )  3 + ;
+
+: is ( xt -- )  ' >body ! ;
+
+Defer d1  
+' ten is d1
+t{ d1 d1 d1 -> ten ten ten }t
+' five is d1
+t{ d1 d1 d1 -> five five five }t
+
+done bye

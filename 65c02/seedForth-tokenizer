@@ -1,0 +1,2 @@
+#!/bin/sh
+../emu_65c02/emu_65c02 seedForth.bin seedForthBoot.seed ../common/runtime.forth ../common/crc10.forth ../common/seedForth-tokenizer.fs -
