@@ -1,0 +1,383 @@
+\ preForth runtime system - 65c02 (16 bit) dependent part
+\ --------------------------
+\
+\  - registers:
+\      A, X  general purpose
+\      Y     zero
+\  - zero page:
+\      ip    instruction pointer
+\      dsp   data stack pointer
+\      rsp   return stack pointer
+
+pre
+;;; This is a preForth generated file using preForth-65c02-backend.
+;;; Only modify it, if you know what you are doing.
+
+DATA_STACK_SIZE = 0x1000
+RETURN_STACK_SIZE = 0x1000
+
+STDIN_DATA = 0x200
+STDOUT_DATA = 0x201
+STDERR_DATA = 0x202
+STDIN_STATUS = 0x203
+STDOUT_STATUS = 0x204
+STDERR_STATUS = 0x205
+USLEEP_LO = 0x206
+USLEEP_HI = 0x207
+SYS_EXIT = 0x208
+
+EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
+
+	.r65c02
+
+	; define load order
+	.area	zpage
+	.area	text
+	.area	data
+	.area	bss
+
+	.area	zpage
+	.setdp ; set direct (zero) page -- makes instructions shorter
+
+	; instruction and stack pointers
+ip:	.ds	2
+dsp:	.ds	2
+rsp:	.ds	2
+
+	; scratch
+temp:	.ds	3 ; was 4, but we can use x-register instead of last one
+
+	.area	text
+
+main:	cld
+	ldx	#0xff
+	txs
+	lda	#<(data_stack + DATA_STACK_SIZE)
+	sta	dsp
+	;lda	#<(return_stack + RETURN_STACK_SIZE)
+	sta	rsp
+	lda	#>(data_stack + DATA_STACK_SIZE)
+	sta	dsp+1
+	lda	#>(return_stack + RETURN_STACK_SIZE)
+	sta	rsp+1
+	lda	#<main1
+	sta	ip
+	lda	#>main1
+	sta	ip+1
+	ldy	#0
+	jmp	next
+
+main1:	.dw	_cold
+	.dw	_bye
+
+;
+
+code bye ( -- )
+	lda	#EXIT_SUCCESS
+	sta	SYS_EXIT
+;
+
+code emit ( c -- )
+	lda	[dsp],y
+	sta	STDOUT_DATA
+
+	inc	dsp
+	inc	dsp
+	bne	1$ ;next
+	inc	dsp+1
+1$:	jmp next ;bra	next
+;
+
+code eemit ( c -- )
+	lda	[dsp],y
+	sta	STDERR_DATA
+
+	inc	dsp
+	inc	dsp
+	bne	1$ ;next
+	inc	dsp+1
+1$:	jmp next ;bra	next
+;
+
+code key ( -- c )
+	ldx	dsp
+	bne	1$
+	dec	dsp+1
+1$:	dec	dsp
+	tya
+	sta	[dsp],y
+	dec	dsp
+	lda	STDIN_DATA
+	sta	[dsp],y
+	jmp	next ;bra	next
+;
+
+code dup ( x -- x x )
+	ldx	dsp
+	bne	1$
+	dec	dsp+1
+1$:	dec	dsp
+	dec	dsp
+	ldy	#2
+	lda	[dsp],y
+	tax
+	iny
+	lda	[dsp],y
+	ldy	#1
+	sta	[dsp],y
+	dey
+	txa
+	sta	[dsp],y
+	bra	next
+;
+
+code swap ( x y -- y x )
+	lda	[dsp],y
+	sta	temp
+	iny
+	lda	[dsp],y
+	sta	temp+1
+	iny
+	lda	[dsp],y
+	sta	temp+2
+	iny
+	lda	[dsp],y
+	tax ; sta temp+3
+	lda	temp+1
+	sta	[dsp],y
+	dey
+	lda	temp
+	sta	[dsp],y
+	dey
+	txa ; lda temp+3
+	sta	[dsp],y
+	dey
+	lda	temp+2
+	sta	[dsp],y
+	bra	next
+;
+
+code drop ( x -- )
+	inc	dsp
+	inc	dsp
+	bne	next
+	inc	dsp+1
+	bra	next
+;
+
+\ put this in middle of the primitives to make it reachable by bra 
+code nest ( -- )
+; tya
+; cmp #0
+; beq 5$
+; sta SYS_EXIT
+;5$:
+	ldx	rsp
+	bne	1$
+	dec	rsp+1
+1$:	dec	rsp
+	lda	ip+1
+	sta	[rsp],y
+	dec	rsp
+	lda	ip
+	sta	[rsp],y
+
+	pla
+	sta	ip
+	pla
+	sta	ip+1
+	inc	ip
+	bne	next
+	inc	ip+1
+
+next:
+; tya
+; cmp #0
+; beq 5$
+; sta SYS_EXIT
+;5$:
+	lda	[ip],y
+	sta	2$+1 ; self modifying code
+	inc	ip
+	bne	1$
+	inc	ip+1
+1$:	lda	[ip],y
+	sta	2$+2 ; self modifying code
+	inc	ip
+	bne	2$
+	inc	ip+1
+2$:	jmp	0
+;
+
+code 0< ( x -- flag )
+	iny
+	lda	[dsp],y
+	bmi	1$
+
+	lda	#0
+	sta	[dsp],y
+	dey
+	sta	[dsp],y
+	bra	next
+
+1$:	lda	#0xff
+	sta	[dsp],y
+	dey
+	sta	[dsp],y
+	bra	next
+;
+
+code ?exit ( f -- )
+	lda	[dsp],y
+	inc	dsp
+	ora	[dsp],y
+	bne	1$
+	inc	dsp
+	bne	next
+	inc	dsp+1
+	bra	next
+
+1$:	inc	dsp
+	bne	_unnest
+	inc	dsp+1
+	; fall into unnest
+;
+
+code unnest ( -- )
+; tya
+; cmp #0
+; beq 5$
+; sta SYS_EXIT
+;5$:
+	lda	[rsp],y
+	sta	ip
+	inc	rsp
+	lda	[rsp],y
+	sta	ip+1
+	inc	rsp
+	bne	next
+	inc	rsp+1
+	bra	next
+;
+
+code >r ( x -- ) ( R -- x )
+	ldx	rsp
+	bne	1$
+	dec	rsp+1
+1$:	dec	rsp
+	dec	rsp
+
+	lda	[dsp],y
+	sta	[rsp],y
+	iny
+	lda	[dsp],y
+	sta	[rsp],y
+	dey
+
+	inc	dsp
+	inc	dsp
+	bne	next1
+	inc	dsp+1
+	bra	next1
+;
+
+code r> ( R x -- ) ( -- x )
+	ldx	dsp
+	bne	1$
+	dec	dsp+1
+1$:	dec	dsp
+	dec	dsp
+
+	lda	[rsp],y
+	sta	[dsp],y
+	iny
+	lda	[rsp],y
+	sta	[dsp],y
+	dey
+
+	inc	rsp
+	inc	rsp
+	bne	next1
+	inc	rsp+1
+	bra	next1
+;
+
+code - ( x1 x2 -- x3 )
+	ldy	#2
+	lda	[dsp],y
+	ldy	#0
+	sec
+	sbc	[dsp],y
+	ldy	#2
+	sta	[dsp],y
+	iny
+	lda	[dsp],y
+	ldy	#1
+	sbc	[dsp],y
+	inc	dsp
+	inc	dsp
+	bne	1$
+	inc	dsp+1
+1$:	sta	[dsp],y
+	dey
+	bra	next1
+;
+
+code lit ( -- )
+	ldx	dsp
+	bne	1$
+	dec	dsp+1
+1$:	dec	dsp
+	dec	dsp
+
+	lda	[ip],y
+	sta	[dsp],y
+	inc	ip
+	bne	2$
+	inc	ip+1
+2$:	lda	[ip],y
+	iny
+	sta	[dsp],y
+	dey
+	inc	ip
+	bne	next1
+	inc	ip+1
+	;bra	next1
+
+next1:
+; tya
+; cmp #0
+; beq 5$
+; sta SYS_EXIT
+;5$:
+	lda	[ip],y
+	sta	2$+1 ; self modifying code
+	inc	ip
+	bne	1$
+	inc	ip+1
+1$:	lda	[ip],y
+	sta	2$+2 ; self modifying code
+	inc	ip
+	bne	2$
+	inc	ip+1
+2$:	jmp	0
+;
+
+\ we want the text section to be first and bss last (for linkers that output
+\ sections in definition order), so it would be good to have the bss section
+\ be output by the ",end" hook, but at present we cannot call "pre" from a
+\ defined word, so we make do by switching to bss and then back to text again
+pre
+	.area	bss
+
+	.even
+
+return_stack:
+	.ds	RETURN_STACK_SIZE
+data_stack:
+	.ds	DATA_STACK_SIZE
+
+	.area	text
+
+;

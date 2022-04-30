@@ -1,0 +1,4 @@
+Definer Constant ( x <name> -- )  create ( x ) >r , r> does> @ ;
+
+-32768 Constant minint
+32767 Constant maxint

@@ -1,0 +1,7 @@
+\ seedForth: less machine dependent portion
+
+: 2* ( x1 -- x2 )
+   dup + ;
+
+: cells ( x1 -- x2 )
+   2* ;

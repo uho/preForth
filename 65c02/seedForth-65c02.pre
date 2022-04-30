@@ -1,0 +1,31 @@
+\ seedForth: less machine dependent portion
+\ allows us to adjust things for direct threaded vs indirect threaded
+
+\ insert "jsr _dodoes" after each "does>" token
+: ?does> ( xt -- xt | )
+   dup h@ lit does> - ?exit \ not does> token: exit i.e. normal compile action
+   h@ ,  32 c, lit dodoes , \ generate word of does> and instruction of call
+   r> drop   tail compiler ;
+
+: compiler ( -- )
+   token
+   ?eot
+   ?lit
+   ?does>
+   compile, tail compiler ;
+
+\ for 65c02 dtc implementation, compile "jsr _enter" before high level code
+: new ( -- xt )
+   hp @  here h,  32 c, lit enter , ;
+
+\ for 65c02 dtc implementation, compile "jsr _dovar" before data field of new
+\ word, the "_dovar" will be changed the address of "call _dodoes" if needed
+: create ( -- xt )
+    hp @  here h,  32 c, lit dovar , ;
+
+\ for does> we do not execute the remainder of the routine, instead we pop
+\ the return stack and plug the resulting number into the word being compiled,
+\ so that this word will execute the remainder of the routine when invoked
+\ (and note remainder of the routine has been prefixed with a "jsr _dodoes")
+: does> ( xt -- ) \ replace "_dovar" in "jsr _dovar" with return stack addr
+    r>  swap h@  1 + ! ;

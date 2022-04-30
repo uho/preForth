@@ -1,0 +1,339 @@
+\ seedForth: machine dependent portion
+
+\ interpreter and basic asm primitives are taken from preForth-z80-rts.pre,
+\ and then this file defines additional primitives (arithmetic, memory, etc)
+
+\ aliases for the user-visible versions of some internal routines
+pre
+_enter = _nest
+_exit = _unnest
+;
+
+\ note: we arrive at _dodoes by a sequence of 2 calls, the return
+\ address stacked by first call points to some instance data, and
+\ the return address stacked by second call (to _dodoes) points to
+\ high level forth code which is going to operate on that instance
+\ data -- we simply leave the instance data's address stacked for
+\ the high level forth code and then "execute" the high level forth
+\ code, which means that _dodoes is the same as _enter in our case
+pre
+_dodoes = _nest
+;
+
+\ note: similarly, arriving at _dovar we just leave address stacked
+pre
+_dovar = next
+;
+
+code key? ( -- f )
+	in	a,(STDIN_STATUS)
+	or	a
+	jr	z,1$
+	ld	a,0xff
+1$:	ld	l,a
+	ld	h,a
+	push	hl
+	jr	next
+;
+
+code or ( x1 x2 -- x3 )
+	pop	de
+	pop	hl
+	ld	a,l
+	or	e
+	ld	l,a
+	ld	a,h
+	or	d
+	ld	h,a
+	push	hl
+	jr	next
+;
+
+code and ( x1 x2 -- x3 )
+	pop	de
+	pop	hl
+	ld	a,l
+	and	e
+	ld	l,a
+	ld	a,h
+	and	d
+	ld	h,a
+	push	hl
+	jr	next
+;
+
+code @ ( addr -- x )
+	pop	hl
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	push	de
+	jr	next
+;
+
+code c@ ( c-addr -- c )
+	pop	hl
+	ld	e,(hl)
+	ld	d,0
+	push	de
+	jr	next
+;
+
+code ! ( x addr -- )
+	pop	hl
+	pop	de
+	ld	(hl),e
+	inc	hl
+	ld	(hl),d
+	jr	next
+;
+
+code c! ( c c-addr -- )
+	pop	hl
+	pop	de
+	ld	(hl),e
+	jr	next
+;
+
+\ code invoke ( addr -- ) \ native code: >r ;
+code execute ( addr -- ) \ this version uses token numbers as execution tokens and finds their code address via the headers table
+	pop	hl
+	add	hl,hl
+	ld	de,_head
+	add	hl,de
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	jp	(hl)
+;
+
+code branch ( -- )  \ threaded code: r>  @ >r ;
+	ld	l,c
+	ld	h,b
+	ld	c,(hl)
+	inc	hl
+	ld	b,(hl)
+	jr	next
+;
+
+\ is this misleading? I would have thought ?branch means branch on nonzero
+code ?branch ( f -- ) \ threaded code:  ?exit r> @ >r ;
+	pop	hl
+	ld	a,l
+	or	h
+	jr	z,_branch
+	inc	bc
+	inc	bc
+	jr	next
+;
+
+code depth ( -- n )
+	ld	hl,data_stack + DATA_STACK_SIZE
+	or	a
+	sbc	hl,sp ; should leave cf = 0
+	rr	h
+	rr	l
+	push	hl
+	jr	next1
+;
+
+code sp@ ( -- x )
+	ld	hl,0
+	add	hl,sp
+	push	hl
+	jr	next1
+;
+
+code sp! ( x -- )
+	pop	hl
+	ld	sp,hl
+	jr	next1
+;
+
+code rp@ ( -- x )
+	push	ix
+	jr	next1
+;
+
+code rp! ( x -- )
+	pop	ix
+	jr	next1
+;
+
+code um* ( u1 u2 -- ud )
+	exx ; preserve bc
+
+	pop	de ; pop u2
+	pop	bc ; pop u1
+; ld l,c
+; ld h,b
+; call print_hexw
+; ld a,'*
+; call print_char
+; ld l,e
+; ld h,d
+; call print_hexw
+; ld a,'=
+; call print_char
+
+	ld	hl,0
+	ld	a,b
+	ld	b,16
+	; cf does not matter here (shift in a random bit that isn't used)
+	rra
+	rr	c
+umul_loop:
+	jr	nc,umul_skip
+	add	hl,de
+umul_skip:
+	rr	h
+	rr	l
+	rra
+	rr	c
+	djnz	umul_loop
+	ld	b,a
+; push hl
+; call print_hexw
+; ld l,c
+; ld h,b
+; call print_hexw
+; pop hl
+; ld a,0xa
+; call print_char
+
+	push	bc ; push ud lo
+	push	hl ; push ud hi
+
+	exx
+	;jr	next1
+
+next1:	ld	a,(bc)
+	ld	l,a
+	inc	bc
+	ld	a,(bc)
+	ld	h,a
+	inc	bc
+	jp	(hl)
+;
+
+code um/mod ( ud u1 -- u2 u3 )
+	exx ; preserve bc
+
+	pop	bc ; pop u1
+	pop	hl ; pop ud hi
+	pop	de ; pop ud lo
+; push hl
+; call print_hexw
+; ld l,e
+; ld h,d
+; call print_hexw
+; ld a,'/
+; call print_char
+; ld l,c
+; ld h,b
+; call print_hexw
+; pop hl
+; ld a,'=
+; call print_char
+
+	ld	a,16
+	; cf does not matter here (shift in a random bit that isn't used)
+	jr	udiv_loop
+udiv_test:
+	; shift left has not overflowed, try to subtract bc, leaves cf=0
+	; only if subtraction went, record complement of cf in quotient
+	sbc	hl,bc
+	jr	nc,udiv_goes
+	add	hl,bc ; preserves cf
+udiv_goes:
+	ccf
+	dec	a
+	jr	z,udiv_done
+udiv_loop:
+	ex	de,hl
+	adc	hl,hl
+	ex	de,hl
+	adc	hl,hl
+	jr	nc,udiv_test
+	; shift left has overflowed, so we can always subtract bc, always
+	; leaves cf=1 to indicate subtraction went, record cf in quotient
+	or	a
+	sbc	hl,bc
+	dec	a
+	jr	nz,udiv_loop
+udiv_done:
+	ex	de,hl
+	adc	hl,hl ; record final quotient bit
+; push hl
+; call print_hexw
+; ld a,'r
+; call print_char
+; ld l,e
+; ld h,d
+; call print_hexw
+; pop hl
+; ld a,0xa
+; call print_char
+
+	push	de ; push u2 (remainder)
+	push	hl ; push u1 (quotient)
+
+	exx
+	jr	next1
+;
+
+code usleep ( c -- )
+	pop	hl
+	ld	a,l
+	out	(USLEEP_LO),a
+	ld	a,h
+	out	(USLEEP_HI),a
+	jr	next1
+;
+
+\ we want the text section to be first and bss last (for linkers that output
+\ sections in definition order), so it would be good to have the bss section
+\ be output by the ",end" hook, but at present we cannot call "pre" from a
+\ defined word, so we make do by switching to bss and then back to text again
+pre
+;print_hexw:
+;	ld	a,h
+;	call	print_hexb
+;	ld	a,l
+;print_hexb:
+;	push	af
+;	rrca
+;	rrca
+;	rrca
+;	rrca
+;	call	print_hexn
+;	pop	af
+;print_hexn:
+;	and	0xf
+;	add	a,'0
+;	cp	'0 + 10
+;	jr	c,print_char
+;	add	a,'a - '0 - 10
+;print_char:
+;	out	(STDERR_DATA),a
+;	ret
+
+	.area	data
+
+	; dictionary pointer: points to	next free location in memory
+_dp:	.dw	_mem
+
+	.area	bss
+
+	; head pointer: index of first unused head
+__hp:	.ds	2
+_head:	.ds	HEAD_SIZE*2
+
+        ; free memory starts at _mem
+_mem:	.ds	MEM_SIZE
+_memtop:
+
+	.area	text
+
+;
