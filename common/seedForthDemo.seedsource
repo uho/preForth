@@ -9,7 +9,27 @@
 \ cat seedForthDemo.seed | ./seedForth
 \
 
-PROGRAM seedForthDemo.seed
+\ multiply debug: emits '0000'
+\ 0x1234 * 0x5678 = 0x06260060
+\ 4660 22136 um* 1574 - 0= '1' + emit 96 - 0= '1' + emit
+\ 0xffff * 0xffff = 0xfffe0001
+\ 65535 65535 um* 65534 - 0= '1' + emit 1 - 0= '1' + emit
+
+\ divide debug: emits '000000'
+\ 0x06260060 / 0x5678 = 0x1234 rem 0x0000
+\ 96 1574 22136 um/mod 4660 - 0= '1' + emit 0= '1' + emit
+\ 0x06260060 / 0x1234 = 0x5678 rem 0x0000
+\ 96 1574 4660 um/mod 22136 - 0= '1' + emit 0= '1' + emit
+\ 0xfffe0001 / 0xffff = 0xffff rem 0x0000
+\ 1 65534 65535 um/mod 65535 - 0= '1' + emit 0= '1' + emit
+
+\ divide debug: emits '000000'
+\ 0x062656d7 / 0x5678 = 0x1234 rem 0x5677
+\ 22231 1574 22136 um/mod 4660 - 0= '1' + emit 22135 - 0= '1' + emit
+\ 0x06261293 / 0x1234 = 0x5678 rem 0x1233
+\ 4755 1574 4660 um/mod 22136 - 0= '1' + emit 4659 - 0= '1' + emit
+\ 0xfffeffff / 0xffff = 0xffff rem 0xfffe
+\ 65535 65534 65535 um/mod 65535 - 0= '1' + emit 65534 - 0= '1' + emit
 
 Definer Variable create ( x ) drop 0 , ;
 
@@ -175,16 +195,6 @@ t{ person -> 3 cells }t          \ size of structure
 
 Definer Defer ( <name> -- ) create >r 'uninitialized , r> does> @ execute ;
 
-: >body ( xt -- body )  h@  1 cells + ;
-
-: is ( xt -- )  ' >body ! ;
-
-Defer d1  
-' ten is d1
-t{ d1 d1 d1 -> ten ten ten }t
-' five is d1
-t{ d1 d1 d1 -> five five five }t
-
 t{ 3 4 + -> 7 }t
 
 
@@ -291,7 +301,7 @@ Variable #tib
       over dup c@ upc swap c!  1 /string
    REPEAT ( c-addr u ) 2drop ;
 
-: hi ( -- ) key drop \ discard END / bye token
+: hi ( -- ) \ key drop \ discard END / bye token
    BEGIN
      cr s" > " type query 
      cr .s
@@ -393,14 +403,7 @@ Definer Array ( n -- )
 t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
 
 
-: done ( -- )  cr ." done" cr ; done
+: done ( -- )  cr ." done" cr ;
 
-\ How to compile bye that normally exits the compile and interpret loop
-\ : goodbye  lit [ key bye , ] execute ; 
-
-\ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
-
-\ hi
-END
-
-
+\ seedForthDemoXXX.seedsource in XXX directory does some more tests then:
+\ done bye

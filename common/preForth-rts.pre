@@ -1,4 +1,4 @@
-\ preForth runtime system - machine independent part
+\ preForth runtime system - machine independent part - standard words
 
 \ ------------------------------------
 \ define lots of useful standard words
@@ -30,10 +30,6 @@
 
 : > ( n1 n2 -- flag )
    swap < ;
-
-\ case? compares the value x to y. If they match, return true. If not keep x and return false.
-: case? ( x y -- tf | x ff )
-    over = dup 0= ?exit  2drop -1 ; 
 
 
 \ additional stack operators
@@ -67,9 +63,6 @@
 : space ( -- )
    bl emit ;
 
-: tab ( -- )
-    9 emit ;
-
 : cr ( -- )
    10 emit ;
 
@@ -79,10 +72,7 @@
 
 : (/mod  ( n d q0 -- r d q )
    >r over over <  r> swap ?exit
-   >r swap over -  swap  r> 1+  (/mod ;
-
-: 10* ( x1 -- x2 )
-    dup + dup dup + dup + + ;
+   >r swap over -  swap  r> 1+  tail (/mod ;
 
 : (10u/mod ( n q d -- r q d )
    2 pick over > 0= ?exit     \ ( n q d )
@@ -107,45 +97,3 @@
 \ display signed number
 : . ( n -- )
    (. u. ;
-
-
-\ -----------
-\ strings
-\ -----------
-\ Strings are represented as character stack elements with a count on top
-\ They convieniently be processed using recursion.
-\ Idioms:  dup pick   gets 1st character
-\          dup        gets length
-\          x swap 1+  adds x to end of string
-\          nip 1-     removes last character
-\
-\ Useful words
-\ show   displays trings
-\ _dup   duplicates topmost string
-\ _drop  removes topmost string
-\ _swap  exchanges two topmost strings
-
-\ show displays topmost string
-: show ( S -- )
-   ?dup 0= ?exit  swap >r 1- show r> emit ;
-
-
-: (_dup ( S m n -- S S )
-    ?dup 0= ?exit  over 2 + pick rot rot  1-   tail (_dup ;
-
-\ _dup duplicated topmost string
-: _dup ( S -- S S )
-    dup dup (_dup ;
-
-\ _drop removes topmost string
-: _drop ( S -- )
-    ?dup 0= ?exit nip 1- _drop ;
-
-
-: (_swap ( S1 S2 x1 x2 -- S2 S1 x1 0 )
-    dup 0= ?exit over 3 + roll rot rot 1- (_swap ;
-
-\ _swap exchanges two topmost strings
-: _swap ( S1 S2 -- S2 S1 )
-    dup >r pick r> dup >r  over >r + r> r> rot rot 1+ (_swap 2drop ;
-

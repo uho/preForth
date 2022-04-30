@@ -38,7 +38,7 @@
 \
 \ compiler words:
 \   ,line ,comment ,codefield ,end
-\   ,lit ,>word ,nest ,unnest ,tail
+\   ,lit ,word ,nest ,unnest ,tail
 \
 \ header creation:
 \   header label bodylabel
@@ -130,7 +130,7 @@
 : code ( <name> -- )
     token
     _dup ,comment
-    0 header
+    \ 0 header
     ,code  line _drop  pre  ,end-code ;
     
 \ Colon definitions - the preForth compiler
@@ -238,7 +238,7 @@
 
 \ ?word detects and handles words by compiling them as reference.
 : ?word ( S -- 0 | S )
-     dup 0= ?exit ,>word 0 ;
+     dup 0= ?exit ,word 0 ;
 
 \ Compiler loop
 \ -------------
@@ -262,7 +262,7 @@
 : :' ( <name> -- )
     token
     _dup ,comment
-    0 header
+    \ 0 header
     (: ;
 
 \ -----------
@@ -316,13 +316,7 @@
 
 \ cold initializes the dictionary link and starts the interpreter. Acknowledge end on exit.
 : cold ( -- )
-    '0' 1        \ dictionary anchor
-    quit _drop   \ eof
+    \ '0' 1        \ dictionary anchor
+    quit \ _drop   \ eof
     \ top of dictionary as string on stack
     ,end ;
-
-\ : is eventually defined as preForth is now complete (assuming the primitives existed).
-\ In order to bootstrap. They have to be defined.
-: : ( <name> -- )
-   :' ;
-

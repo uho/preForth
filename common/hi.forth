@@ -1,14 +1,4 @@
-0 echo !
-0 input-echo !
-
 cr .( ⓪ )
-
-: ( 
-   ')' parse 2drop ; immediate
-
-: \ 
-   source nip >in ! ; immediate
-
 
 \ save and empty (need HP)  single wordlist only no string header reclaim
 \ HEAD, the start of seedForth header table is not required. 
@@ -31,70 +21,12 @@ cr .( ⓪ )
 \ t{ 3 -> }t         \ wrong number of results
 \ t{ 3 4 + -> 8 }t   \ incorrect result
 
-: AHEAD  ( -- c:orig )
-    postpone branch  here 0 , ; immediate
-
-: IF ( -- c:orig )
-    postpone ?branch here 0 , ; immediate
-
-: THEN ( c:orig -- )
-    here swap ! ; immediate
-
-: ELSE ( c:orig1 -- c:orig2 )
-    postpone AHEAD  swap  postpone THEN ; immediate
-
-: BEGIN ( -- c:dest )
-    here ; immediate
-
-: WHILE ( c: orig -- c:dest c:orig )
-    postpone IF swap ; immediate
-
-: AGAIN ( c:orig -- )
-    postpone branch , ; immediate
-
-: UNTIL ( c:orig -- )
-    postpone ?branch , ; immediate
-
-: REPEAT ( c:orig c:dest -- )
-    postpone AGAIN   postpone THEN ; immediate
-
-\ are these necessary? 
-\ you can use the phrase  dup x = IF drop  instead of   x case? IF  or  x OF 
-: case? ( n1 n2 -- true | n1 false )
-    over = dup IF nip THEN ;
-
-: OF ( n1 n2 -- n1 | )
-    postpone case?  postpone IF ; immediate
-
 cr .( ① )
 cr
-
-: :noname ( -- xt ) 
-    new ] ;
-
-: Variable ( <name> )
-    Create 0 , ;
-
-: Constant ( x <name> -- )
-    Create , Does> @ ;
-
-0 Constant false
-false invert Constant true
-
 
 : on  ( addr -- ) true  swap ! ;
 : off ( addr -- ) false swap ! ;
 
-
-: fill ( c-addr u x -- )
-     >r BEGIN ( c-addr u )  
-          dup 
-        WHILE ( c-addr u )
-           r@ third c!
-           1 /string
-        REPEAT ( c-addr u )
-    2drop r> drop
-;
 
 : erase ( c-addr u -- )  0 fill ;
 : blank ( c-addr u -- ) bl fill ;
@@ -167,26 +99,12 @@ t{ 1 2 3 4 5 6 2rot -> 3 4 5 6 1 2 }t
 end-tests
 
 
-: lshift ( x u -- ) BEGIN ?dup WHILE swap 2* swap 1-  REPEAT ;
-
-\ if we don't have u2/ but only 2* and 0< we need to implement u2/ with a loop. Candidate for primitive
-: u2/ ( x1 -- x2 )
-   0  8 cells 1-  \ for every bit
-   BEGIN ( x q n )
-      ?dup 
-   WHILE  ( x q n )
-      >r 2*  over 0< IF 1+ THEN  >r 2* r> r> 1- 
-   REPEAT ( x q n )
-   nip ;
-
 begin-tests
 
 t{ -1 u2/  dup 1+ u< -> -1 }t
 t{ -1 u2/  10 +  dup 10 + u< -> -1 }t
 
 end-tests
-
-: rshift ( x u -- ) BEGIN ?dup WHILE swap u2/ swap 1-  REPEAT ;
 
 : s>d ( n -- d )  dup 0< ;
 
@@ -254,9 +172,6 @@ cr .( ② )
 
 \ : test s" xlerb" evaluate ;
 
-: * ( n1 n2 -- )
-   2dup xor 0< >r abs swap abs um* drop r> IF negate THEN ;
-
 : fac ( n -- ) recursive
     dup 0= IF drop 1 exit THEN
     dup 1- fac * ;
@@ -279,8 +194,6 @@ t{ 10 fib -> 55 }t
 end-tests
 
 : sqr ( u -- u^2 )  dup * ;
-
-: u/ ( u1 u2 -- u3 )  >r 0 r> um/mod nip ;
 
 : sqrt ( u^2 -- u )
     dup 0= ?exit
@@ -306,7 +219,7 @@ end-tests
 begin-tests
 
 t{ 3 4 pyth -> 5 }t
-t{ 65535 dup * sqrt -> 65535 }t
+t{ test_sqr dup * sqrt -> test_sqr }t
 
 end-tests
 
@@ -398,18 +311,6 @@ begin-tests
 end-tests
 
 
-: FOR ( n -- )
-    postpone BEGIN 
-    postpone >r ; immediate
-
-: NEXT ( -- )
-    postpone r> 
-    postpone 1-
-    postpone dup
-    postpone 0<
-    postpone UNTIL
-    postpone drop ; immediate
-
 : cntdwn 65535 FOR r@ . NEXT ;
 
 : ²  sqr ;
@@ -451,8 +352,6 @@ Variable voc-link  0 voc-link !
 
 ' .voc ' .wordlist backpatch
 
-
-: recurse ( -- )  last @ _xt @ compile, ; immediate
 
 : cntd ( n -- ) ?dup 0= ?exit dup . 1- recurse '.' emit ;
 
@@ -588,7 +487,7 @@ only Forth also definitions
 : th.prime ( u -- )
     1 BEGIN over WHILE 1+ dup prime? IF swap 1- swap THEN REPEAT nip ; 
 
-cr cr cr .( The ) 10001 dup . .( st prime is ) th.prime . 
+cr cr cr .( The ) test_prime dup . .( st prime is ) th.prime . 
 
 
 \ cooperative multi tasker
@@ -810,28 +709,6 @@ cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
      cr dump-line 
    REPEAT 2drop ;  
                                   
-\ conditional compilation
-
-| : next-token ( -- c-addr u )
-    BEGIN 
-      parse-name dup 0= 
-    WHILE ( c-addr u )
-      2drop refill 0= -39 and throw
-    REPEAT ( c-addr u ) ;
-
-| : ([ELSE]) ( level c-addr u -- level' )
-        2dup s" [IF]" compare 0= IF 2drop 1+ exit THEN
-        2dup s" [ELSE]" compare 0= IF 2drop 1- dup IF 1+ THEN exit THEN
-             s" [THEN]" compare 0= IF 1- THEN ;
-
-: [ELSE] ( -- )
-    1 BEGIN ( level ) next-token ([ELSE]) ?dup 0= UNTIL ; immediate
-
-: [IF] ( f -- ) ?exit postpone [ELSE] ; immediate
-
-: [THEN] ; immediate
-
-
 1 [IF] cr .( ok: if line, )
     .( ok: next line)
 [ELSE] cr .( fail: else line, )
@@ -846,43 +723,7 @@ cr .( Interactive decompiler: Use single letter commands n d l c b s ) cr
 
 cr .( ok: afterwords )
 
-: abort ( -- )  -1 throw ;
-
-| : (abort") ( f c-addr u -- )  rot IF  errormsg 2! -2 throw THEN 2drop ;
-
-: abort" ( f -- ) 
-    postpone s" 
-    postpone (abort") ; immediate
-
 \ : abort"test ( -- )   dup abort" abort" ;
-
-: chars ; immediate
-
-: char+ 1+ ;
-
-' exit Alias EXIT
-
-: bounds ( addr count -- limit addr)  over + swap ;
-
-: DO ( to from -- )
-     postpone swap
-     postpone BEGIN
-     postpone >r postpone >r ; immediate
-
-: LOOP ( -- )
-     postpone r> 
-     postpone 1+ 
-     postpone r> 
-     postpone 2dup postpone = postpone UNTIL 
-     postpone 2drop ; immediate
-
-: I ( -- )
-     postpone r@ ; immediate
-
-\ : ?DO ( to from -- )
-\     postpone 2dup
-\     postpone -
-\     postpone IF  postpone DO ; immediate
 
 begin-tests
 
