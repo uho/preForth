@@ -87,21 +87,30 @@ hash_table_size #hash_table * dup allot hash_table swap 0 fill
 
 \ VARIABLE OUTFILE
 
-\ : submit ( c -- )
-\     PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
-\
-\ : submit-token ( x -- )
-\     dup 255 > IF  dup 8 rshift  SUBMIT  THEN  SUBMIT ;
 : emit-token ( x -- )
     dup xFF > IF  dup 8 rshift  emit  THEN  emit ;
 
+\ The following words "Token", "Macro", "end-macro" and "seed" are the heart of
+\ the tokenizer -- either "Token" or "Macro" makes an entry in the hash table,
+\ and each hash table entry points to an anonymous function which is called by
+\ "seed" when that token is encountered in the input stream. If you define it
+\ with "Token", you get a canned routine that simply emits the corresponding
+\ token into the *.seed file, but if you define it with "Macro" you specify the
+\ routine to be executed when that token is compiled. So macros allows you to
+\ compile control structures and so forth. "Macro" operates similarly to ":" in
+\ that it switches to compilation mode. "end-macro" operates similarly to ";"
+\ in that it finishes compilation, then it writes your routine into hash table.
+\ Note that a difference between "Token" and "Macro" is that "Token" generates
+\ a new token number (hence assuming we will emit a "fun" token to make the
+\ seedForth kernel do the same at the other side), whereas "Macro" does not.
 Variable #tokens  0 #tokens !
 : Token ( <name> -- )
-   :noname  
-   #tokens @  postpone Literal  postpone emit-token  postpone ; \ SUBMIT-TOKEN  postpone ;  
-   parse-name 
-   \ cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
-   ?token ! 1 #tokens +! ;
+   :noname
+     #tokens @  postpone Literal
+     postpone emit-token
+     postpone ;
+   parse-name ?token !
+   1 #tokens +! ;
 
 : Macro ( <name> -- )
    parse-name ?token :noname xFEED ;
@@ -135,7 +144,7 @@ Variable #tokens  0 #tokens !
 \ generate token sequences for numbers
 
 : seed-byte ( c -- )
-   seed key   emit ; \ SUBMIT ;
+   seed key   emit ;
 
 : seed-number ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
    dup 0<    IF  0 seed-byte   negate recurse  seed -   EXIT THEN
@@ -172,18 +181,11 @@ Variable #tokens  0 #tokens !
 : seed-file ( -- )
    BEGIN refill WHILE  seed-line REPEAT ;
 
-\ : PROGRAM ( <name> -- )
-\    parse-name R/W CREATE-FILE THROW OUTFILE !
-\    seed-file ;
-
-\ Macro END ( -- )
-\    .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
-
 \ eot is overloaded to either:
 \ - return from compilation state to interpretive state
 \   (used for compiling ; and various control flow constructs)
 \ - quit the interpreter if invoked in interpretive state
-\   (can overloading because control flow is not allowed here)
+\   (can overload it because control flow is not allowed here)
 \ this means that if the token stream runs out and starts to return
 \ EOT characters, we will first terminate any word definition that
 \ was in progress, then we'll do an automatic bye (in the old way,
@@ -192,7 +194,7 @@ Variable #tokens  0 #tokens !
 Macro [ ( -- )  seed eot      end-macro  \ eot
 Macro ] ( -- )  seed compiler end-macro  \ compiler
 
-Macro : ( <name> -- )  seed fun  Token  end-macro
+Macro : ( <name> -- )  Token  seed fun  end-macro
 Macro ; ( -- )         seed exit   seed [ end-macro
 
 \ generate token sequences for strings
@@ -310,14 +312,21 @@ Macro \ ( -- )
   postpone \
 end-macro
 
+\ A Definer-definition is similar to a :-definition, see for reference:
+\   Macro : ( <name> -- )  Token  seed fun  end-macro
+\ However, "Token" is replaced by "Macro", so that we will get control again
+\ when the user invokes the Definer-definition, e.g. if user calls "Variable".
+\ The "Token" routine compiles an anonymous function referring to the current
+\ #token and then increments #token, and we do the same thing here -- we have
+\ "# tokens @" in the Macro-body and then "1 #tokens +!" before the "seed fun".
 Macro Definer ( <name> -- )
    Macro
       postpone Token
-      #tokens @  1 #tokens +! 
-      postpone Literal
-      postpone emit-token \ SUBMIT-TOKEN
-      seed fun
+      #tokens @  postpone Literal
+      postpone emit-token
    postpone end-macro
+   1 #tokens +!
+   seed fun
 end-macro
 
 \ for defining Macros later in seedForth
