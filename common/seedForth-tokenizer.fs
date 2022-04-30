@@ -321,12 +321,19 @@ end-macro
 \ "# tokens @" in the Macro-body and then "1 #tokens +!" before the "seed fun".
 Macro Definer ( <name> -- )
    Macro
+      \ take name of e.g. Variable being defined and create a token for it
       postpone Token
+      \ compile a call to the user's Definer-definition (original token no)
       #tokens @  postpone Literal
       postpone emit-token
    postpone end-macro
    1 #tokens +!
    seed fun
+   \ user's code for Definer-body will begin with a call to "create", so
+   \ prefix their code with the sequence "here h," to give the token that
+   \ they create a header, and therefore keep the token numbering in sync
+   seed here
+   seed h,
 end-macro
 
 \ for defining Macros later in seedForth

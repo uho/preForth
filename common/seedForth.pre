@@ -68,7 +68,7 @@
    r> drop ; \ compilation semantics: return to interpretive state
 
 : fun ( -- )
-   new drop  compiler ;
+   new h,  compiler ;
 
 : couple ( hi lo -- hilo )
     >r  2* 2* 2* 2*   2* 2* 2* 2*   r> + ;

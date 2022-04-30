@@ -8,11 +8,11 @@
    , tail compiler ;
 
 : new ( -- xt )
-   here dup h,  lit enter , ;
+   here  lit enter , ;
 
 : create ( -- xt )
    0 , \ dummy does> field
-   here dup h, lit dovar , ;
+   here lit dovar , ;
 
 : does> ( xt -- ) \ set code field of last defined word
    r>   swap  dup >r 1 cells - !   lit dodoes r> ! ;
