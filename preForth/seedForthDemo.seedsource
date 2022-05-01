@@ -9,8 +9,6 @@
 \ cat seedForthDemo.seed | ./seedForth
 \
 
-PROGRAM seedForthDemo.seed
-
 Definer Variable create ( x ) drop 0 , ;
 
 \ Missing primitives
@@ -291,7 +289,7 @@ Variable #tib
       over dup c@ upc swap c!  1 /string
    REPEAT ( c-addr u ) 2drop ;
 
-: hi ( -- ) key drop \ discard END / bye token
+: hi ( -- ) \ key drop \ discard END / bye token
    BEGIN
      cr s" > " type query 
      cr .s
@@ -401,6 +399,4 @@ t{ 60 5 a !  0 a @  1 a @  2 a @  3 a @  4 a @   5 a @  -> 10 20 30 40 50 60 }t
 \ cr  'd'  emit 'o'  emit 'n'  emit 'e'  emit cr
 
 \ hi
-END
-
-
+bye
