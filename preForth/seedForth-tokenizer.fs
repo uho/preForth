@@ -1,8 +1,13 @@
 \ Another seedForth tokenizer    2019-10-18
 
+\ seedForth does not support hex so put some useful constants in decimal
+255 Constant xFF
+65261 Constant xFEED
+4294967295 Constant xFFFFFFFF
+
 : fnv1a ( c-addr u -- x )
     2166136261 >r
-    BEGIN dup WHILE  over c@ r> xor 16777619 um* drop    $FFFFFFFF and >r 1 /string REPEAT 2drop r> ;
+    BEGIN dup WHILE  over c@ r> xor 16777619 um* drop    xFFFFFFFF and >r 1 /string REPEAT 2drop r> ;
 
 15 Constant #hashbits
 1 #hashbits lshift Constant #hashsize
@@ -30,40 +35,41 @@ Create tokens  #hashsize cells allot  tokens #hashsize cells 0 fill
     2dup 'token dup @ 
     IF  
        >r cr type ."  collides with another token " 
-       cr source type cr r> @ name-see abort 
+       cr source type cr r> @ abort \ ??? name-see abort 
     THEN nip nip ;
 
-VARIABLE OUTFILE
+\ VARIABLE OUTFILE
 
-: submit ( c -- )
-    PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
-
-: submit-token ( x -- )
-    dup 255 > IF  dup 8 rshift  SUBMIT  THEN  SUBMIT ;
-
-: <name> ( -- c-addr u )  bl word count ;
+\ : submit ( c -- )
+\     PAD C!  PAD 1 OUTFILE @ WRITE-FILE THROW ;
+\
+\ : submit-token ( x -- )
+\     dup 255 > IF  dup 8 rshift  SUBMIT  THEN  SUBMIT ;
+: emit-token ( x -- )
+    dup xFF > IF  dup 8 rshift  emit  THEN  emit ;
 
 Variable #tokens  0 #tokens !
 : Token ( <name> -- )
    :noname  
-   #tokens @  postpone LITERAL  postpone SUBMIT-TOKEN  postpone ;  
-   <name> 
-   cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
+   #tokens @  postpone Literal  postpone emit-token  postpone ; \ SUBMIT-TOKEN  postpone ;  
+   parse-name 
+   \ cr  #tokens @ 3 .r space 2dup type \ tell user about used tokens
    ?token ! 1 #tokens +! ;
 
 : Macro ( <name> -- )
-   <name> ?token :noname $FEED ;
+   parse-name ?token :noname xFEED ;
 
 : end-macro ( 'hash colon-sys -- )
-   $FEED - Abort" end-macro without corresponding Macro"
+   xFEED - abort" end-macro without corresponding Macro"
    postpone ;  ( 'hash xt )  swap ! ; immediate
 
 : seed ( i*x <name> -- j*x ) 
-    <name> token@ dup 0= Abort" is undefined"    postpone LITERAL   postpone EXECUTE ; immediate
+    parse-name token@ dup 0= abort" is undefined"    postpone Literal   postpone execute ; immediate
 
 
-(  0 $00 ) Token bye       Token prefix1       Token prefix2    Token emit          
-(  4 $04 ) Token key       Token dup           Token swap       Token drop          
+(  0 $00 ) Token bye
+4 #tokens !
+(  4 $04 ) Token eot       Token dup           Token swap       Token drop          
 (  8 $08 ) Token 0<        Token ?exit         Token >r         Token r>
 ( 12 $0C ) Token -         Token exit          Token lit        Token @             
 ( 16 $10 ) Token c@        Token !             Token c!         Token execute       
@@ -76,56 +82,67 @@ Variable #tokens  0 #tokens !
 ( 44 $2C ) Token and       Token or            Token sp@        Token sp!           
 ( 48 $30 ) Token rp@       Token rp!           Token $lit       Token num
 ( 52 $34 ) Token um*       Token um/mod        Token unused     Token key?          
-( 56 $38 ) Token token     Token usleep        Token hp
+( 56 $38 ) Token token     Token usleep        Token hp         Token key
+( 60 $3C ) Token emit      Token eemit
 
 \ generate token sequences for numbers
 
 : seed-byte ( c -- )
-   seed key   SUBMIT ;
+   seed key   emit ; \ SUBMIT ;
 
 : seed-number ( x -- )      \ x is placed in the token file. Handle also negative and large numbers
    dup 0<    IF  0 seed-byte   negate recurse  seed -   EXIT THEN
-   dup $FF > IF  dup 8 rshift  recurse  $FF and  seed-byte  seed couple EXIT THEN
+   dup xFF > IF  dup 8 rshift  recurse  xFF and  seed-byte  seed couple EXIT THEN
    seed-byte ;   
 
 : char-lit? ( c-addr u -- x flag )
    3 - IF drop 0 false EXIT THEN
-   dup c@ [char] ' -  IF drop 0 false EXIT THEN
-   dup 2 chars + c@ [char] ' -  IF  drop 0 false EXIT THEN
+   dup c@ ''' -  IF drop 0 false EXIT THEN
+   dup 2 chars + c@ ''' -  IF  drop 0 false EXIT THEN
    char+ c@ true ;
 
 : process-digit? ( x c -- x' flag )
    '0' - dup 10 u< IF  swap 10 * + true EXIT THEN  drop false ;
 
-: number? ( c-addr u -- x flag )
-	 dup 0= IF 2drop 0 false EXIT THEN
- 	 over c@ '-' = dup >r IF 1 /string THEN
+: process-number? ( c-addr u -- x flag )
+         dup 0= IF 2drop 0 false EXIT THEN
+         over c@ '-' = dup >r IF 1 /string THEN
      >r >r 0 r> r> bounds 
      ?DO ( x )  
-      	I c@ process-digit? 0= IF unloop r> drop false EXIT THEN ( x d )
+        I c@ process-digit? 0= IF UNLOOP r> drop false EXIT THEN ( x d )
      LOOP 
      r> IF negate THEN true ;
 
 : seed-name ( c-addr u -- )
-	 2dup  token@ dup IF nip nip execute EXIT THEN drop
-	 2dup  char-lit? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
-	 2dup  number? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
-	 cr type ."  not found" abort ;
+         2dup  token@ dup IF nip nip execute EXIT THEN drop
+         2dup  char-lit? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
+         2dup  process-number? IF nip nip seed num  seed-number seed exit  EXIT THEN drop
+         cr type ."  not found" abort ;
 
 : seed-line ( -- )
-   BEGIN <name> dup WHILE  seed-name  REPEAT 2drop ; 
+   BEGIN parse-name dup WHILE  seed-name  REPEAT 2drop ; 
 
 : seed-file ( -- )
    BEGIN refill WHILE  seed-line REPEAT ;
 
-: PROGRAM ( <name> -- )
-   <name> R/W CREATE-FILE THROW OUTFILE !
-   seed-file ;
+\ : PROGRAM ( <name> -- )
+\    parse-name R/W CREATE-FILE THROW OUTFILE !
+\    seed-file ;
 
-Macro END ( -- )
-   .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
+\ Macro END ( -- )
+\    .S CR  0 SUBMIT  OUTFILE @ CLOSE-FILE THROW BYE end-macro
 
-Macro [ ( -- )  seed bye      end-macro  \ bye
+\ eot is overloaded to either:
+\ - return from compilation state to interpretive state
+\   (used for compiling ; and various control flow constructs)
+\ - quit the interpreter if invoked in interpretive state
+\   (can overloading because control flow is not allowed here)
+\ this means that if the token stream runs out and starts to return
+\ EOT characters, we will first terminate any word definition that
+\ was in progress, then we'll do an automatic bye (in the old way,
+\ there was an automatic bye token appended to seed file, but this
+\ was annoying because seedForthInteractive had to read and drop it)
+Macro [ ( -- )  seed eot      end-macro  \ eot
 Macro ] ( -- )  seed compiler end-macro  \ compiler
 
 Macro : ( <name> -- )  seed fun  Token  end-macro
@@ -150,7 +167,7 @@ Macro ; ( -- )         seed exit   seed [ end-macro
    REPEAT 2drop 
 ;
 
-Macro ," ( ccc" -- )   [char] " parse seed-string end-macro
+Macro ," ( ccc" -- )   '"' parse seed-string end-macro
 
 : $, ( c-addr u -- )  
    seed $lit 
@@ -160,15 +177,15 @@ Macro ," ( ccc" -- )   [char] " parse seed-string end-macro
 ;
 
 Macro $name ( <name> -- )
-   <name> seed-stack-string
+   parse-name seed-stack-string
 end-macro
 
 Macro $( \ ( ccc) -- )
-  [char] ) parse seed-stack-string
+  ')' parse seed-stack-string
 end-macro
 
 Macro s" ( ccc" -- )  \ only in compile mode
-  [char] " parse $, 
+  '"' parse $, 
 end-macro 
 
 
@@ -176,8 +193,8 @@ end-macro
 : forward ( -- )
    seed [   
    seed here   
-	 0 seed-number  seed , 
-	 seed ] 
+         0 seed-number  seed , 
+         seed ] 
 ;
 
 : back ( -- )
@@ -188,11 +205,11 @@ end-macro
 
 
 Macro AHEAD ( -- addr ) 
-	seed branch  forward
+        seed branch  forward
 end-macro
 
 Macro IF ( -- addr )   
-	seed ?branch forward
+        seed ?branch forward
 end-macro
 
 
@@ -251,7 +268,7 @@ Macro Definer ( <name> -- )
       postpone Token
       #tokens @  1 #tokens +! 
       postpone Literal
-      postpone SUBMIT-TOKEN
+      postpone emit-token \ SUBMIT-TOKEN
       seed fun
    postpone end-macro
 end-macro
@@ -278,3 +295,8 @@ Macro restore-#tokens
    postpone #tokens
    postpone !
 end-macro
+
+seed-file
+\ user code has to be concatenated here
+\ it cannot be in a separate file when running via gforth
+\ it cannot have a partial last line when running via seedForth
