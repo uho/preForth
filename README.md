@@ -83,3 +83,6 @@ Inspect sources and generated files.
 
 *Have fun. May the Forth be with you.*
 
+# Copyright and license
+
+Please see the files `COPYRIGHT` and `LICENSE` in the root of this repository.
